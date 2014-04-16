@@ -22,9 +22,7 @@ from neutron.openstack.common import log as logging
 
 from oslo.config import cfg
 from httplib2 import Http
-import json
 import re
-import requests
 import string
 import sys
 import cgitb
@@ -81,7 +79,6 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     _args = None
     _tenant_id_dict = {}
     _tenant_name_dict = {}
-    PLUGIN_URL_PREFIX = '/neutron'
 
     @classmethod
     def _parse_class_args(cls, cfg_parser):
@@ -249,56 +246,6 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             raise e
     #end create_network
 
-    # Helper routines
-    def _request_api_server(self, url, method, data=None, headers=None):
-        if method == 'GET':
-            return requests.get(url)
-        if method == 'POST':
-            return requests.post(url, data=data, headers=headers)
-        if method == 'DELETE':
-            return requests.delete(url)
-    #end _request_api_server
-
-    def _relay_request(self, method, url_path, data=None):
-        """
-        Send received request to api server
-        """
-        # make url, add api server address/port
-        url = "http://%s:%s%s" % (cfg.CONF.APISERVER.api_server_ip,
-                                  cfg.CONF.APISERVER.api_server_port,
-                                  url_path)
-
-        return self._request_api_server(
-            url, method, data=data,
-            headers={'Content-type': 'application/json'})
-    #end _relay_request
-
-    def _encode_context(self, context):
-        cdict = {}
-        if context.user_id:
-            cdict['user_id'] = context.user_id
-        if context.roles:
-            cdict['roles'] = context.roles
-        return cdict
-
-    def _encode_network(self, id, fields):
-        ndict = {}
-        if id:
-            ndict['id'] = id
-        if fields:
-            ndict['fields'] = fields
-        return ndict
-
-    def get_network(self, context, id, fields=None):
-        context_dict = self._encode_context(context)
-        network_dict = self._encode_network(id, fields)
-
-        data = json.dumps({'context':context_dict, 'network':network_dict})
-
-        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
-        return self._relay_request('POST', url_path, data=data)
-
-    """
     def get_network(self, context, id, fields=None):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
@@ -319,7 +266,6 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
     #end get_network
-    """
 
     def update_network(self, context, net_id, network):
         """
