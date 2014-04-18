@@ -19,7 +19,7 @@ import eventlet
 from neutron.common import constants
 from neutron.common import exceptions
 from neutron.api.v2 import attributes as attr
-from neutron.extensions import portbindings
+from neutron.extensions import l3, portbindings
 from neutron.extensions import securitygroup as ext_sg
 from neutron.extensions import l3
 from neutron.openstack.common import log as logging
@@ -1663,7 +1663,8 @@ class DBInterface(object):
         else:  # READ/UPDATE/DELETE
             port_obj = self._virtual_machine_interface_read(
                 port_id=port_q['id'], fields=['instance_ip_back_refs',
-                                              'floating_ip_back_refs'])
+                                              'floating_ip_back_refs',
+                                              'logical_router_back_refs'])
 
         port_obj.set_security_group_list([])
         if 'security_groups' in port_q and port_q['security_groups'].__class__ is not object:
@@ -2729,6 +2730,10 @@ class DBInterface(object):
     def port_delete(self, port_id):
         port_obj = self._port_neutron_to_vnc({'id': port_id}, None, DELETE)
         instance_id = port_obj.parent_uuid
+
+        if port_obj.get_logical_router_back_refs():
+            raise l3.L3PortInUse(port_id=port_id,
+                device_owner=constants.DEVICE_OWNER_ROUTER_INTF)
 
         # release instance IP address
         iip_back_refs = getattr(port_obj, 'instance_ip_back_refs', None)
