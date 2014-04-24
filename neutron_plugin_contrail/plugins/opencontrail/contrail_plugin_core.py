@@ -403,7 +403,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         try:
             cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            subnets_info = cfgdb.subnets_list(filters)
+            subnets_info = cfgdb.subnets_list(context, filters)
 
             subnets_dicts = []
             for sn_info in subnets_info:
