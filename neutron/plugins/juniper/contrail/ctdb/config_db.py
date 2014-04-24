@@ -161,7 +161,14 @@ class DBInterface(object):
             id = self._vnc_lib.obj_to_id(instance_obj)
             instance_obj = self._vnc_lib.virtual_machine_read(id=id)
         except NoIdError:  # instance doesn't exist, create it
-            instance_obj.uuid = instance_id
+            # check if instance_id is a uuid value or not
+            try:
+                uuid.UUID(instance_id)
+                instance_obj.uuid = instance_id
+            except ValueError:
+                # if instance_id is not a valid uuid, let
+                # virtual_machine_create generate uuid for the vm
+                pass
             self._vnc_lib.virtual_machine_create(instance_obj)
 
         return instance_obj
@@ -421,11 +428,11 @@ class DBInterface(object):
             if net_obj and net_obj.get_floating_ip_pools():
                 fip_pools = net_obj.get_floating_ip_pools()
                 for fip_pool in fip_pools:
-                    self._floating_ip_pool_delete(id=fip_pool['uuid'])
+                    self._floating_ip_pool_delete(fip_pool_id=fip_pool['uuid'])
 
             self._vnc_lib.virtual_network_delete(id=net_id)
         except RefsExistError:
-            raise exceptions.NetworkInUse()
+            raise exceptions.NetworkInUse(net_id=net_id)
 
         try:
             del self._db_cache['vnc_networks'][net_id]
@@ -935,9 +942,13 @@ class DBInterface(object):
                 return self._db_cache['q_subnet_maps'][id]
                 #raise KeyError
             except KeyError:
+                pass
+            try:
                 subnet_key = self._vnc_lib.kv_retrieve(id)
                 self._db_cache['q_subnet_maps'][id] = subnet_key
                 return subnet_key
+            except NoIdError:
+                raise exceptions.SubnetNotFound(subnet_id=id)
         if key:
             try:
                 return self._db_cache['q_subnet_maps'][key]
@@ -1359,16 +1370,13 @@ class DBInterface(object):
         else:
             extra_dict['router:external'] = False
 
-        if net_repr == 'SHOW':
+        if net_repr == 'SHOW' or net_repr == 'LIST':
             extra_dict['contrail:instance_count'] = 0
 
             net_policy_refs = net_obj.get_network_policy_refs()
             if net_policy_refs:
                 extra_dict['contrail:policys'] = \
                     [np_ref['to'] for np_ref in net_policy_refs]
-
-        elif net_repr == 'LIST':
-            extra_dict['contrail:instance_count'] = 0
 
         rt_refs = net_obj.get_route_table_refs()
         if rt_refs:
@@ -1716,7 +1724,7 @@ class DBInterface(object):
             port_q_dict['mac_address'] = mac_refs.mac_address[0]
 
         port_q_dict['fixed_ips'] = []
-        ip_back_refs = getattr(port_obj, 'instance_ip_back_refs', None)
+        ip_back_refs = port_obj.get_instance_ip_back_refs()
         if ip_back_refs:
             for ip_back_ref in ip_back_refs:
                 iip_uuid = ip_back_ref['uuid']
@@ -1811,10 +1819,18 @@ class DBInterface(object):
         network_q['id'] = net_id
         net_obj = self._network_neutron_to_vnc(network_q, UPDATE)
         if net_obj.router_external and not router_external:
+            fip_pools = net_obj.get_floating_ip_pools()
             fip_pool_obj = FloatingIpPool('floating-ip-pool', net_obj)
             self._floating_ip_pool_create(fip_pool_obj)
         if router_external and not net_obj.router_external:
-            self._vnc_lib.floating_ip_pool_delete(fq_name=net_obj.fq_name+['floating-ip-pool'])
+            fip_pools = net_obj.get_floating_ip_pools()
+            if fip_pools:
+                for fip_pool in fip_pools:
+                    try:
+                        pool_id = fip_pool['uuid']
+                        self._floating_ip_pool_delete(fip_pool_id=pool_id)
+                    except RefsExistError:
+                        raise exceptions.NetworkInUse(net_id=net_id)
         self._virtual_network_update(net_obj)
 
         ret_network_q = self._network_vnc_to_neutron(net_obj, net_repr='SHOW')
@@ -1828,7 +1844,11 @@ class DBInterface(object):
         fip_pools = net_obj.get_floating_ip_pools()
         if fip_pools:
             for fip_pool in fip_pools:
-                self._floating_ip_pool_delete(fip_pool_id=fip_pool['uuid'])
+                try:
+                    pool_id = fip_pool['uuid']
+                    self._floating_ip_pool_delete(fip_pool_id=pool_id)
+                except RefsExistError:
+                    raise exceptions.NetworkInUse(net_id=net_id)
 
         self._virtual_network_delete(net_id=net_id)
         try:
@@ -1862,7 +1882,8 @@ class DBInterface(object):
                 all_net_objs.extend(net_objs)
                 all_net_objs.extend(self._network_list_shared())
                 all_net_objs.extend(self._network_list_router_external())
-            elif filters and 'shared' in filters and 'router:external' not in filters:
+            elif (filters and 'shared' in filters and filters['shared'][0] and
+                  'router:external' not in filters):
                 all_net_objs.extend(self._network_list_shared())
             elif filters and 'router:external' in filters and 'shared' not in filters:
                 all_net_objs.extend(self._network_list_router_external())
@@ -1994,7 +2015,8 @@ class DBInterface(object):
                     return subnet_info
             vnsn_data = net_ipam_ref['attr']
             vnsn_data.ipam_subnets.append(subnet_vnc)
-
+            # TODO: Add 'ref_update' API that will set this field
+            net_obj._pending_field_updates.add('network_ipam_refs')
         self._virtual_network_update(net_obj)
 
         # allocate an id to the subnet and store mapping with
@@ -2058,7 +2080,10 @@ class DBInterface(object):
                 if len(orig_subnets) != len(new_subnets):
                     # matched subnet to be deleted
                     ipam_ref['attr'].set_ipam_subnets(new_subnets)
-                    self._virtual_network_update(net_obj)
+                    try:
+                        self._virtual_network_update(net_obj)
+                    except RefsExistError:
+                        raise exceptions.SubnetInUse(subnet_id=subnet_id)
                     self._subnet_vnc_delete_mapping(subnet_id, subnet_key)
                     try:
                         del self._db_cache['q_subnets'][subnet_id]
@@ -2618,13 +2643,17 @@ class DBInterface(object):
         ip_addr = None
         ip_obj = None
         if port_q['fixed_ips'].__class__ is not object:
-            ip_addr = port_q['fixed_ips'][0]['ip_address']
-            ip_name = '%s %s' % (net_id, ip_addr)
-            try:
-                ip_obj = self._instance_ip_read(fq_name=[ip_name])
-                ip_id = ip_obj.uuid
-            except Exception as e:
-                ip_obj = None
+            if len(port_q['fixed_ips']) > 0:
+                # check if 'ip_address' key is present or not
+                # before accessing it.
+                if 'ip_address' in port_q['fixed_ips'][0]:
+                    ip_addr = port_q['fixed_ips'][0]['ip_address']
+                    ip_name = '%s %s' % (net_id, ip_addr)
+                    try:
+                        ip_obj = self._instance_ip_read(fq_name=[ip_name])
+                        ip_id = ip_obj.uuid
+                    except Exception as e:
+                        ip_obj = None
 
         # create the object
         port_id = self._virtual_machine_interface_create(port_obj)
