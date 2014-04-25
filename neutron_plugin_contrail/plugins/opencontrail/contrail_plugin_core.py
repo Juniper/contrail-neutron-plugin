@@ -20,6 +20,7 @@ import logging
 import ConfigParser
 from pprint import pformat
 
+from neutron.api.v2 import attributes as attr
 from neutron.manager import NeutronManager
 from neutron.common import exceptions as exc
 from neutron.db import db_base_plugin_v2
@@ -34,6 +35,7 @@ from neutron.openstack.common import log as logging
 from oslo.config import cfg
 from httplib2 import Http
 import re
+import requests
 import string
 import sys
 import cgitb
@@ -72,6 +74,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
     _args = None
     _tenant_id_dict = {}
     _tenant_name_dict = {}
+    PLUGIN_URL_PREFIX = '/neutron'
 
     @classmethod
     def _parse_class_args(cls):
@@ -230,110 +233,180 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         agents = []
         return agents;
 
+    # Helper routines
+    def _request_api_server(self, url, method, data=None, headers=None):
+        if method == 'GET':
+            return requests.get(url)
+        if method == 'POST':
+            return requests.post(url, data=data, headers=headers)
+        if method == 'DELETE':
+            return requests.delete(url)
+
+    def _relay_request(self, method, url_path, data=None):
+        """
+        Send received request to api server
+        """
+        # make url, add api server address/port
+        url = "http://%s:%s%s" % (cfg.CONF.APISERVER.api_server_ip,
+                                  cfg.CONF.APISERVER.api_server_port,
+                                  url_path)
+
+        return self._request_api_server(
+            url, method, data=data,
+            headers={'Content-type': 'application/json'})
+
+    def _encode_context(self, context, operation):
+        cdict = {}
+        if context.user_id:
+            cdict['user_id'] = context.user_id
+        if context.roles:
+            cdict['roles'] = context.roles
+        if context.is_admin:
+            cdict['is_admin'] = context.is_admin
+        cdict['operation'] = operation
+        return cdict
+
+    def _encode_network(self, net_id=None, network=None, fields=None,
+                        filters=None):
+        ndict = {}
+        if id:
+            ndict['net_id'] = net_id
+        if network:
+            ndict['network'] = network
+        ndict['filters'] = filters
+        ndict['fields'] = fields
+        return ndict
+
     # Network API handlers
     def create_network(self, context, network):
         """
         Creates a new Virtual Network, and assigns it
         a symbolic name.
         """
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            net_info = cfgdb.network_create(network['network'])
+        if network['network']['router:external'] == attr.ATTR_NOT_SPECIFIED:
+            del network['network']['router:external']
 
-            # verify transformation is conforming to api
-            net_dict = self._make_network_dict(net_info['q_api_data'])
+        context_dict = self._encode_context(context, 'POST')
+        network_dict = self._encode_network(network=network['network'])
 
+        data = json.dumps({'context':context_dict, 'data':network_dict})
+
+        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
+        response = self._relay_request('POST', url_path, data=data)
+
+        net_info = json.loads(response.content)
+
+        # Verify transformation is conforming to api
+        net_dict = self._make_network_dict(net_info['q_api_data'])
+
+        net_dict.update(net_info['q_extra_data'])
+
+        LOG.debug("create_network(): " + pformat(net_dict) + "\n")
+        return net_dict
+
+    def get_network(self, context, net_id, fields=None):
+        """
+        Get the attributes of a particular Virtual Network.
+        """
+        context_dict = self._encode_context(context, 'GET')
+        network_dict = self._encode_network(net_id=net_id, fields=fields)
+
+        data = json.dumps({'context':context_dict, 'data':network_dict})
+
+        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
+        response = self._relay_request('POST', url_path, data=data)
+
+        net_info = json.loads(response.content)
+
+        # Verify transformation is conforming to api
+        if not fields:
+            # should return all fields
+            net_dict = self._make_network_dict(net_info['q_api_data'],
+                                               fields)
             net_dict.update(net_info['q_extra_data'])
+        else:
+            net_dict = net_info['q_api_data']
 
-            LOG.debug("create_network(): " + pformat(net_dict) + "\n")
-            return net_dict
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
-
-    def get_network(self, context, id, fields=None):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            net_info = cfgdb.network_read(id, fields)
-
-            # verify transformation is conforming to api
-            if not fields:
-                # should return all fields
-                net_dict = self._make_network_dict(net_info['q_api_data'],
-                                                   fields)
-                net_dict.update(net_info['q_extra_data'])
-            else:
-                net_dict = net_info['q_api_data']
-
-            LOG.debug("get_network(): " + pformat(net_dict))
-            return self._fields(net_dict, fields)
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        LOG.debug("get_network(): " + pformat(net_dict))
+        return self._fields(net_dict, fields)
 
     def update_network(self, context, net_id, network):
         """
         Updates the attributes of a particular Virtual Network.
         """
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            net_info = cfgdb.network_update(net_id, network['network'])
+        context_dict = self._encode_context(context, 'PUT')
+        network_dict = self._encode_network(net_id=net_id,
+                                            network=network['network'])
 
-            # verify transformation is conforming to api
-            net_dict = self._make_network_dict(net_info['q_api_data'])
+        data = json.dumps({'context':context_dict, 'data':network_dict})
 
-            net_dict.update(net_info['q_extra_data'])
+        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
+        response = self._relay_request('POST', url_path, data=data)
 
-            LOG.debug("update_network(): " + pformat(net_dict))
-            return net_dict
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        net_info = json.loads(response.content)
+
+        # Verify transformation is conforming to api
+        net_dict = self._make_network_dict(net_info['q_api_data'])
+
+        net_dict.update(net_info['q_extra_data'])
+
+        LOG.debug("update_network(): " + pformat(net_dict))
+        return net_dict
 
     def delete_network(self, context, net_id):
         """
         Deletes the network with the specified network identifier
         belonging to the specified tenant.
         """
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            cfgdb.network_delete(net_id)
-            LOG.debug("delete_network(): " + pformat(net_id))
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        context_dict = self._encode_context(context, 'DELETE')
+        network_dict = self._encode_network(net_id=net_id)
+
+        data = json.dumps({'context':context_dict, 'data':network_dict})
+
+        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
+        self._relay_request('POST', url_path, data=data)
 
     def get_networks(self, context, filters=None, fields=None):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            nets_info = cfgdb.network_list(context, filters)
+        """
+        Get the list of Virtual Networks.
+        """
+        context_dict = self._encode_context(context, 'GET')
+        network_dict = self._encode_network(filters=filters, fields=fields)
 
-            nets_dicts = []
-            for n_info in nets_info:
-                # verify transformation is conforming to api
-                n_dict = self._make_network_dict(n_info['q_api_data'], fields)
-                if not fields:
-                    n_dict.update(n_info['q_extra_data'])
-                nets_dicts.append(n_dict)
+        data = json.dumps({'context':context_dict, 'data':network_dict})
 
-            LOG.debug(
-                "get_networks(): filters: " + pformat(filters) + " data: "
-                + pformat(nets_dicts))
-            return nets_dicts
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        url_path = "%s/networks" % (self.PLUGIN_URL_PREFIX)
+        response = self._relay_request('POST', url_path, data=data)
+
+        nets_info = json.loads(response.content)
+        nets_dicts = []
+        for n_info in nets_info:
+            # verify transformation is conforming to api
+            n_dict = self._make_network_dict(n_info['q_api_data'], fields)
+
+            n_dict.update(n_info['q_extra_data'])
+            nets_dicts.append(n_dict)
+
+        LOG.debug(
+            "get_networks(): filters: " + pformat(filters) + " data: "
+            + pformat(nets_dicts))
+        return nets_dicts
 
     def get_networks_count(self, context, filters=None):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            nets_count = cfgdb.network_count(filters)
-            LOG.debug("get_networks_count(): filters: " + pformat(filters) +
-                      " data: " + str(nets_count))
-            return nets_count
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        """
+        Get the count of Virtual Network.
+        """
+        context_dict = self._encode_context(context, 'GET')
+        network_dict = self._encode_network(filters=filters)
+
+        data = json.dumps({'context':context_dict, 'data':network_dict})
+
+        url_path = "%s/networks-count" % (self.PLUGIN_URL_PREFIX)
+        response = self._relay_request('POST', url_path, data=data)
+
+        nets_count = json.loads(response.content)
+        LOG.debug("get_networks_count(): filters: " + pformat(filters) + " data: " + str(nets_count['count']))
+        return nets_count['count']
 
     # Subnet API handlers
     def create_subnet(self, context, subnet):
