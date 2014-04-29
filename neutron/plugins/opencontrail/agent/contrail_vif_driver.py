@@ -12,15 +12,16 @@
 # under the License.
 
 import ConfigParser
+import uuid
 
 from neutron.agent.linux import interface
 from neutron.agent.linux import ip_lib
 from neutron.openstack.common import log as logging
+from neutron.openstack.common import loopingcall
 from oslo.config import cfg
 
-from contrail_lib import rpc_client_instance
-from contrail_lib import uuid_from_string
-from vnc_api.vnc_api import *
+from contrail_vrouter_api.vrouter_api import ContrailVRouterApi
+from vnc_api.vnc_api import VncApi
 
 LOG = logging.getLogger(__name__)
 
@@ -53,6 +54,9 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         super(ContrailInterfaceDriver, self).__init__(conf)
         self._port_dict = {}
         self._client = self._connect_to_api_server()
+        self._vrouter_client = ContrailVRouterApi()
+        timer = loopingcall.FixedIntervalLoopingCall(self._keep_alive)
+        timer.start(interval=2)
 
     def _connect_to_api_server(self):
         cfg_parser = ConfigParser.ConfigParser()
@@ -64,29 +68,11 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         except:
             pass
 
-    def _add_port(self, data):
-        rpc = rpc_client_instance()
-        if not rpc:
-            return False
-        try:
-            rpc.AddPort([data])
-        except socket.error:
-            LOG.error('RPC failure')
-            return False
-
-        return True
+    def _keep_alive(self):
+        self._vrouter_client.periodic_connection_check()
 
     def _delete_port(self, port_id):
-        rpc = rpc_client_instance()
-        if not rpc:
-            return False
-        try:
-            rpc.DeletePort(port_id)
-        except socket.error:
-            LOG.error('RPC failure')
-            return False
-
-        return True
+        self._vrouter_client.delete_port(port_id)
 
     def _instance_lookup(self, instance_name):
         """ lookup the instance."""
@@ -96,6 +82,13 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
             return vm_instance
         except NoIdError:
             pass
+
+    def _uuid_from_string(self, idstr):
+        """ Convert an uuid into an array of integers """
+        if not idstr:
+            return None
+        hexstr = uuid.UUID(idstr).hex
+        return [int(hexstr[i:i + 2], 16) for i in range(32) if i % 2 == 0]
 
     def _add_port_to_agent(self, port_id, net_id, iface_name, mac_address):
         port_obj = self._client.virtual_machine_interface_read(id=port_id)
@@ -122,20 +115,12 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         if instance_obj is None:
             return
 
-        from nova_contrail_vif.gen_py.instance_service import ttypes
-        data = ttypes.Port(uuid_from_string(port_id),
-                           uuid_from_string(instance_obj.uuid),
-                           iface_name,
-                           ip_addr,
-                           uuid_from_string(net_id),
-                           mac_address,
-                           None,
-                           None,
-                           None,
-                           uuid_from_string(net_obj.parent_uuid))
-
-        if self._add_port(data):
-            return data
+        kwargs = {}
+        kwargs['ip_address'] = ip_addr
+        kwargs['network_uuid'] = self._uuid_from_string(net_id)
+        kwargs['vm_project_uuid'] = self._uuid_from_string(net_obj.parent_uuid)
+        self._vrouter_client.add_port(instance_obj.uuid, port_id, iface_name,
+                                      mac_address, **kwargs)
 
     def plug(self, network_id, port_id, device_name, mac_address,
              bridge=None, namespace=None, prefix=None):
@@ -153,20 +138,16 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
             ns_dev.link.set_up()
             root_dev.link.set_up()
 
-            port_data = self._add_port_to_agent(port_id, network_id,
-                                                tap_name, mac_address)
-            if port_data is None:
-                LOG.warn(_("Failed adding %s to the interface"), device_name)
-                return
-
-            self._port_dict[tap_name] = port_data
+            self._add_port_to_agent(port_id, network_id,
+                                    tap_name, mac_address)
+            self._port_dict[tap_name] = port_id
         else:
             LOG.warn(_("Device %s already exists"), device_name)
 
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         tap_name = device_name.replace(prefix or 'veth', 'veth')
         if tap_name in self._port_dict:
-            self._delete_port(self._port_dict[tap_name].port_id)
+            self._delete_port(self._port_dict[tap_name])
             del self._port_dict[tap_name]
 
         device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
