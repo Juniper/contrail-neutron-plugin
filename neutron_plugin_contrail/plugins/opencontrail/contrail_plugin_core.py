@@ -255,15 +255,14 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
             url, method, data=data,
             headers={'Content-type': 'application/json'})
 
-    def _encode_context(self, context, operation):
+    def _encode_context(self, context, operation, apitype):
         cdict = {}
-        if context.user_id:
-            cdict['user_id'] = context.user_id
+        cdict['user_id'] = getattr(context, 'user_id', '')
         if context.roles:
             cdict['roles'] = context.roles
-        if context.is_admin:
-            cdict['is_admin'] = context.is_admin
+        cdict['is_admin'] = getattr(context, 'is_admin', False)
         cdict['operation'] = operation
+        cdict['type'] = apitype
         return cdict
 
     def _encode_network(self, net_id=None, network=None, fields=None,
@@ -286,7 +285,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         if network['network']['router:external'] == attr.ATTR_NOT_SPECIFIED:
             del network['network']['router:external']
 
-        context_dict = self._encode_context(context, 'POST')
+        context_dict = self._encode_context(context, 'CREATE', 'network')
         network_dict = self._encode_network(network=network['network'])
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
@@ -308,7 +307,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         Get the attributes of a particular Virtual Network.
         """
-        context_dict = self._encode_context(context, 'GET')
+        context_dict = self._encode_context(context, 'READ', 'network')
         network_dict = self._encode_network(net_id=net_id, fields=fields)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
@@ -334,7 +333,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         Updates the attributes of a particular Virtual Network.
         """
-        context_dict = self._encode_context(context, 'PUT')
+        context_dict = self._encode_context(context, 'UPDATE', 'network')
         network_dict = self._encode_network(net_id=net_id,
                                             network=network['network'])
 
@@ -358,7 +357,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         Deletes the network with the specified network identifier
         belonging to the specified tenant.
         """
-        context_dict = self._encode_context(context, 'DELETE')
+        context_dict = self._encode_context(context, 'DELETE', 'network')
         network_dict = self._encode_network(net_id=net_id)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
@@ -370,12 +369,12 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         Get the list of Virtual Networks.
         """
-        context_dict = self._encode_context(context, 'GET')
+        context_dict = self._encode_context(context, 'READALL', 'network')
         network_dict = self._encode_network(filters=filters, fields=fields)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
-        url_path = "%s/networks" % (self.PLUGIN_URL_PREFIX)
+        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
         response = self._relay_request('POST', url_path, data=data)
 
         nets_info = json.loads(response.content)
@@ -396,12 +395,12 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         Get the count of Virtual Network.
         """
-        context_dict = self._encode_context(context, 'GET')
+        context_dict = self._encode_context(context, 'READCOUNT', 'network')
         network_dict = self._encode_network(filters=filters)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
-        url_path = "%s/networks-count" % (self.PLUGIN_URL_PREFIX)
+        url_path = "%s/network" % (self.PLUGIN_URL_PREFIX)
         response = self._relay_request('POST', url_path, data=data)
 
         nets_count = json.loads(response.content)
