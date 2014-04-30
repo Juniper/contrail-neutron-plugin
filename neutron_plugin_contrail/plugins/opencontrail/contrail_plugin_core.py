@@ -255,6 +255,15 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
             url, method, data=data,
             headers={'Content-type': 'application/json'})
 
+    def _request_backend(self, context, data_dict, obj_name, action):
+        context_dict = self._encode_context(context, action, obj_name)
+        data = json.dumps({'context':context_dict, 'data':data_dict})
+
+        url_path = "%s/%s" % (self.PLUGIN_URL_PREFIX, obj_name)
+        response = self._relay_request('POST', url_path, data=data)
+        reponse = json.loads(response.content)
+        return response
+
     def _encode_context(self, context, operation, apitype):
         cdict = {}
         cdict['user_id'] = getattr(context, 'user_id', '')
@@ -265,16 +274,16 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         cdict['type'] = apitype
         return cdict
 
-    def _encode_network(self, net_id=None, network=None, fields=None,
+    def _encode_resource(self, resource_id=None, resource=None, fields=None,
                         filters=None):
-        ndict = {}
+        resource_dict = {}
         if id:
-            ndict['net_id'] = net_id
-        if network:
-            ndict['network'] = network
-        ndict['filters'] = filters
-        ndict['fields'] = fields
-        return ndict
+            resource_dict['id'] = resource_id
+        if resource:
+            resource_dict['resource'] = resource
+        resource_dict['filters'] = filters
+        resource_dict['fields'] = fields
+        return resource_dict
 
     # Network API handlers
     def create_network(self, context, network):
@@ -286,7 +295,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
             del network['network']['router:external']
 
         context_dict = self._encode_context(context, 'CREATE', 'network')
-        network_dict = self._encode_network(network=network['network'])
+        network_dict = self._encode_resource(resource=network['network'])
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
@@ -308,7 +317,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         Get the attributes of a particular Virtual Network.
         """
         context_dict = self._encode_context(context, 'READ', 'network')
-        network_dict = self._encode_network(net_id=net_id, fields=fields)
+        network_dict = self._encode_resource(resource_id=net_id, fields=fields)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
@@ -334,8 +343,8 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         Updates the attributes of a particular Virtual Network.
         """
         context_dict = self._encode_context(context, 'UPDATE', 'network')
-        network_dict = self._encode_network(net_id=net_id,
-                                            network=network['network'])
+        network_dict = self._encode_resource(resource_id=net_id,
+                                            resource=network['network'])
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
@@ -358,7 +367,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         belonging to the specified tenant.
         """
         context_dict = self._encode_context(context, 'DELETE', 'network')
-        network_dict = self._encode_network(net_id=net_id)
+        network_dict = self._encode_resource(resource_id=net_id)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
@@ -370,7 +379,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         Get the list of Virtual Networks.
         """
         context_dict = self._encode_context(context, 'READALL', 'network')
-        network_dict = self._encode_network(filters=filters, fields=fields)
+        network_dict = self._encode_resource(filters=filters, fields=fields)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
@@ -396,7 +405,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         Get the count of Virtual Network.
         """
         context_dict = self._encode_context(context, 'READCOUNT', 'network')
-        network_dict = self._encode_network(filters=filters)
+        network_dict = self._encode_resource(filters=filters)
 
         data = json.dumps({'context':context_dict, 'data':network_dict})
 
@@ -408,101 +417,85 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return nets_count['count']
 
     # Subnet API handlers
+    def _transform_response(self, info=None, info_list=None, fields=None, obj_name):
+        funcname = "self._make" + obj_name + "_dict"
+        func = getattr(self, funcname)
+        info_dicts = []
+        if info:
+            info_dicts = func(info['q_api_data'], fields)
+            info_dicts.update(info['q_extra_data'])
+        else: 
+            for entry in info_list:
+                info_dict = func(entry['q_api_data'], fields)
+                info_dict.update(entry['q_extra_data'])
+
+                info_dicts.append(info_dict)
+        return info_dicts
+
     def create_subnet(self, context, subnet):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            subnet_info = cfgdb.subnet_create(subnet['subnet'])
-
-            # verify transformation is conforming to api
-            subnet_dict = self._make_subnet_dict(subnet_info['q_api_data'])
-
-            subnet_dict.update(subnet_info['q_extra_data'])
-
-            LOG.debug("create_subnet(): " + pformat(subnet_dict))
-            return subnet_dict
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        """
+        Creates a new subnet, and assigns it a symbolic name.
+        """
+        subnet_dict = self._encode_resource(resource=subnet['subnet'])
+        subnet_info = self._request_backend(context, subnet_dict, 'subnet', 'CREATE')
+        subnet_dict = self._transform_response(info=subnet_info, obj_name='subnet')
+        LOG.debug("create_subnet(): " + pformat(subnet_dict) + "\n")
+        return subnet_dict
 
     def get_subnet(self, context, subnet_id, fields=None):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            subnet_info = cfgdb.subnet_read(subnet_id)
-
-            if not fields:
-                # should return all fields
-                subnet_dict = self._make_subnet_dict(subnet_info['q_api_data'],
-                                                     fields)
-                subnet_dict.update(subnet_info['q_extra_data'])
-            else:
-                subnet_dict = subnet_info['q_api_data']
-
-            LOG.debug("get_subnet(): " + pformat(subnet_dict))
-            return self._fields(subnet_dict, fields)
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        """
+        Get the attributes of a particular Virtual Network.
+        """
+        subnet_dict = self._encode_resource(resource_id=subnet_id, fields=fields)
+        subnet_info = self._request_backend(context, subnet_dict, 'subnet', 'READ')
+        subnet_dict = self._transform_response(info=subnet_info, fields=fields, 
+                                               obj_name='subnet')
+        LOG.debug("get_subnet(): " + pformat(subnet_dict))
+        return subnet_dict
 
     def update_subnet(self, context, subnet_id, subnet):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            subnet_info = cfgdb.subnet_update(subnet_id, subnet['subnet'])
-
-            # verify transformation is conforming to api
-            subnet_dict = self._make_subnet_dict(subnet_info['q_api_data'])
-
-            subnet_dict.update(subnet_info['q_extra_data'])
-
-            LOG.debug("update_subnet(): " + pformat(subnet_dict))
-            return subnet_dict
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        """
+        Updates the attributes of a particular subnet.
+        """
+        subnet_dict = self._encode_resource(resource_id=subnet_id, resource=subnet['subnet'])
+        subnet_info = self._request_backend(context, subnet_dict, 'subnet', 'UPDATE')
+        subnet_dict = self._transform_response(info=subnet_info, obj_name='subnet')
+        LOG.debug("update_subnet(): " + pformat(subnet_dict))
+        return subnet_dict
 
     def delete_subnet(self, context, subnet_id):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            cfgdb.subnet_delete(subnet_id)
-
-            LOG.debug("delete_subnet(): " + pformat(subnet_id))
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        """
+        Deletes the subnet with the specified subnet identifier
+        belonging to the specified tenant.
+        """
+        subnet_dict = self._encode_resource(resource_id=subnet_id)
+        self._request_backend(context, subnet_dict, 'subnet', 'DELETE')
+        LOG.debug("delete_subnet(): %s" % (subnet_id))
 
     def get_subnets(self, context, filters=None, fields=None):
         """
-        Called from neutron API -> get_<resource>
+        Get the list of subnets
         """
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            subnets_info = cfgdb.subnets_list(context, filters)
-
-            subnets_dicts = []
-            for sn_info in subnets_info:
-                # verify transformation is conforming to api
-                sn_dict = self._make_subnet_dict(sn_info['q_api_data'], fields)
-                if not fields:
-                    sn_dict.update(sn_info['q_extra_data'])
-                subnets_dicts.append(sn_dict)
-
-            LOG.debug(
-                "get_subnets(): filters: " + pformat(filters) + " data: "
-                + pformat(subnets_dicts))
-            return subnets_dicts
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        subnets_dict = self._encode_resource(filters=filters, fields=fields)
+        subnets_info = self._request_backend(context, subnets_dict, 'subnet', 'READALL')
+        subnets_dict = self._transform_response(info_list=subnets_info, fields=fields,
+                                                obj_name='subnet')
+        LOG.debug(
+            "get_subnets(): filters: " + pformat(filters) + " data: "
+            + pformat(subnets_dict))
+        return subnets_dict
 
     def get_subnets_count(self, context, filters=None):
-        try:
-            cfgdb = NeutronPluginContrailCoreV2._get_user_cfgdb(context)
-            subnets_count = cfgdb.subnets_count(filters)
-            LOG.debug("get_subnets_count(): filters: " + pformat(filters) +
-                      " data: " + str(subnets_count))
-            return subnets_count
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        """
+        Get the count of subnets.
+        """
+        subnet_dict = self._encode_resource(filters=filters)
+        subnet_info = self._request_backend(context, subnet_dict, 'subnet', 'READCOUNT')
+        response = self._transform_response(info=subnet_info, fields=fields,
+                                            obj_name='subnet')
+        subnets_count = json.loads(response.content)
+        LOG.debug("get_subnets_count(): filters: " + pformat(filters) + " data: " + str(subnets_count['count']))
+        return nets_count['count']
 
     def _make_router_dict(self, router, fields=None,
                           process_extensions=True):
