@@ -17,6 +17,7 @@ import datetime
 import sys
 import uuid
 
+import json
 import netaddr
 import mock
 from oslo.config import cfg
@@ -571,8 +572,98 @@ class keystone_info_class(object):
     admin_token = 'neutron'
     admin_tenant_name = 'neutron'
 
+
+class MockRequestsResponse(mock.MagicMock):
+    def __init__(self, code=None, resp_data=None,
+                 *args, **kwargs):
+        #super(mock.MagicMock, self).__init__()
+        super(MockRequestsResponse, self).__init__()
+        self.status_code = code
+        self.content = resp_data
+
+    def set_status_code(self, resp_data):
+        status_code = resp_data
+
+    def set_content(self, data):
+        content = data
+
+def fake_get_network(net_id):
+    for vn in VN_LIST:
+        if vn['id'] == net_id:
+            net = {'q_api_data':vn, 'q_extra_data':{}}
+            return MockRequestsResponse(200, json.dumps(net))
+
+    return MockRequestsResponse(200, '')
+
+def fake_create_network(network):
+    net_id = unicode(str(uuid.uuid4()))
+    network['id'] = net_id
+    network['status'] = 'ACTIVE'
+    network['subnets'] = []
+    VN_LIST.append(network)
+    net = {'q_api_data':network, 'q_extra_data':{}}
+    return MockRequestsResponse(200, json.dumps(net))
+
+def fake_update_network(net_id, network):
+    for vn in VN_LIST:
+        if vn['id'] == net_id:
+            for key  in network:
+                vn[key] = network[key]
+
+            net = {'q_api_data':vn, 'q_extra_data':{}}
+            return MockRequestsResponse(200, json.dumps(net))
+
+def fake_delete_network(net_id):
+    for vn in VN_LIST:
+        if vn['id'] == net_id:
+            VN_LIST.remove(vn)
+
+def fake_get_networks_all(filters):
+    nets = []
+    for vn in VN_LIST:
+        include = 'yes'
+        if filters:
+            for key in filters:
+               for val in filters[key]:
+                  if vn[key] != val:
+                      include = None
+
+        if include:
+            net = {'q_api_data':vn, 'q_extra_data':{}}
+            nets.append(net)
+    return MockRequestsResponse(200, json.dumps(nets))
+
+def fake_get_network_count():
+    retval = json.dumps({'count': len(VN_LIST)})
+    return MockRequestsResponse(200, retval)
+
+def fake_handle_network_requests(context, data):
+    operation = context['operation']
+
+    #import pdb; pdb.set_trace()
+    if operation == 'READ':
+       return fake_get_network(net_id=data['net_id'])
+    elif operation == 'CREATE':
+       return fake_create_network(data['network'])
+    elif operation == 'UPDATE':
+       return fake_update_network(data['net_id'], data['network'])
+    elif operation == 'DELETE':
+       return fake_delete_network(net_id=data['net_id'])
+    elif operation == 'READALL':
+       return fake_get_networks_all(data['filters'])
+    elif operation == 'READCOUNT':
+       return fake_get_network_count()
+
 def fake_requests_post(*args, **kwargs):
-    import pdb; pdb.set_trace()
+    postdata = json.loads(kwargs['data'])
+    context = postdata['context']
+    data = postdata['data']
+
+    api_type = context['type']
+
+    if api_type == 'network':
+       return fake_handle_network_requests(context, data)
+    # Add more types here ...
 
 def fake_requests_get(*args, **kwargs):
     import pdb; pdb.set_trace()
@@ -583,7 +674,6 @@ def fake_requests_put(*args, **kwargs):
 def fake_requests_delete(*args, **kwargs):
     import pdb; pdb.set_trace()
 
-import pdb; pdb.set_trace()
 fake_requests = mock.MagicMock(name='fake_requests_pkg')
 sys.modules['requests'] = fake_requests
 fake_requests.get = fake_requests_get
@@ -669,125 +759,28 @@ class JVContrailPluginTestCase(test_plugin.NeutronDbPluginV2TestCase):
 class TestContrailNetworks(test_plugin.TestNetworksV2,
                            JVContrailPluginTestCase):
 
-    def test_create_network(self):
-        import pdb; pdb.set_trace()
-        super(TestContrailNetworks, self).test_create_network()
+    # This test depends on port
+    def test_update_network_set_not_shared_single_tenant(self):
+        pass
 
-    def test_delete_network(self):
-        # First create the network and request to delete the same
-        plugin_obj = NeutronManager.get_plugin()
-        networks_req = {}
-        router_inst = RouterInstance()
-        network = {
-            'router:external': router_inst,
-            u'name': u'network1',
-            'admin_state_up': 'True',
-            'tenant_id': uuid.uuid4().hex.decode(),
-            'vpc:route_table': '',
-            'shared': False,
-            'port_security_enabled': True,
-            u'contrail:policys': [],
-        }
-
-        context_obj = Context(network['tenant_id'])
-        #create project
-        if not GLOBALPROJECTS:
-            project_name = 'admin'
-            GLOBALPROJECTS.append(MockProject(name=project_name))
-
-        networks_req[u'network'] = network
-        net_dict = plugin_obj.create_network(context_obj, networks_req)
-        net_id = net_dict.get('id')
-
-        plugin_obj.delete_network(context_obj, net_id)
-        mock_vnc_api_cls.virtual_network_delete.assert_called_once()
-
-    def test_update_network(self):
-        plugin_obj = NeutronManager.get_plugin()
-        networks_req = {}
-        router_inst = RouterInstance()
-        network = {
-            'router:external': router_inst,
-            u'name': u'network1',
-            'admin_state_up': 'True',
-            'tenant_id': uuid.uuid4().hex.decode(),
-            'vpc:route_table': '',
-            'shared': False,
-            'port_security_enabled': True,
-            u'contrail:policys': [],
-        }
-
-        context_obj = Context(network['tenant_id'])
-        #create project
-        if not GLOBALPROJECTS:
-            project_name = 'admin'
-            GLOBALPROJECTS.append(MockProject(name=project_name))
-
-        networks_req[u'network'] = network
-        net_dict = plugin_obj.create_network(context_obj, networks_req)
-        net_id = net_dict.get('id')
-        # change one of the attribute and update the network
-        network['admin_state_up'] = 'False'
-        new_dict = plugin_obj.update_network(context_obj, net_id,
-                                             networks_req)
-        self.assertNotEqual(net_dict.get('admin_state_up'),
-                            new_dict.get('admin_state_up'))
-
-    # Not supported test cases in the this TestClass
+    # This test depends on port
     def test_update_network_set_not_shared_other_tenant_returns_409(self):
-        ##
         pass
 
-    def test_update_network_set_not_shared_multi_tenants_returns_409(self):
-        ##
-        pass
-
+    # This test depends on port
     def test_update_network_set_not_shared_multi_tenants2_returns_409(self):
-        ##
         pass
 
+    # This test depends on port
+    def test_update_network_set_not_shared_multi_tenants_returns_409(self):
+        pass
+
+    # This test depends on port
     def test_update_network_with_subnet_set_shared(self):
-        ## - DB access issue
         pass
 
-    def test_list_shared_networks_with_non_admin_user(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks_with_sort_emulated(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks_without_pk_in_fields_pagination_emulated(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks_with_pagination_emulated(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks_with_pagination_reverse_emulated(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks_with_fields(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_list_networks_with_parameters(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_create_networks_bulk_wrong_input(self):
-        ## - fails when run in parallel
-        pass
-
-    def test_create_networks_bulk_emulated_plugin_failure(self):
-        ## - fails when run in parallel
+    # This test depends on subnet
+    def test_show_network_with_subnet(self):
         pass
 
 
