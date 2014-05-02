@@ -261,8 +261,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
         url_path = "%s/%s" % (self.PLUGIN_URL_PREFIX, obj_name)
         response = self._relay_request('POST', url_path, data=data)
-        reponse = json.loads(response.content)
-        return response
+        return json.loads(response.content)
 
     def _encode_context(self, context, operation, apitype):
         cdict = {}
@@ -417,9 +416,10 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return nets_count['count']
 
     # Subnet API handlers
-    def _transform_response(self, info=None, info_list=None, fields=None, obj_name):
-        funcname = "self._make" + obj_name + "_dict"
+    def _transform_response(self, info=None, info_list=None, fields=None, obj_name=None):
+        funcname = "_make_" + obj_name + "_dict"
         func = getattr(self, funcname)
+
         info_dicts = []
         if info:
             info_dicts = func(info['q_api_data'], fields)
@@ -436,6 +436,14 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """
         Creates a new subnet, and assigns it a symbolic name.
         """
+        if subnet['subnet']['dns_nameservers'] == attr.ATTR_NOT_SPECIFIED:
+            subnet['subnet']['dns_nameservers'] = None
+        if subnet['subnet']['allocation_pools'] == attr.ATTR_NOT_SPECIFIED:
+            subnet['subnet']['allocation_pools'] = None
+        if subnet['subnet']['host_routes'] == attr.ATTR_NOT_SPECIFIED:
+            subnet['subnet']['host_routes'] = None
+        if subnet['subnet']['gateway_ip'] == attr.ATTR_NOT_SPECIFIED:
+            subnet['subnet']['gateway_ip'] = None
         subnet_dict = self._encode_resource(resource=subnet['subnet'])
         subnet_info = self._request_backend(context, subnet_dict, 'subnet', 'CREATE')
         subnet_dict = self._transform_response(info=subnet_info, obj_name='subnet')
@@ -490,12 +498,11 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         Get the count of subnets.
         """
         subnet_dict = self._encode_resource(filters=filters)
-        subnet_info = self._request_backend(context, subnet_dict, 'subnet', 'READCOUNT')
-        response = self._transform_response(info=subnet_info, fields=fields,
-                                            obj_name='subnet')
-        subnets_count = json.loads(response.content)
-        LOG.debug("get_subnets_count(): filters: " + pformat(filters) + " data: " + str(subnets_count['count']))
-        return nets_count['count']
+        subnets_count = self._request_backend(context, subnet_dict, 'subnet',
+            'READCOUNT')
+        LOG.debug("get_subnets_count(): filters: " + pformat(filters) +
+                  " data: " + str(subnets_count['count']))
+        return subnets_count['count']
 
     def _make_router_dict(self, router, fields=None,
                           process_extensions=True):
