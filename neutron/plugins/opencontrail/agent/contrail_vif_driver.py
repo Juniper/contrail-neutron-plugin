@@ -12,7 +12,6 @@
 # under the License.
 
 import ConfigParser
-import uuid
 
 from neutron.agent.linux import interface
 from neutron.agent.linux import ip_lib
