@@ -83,13 +83,6 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         except NoIdError:
             pass
 
-    def _uuid_from_string(self, idstr):
-        """ Convert an uuid into an array of integers """
-        if not idstr:
-            return None
-        hexstr = uuid.UUID(idstr).hex
-        return [int(hexstr[i:i + 2], 16) for i in range(32) if i % 2 == 0]
-
     def _add_port_to_agent(self, port_id, net_id, iface_name, mac_address):
         port_obj = self._client.virtual_machine_interface_read(id=port_id)
         if port_obj is None:
@@ -117,8 +110,8 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
 
         kwargs = {}
         kwargs['ip_address'] = ip_addr
-        kwargs['network_uuid'] = self._uuid_from_string(net_id)
-        kwargs['vm_project_uuid'] = self._uuid_from_string(net_obj.parent_uuid)
+        kwargs['network_uuid'] = net_id
+        kwargs['vm_project_uuid'] = net_obj.parent_uuid
         self._vrouter_client.add_port(instance_obj.uuid, port_id, iface_name,
                                       mac_address, **kwargs)
 
