@@ -1778,15 +1778,15 @@ class DBInterface(object):
             port_q_dict['device_owner'] = constants.DEVICE_OWNER_ROUTER_INTF
             port_q_dict['device_id'] = router_refs[0]['uuid']
         elif port_obj.parent_type == 'virtual-machine':
-            port_q_dict['device_owner'] = None
+            port_q_dict['device_owner'] = ''
             port_q_dict['device_id'] = port_obj.parent_name
         elif port_obj.get_virtual_machine_refs() is not None:
             port_q_dict['device_id'] = \
                 port_obj.get_virtual_machine_refs()[0]['uuid']
-            port_q_dict['device_owner'] = None
+            port_q_dict['device_owner'] = ''
         else:
-            port_q_dict['device_id'] = None
-            port_q_dict['device_owner'] = None
+            port_q_dict['device_id'] = ''
+            port_q_dict['device_owner'] = ''
 
         return {'q_api_data': port_q_dict,
                 'q_extra_data': sg_dict}
