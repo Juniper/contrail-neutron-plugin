@@ -5,7 +5,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='neutron_contrail_plugin',
+    name='neutron_plugin_contrail',
     version='0.1dev',
     packages=find_packages(),
     package_data={'': ['*.html', '*.css', '*.xml']},
