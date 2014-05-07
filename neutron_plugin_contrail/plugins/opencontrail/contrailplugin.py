@@ -16,8 +16,9 @@ from neutron.common import exceptions as exc
 from neutron.db import db_base_plugin_v2
 from neutron.db import portbindings_base
 from neutron.db import l3_db
-from neutron.extensions import l3, securitygroup, vpcroutetable, external_net
+from neutron.extensions import l3, securitygroup, external_net
 from neutron.extensions import portbindings
+from neutron_plugin_contrail.extensions import vpcroutetable
 from neutron.openstack.common import log as logging
 
 from oslo.config import cfg
@@ -79,6 +80,10 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     _args = None
     _tenant_id_dict = {}
     _tenant_name_dict = {}
+
+    # patch VIF_TYPES
+    portbindings.__dict__['VIF_TYPE_VROUTER'] = 'vrouter'
+    portbindings.VIF_TYPES.append(portbindings.VIF_TYPE_VROUTER)
 
     @classmethod
     def _parse_class_args(cls, cfg_parser):

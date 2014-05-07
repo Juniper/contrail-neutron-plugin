@@ -24,7 +24,7 @@ from neutron.extensions import securitygroup as ext_sg
 from neutron.extensions import l3
 from neutron.openstack.common import log as logging
 from neutron.extensions import external_net as ext_net_extn
-from neutron.extensions import policy
+from neutron_plugin_contrail.extensions import policy
 
 from cfgm_common import exceptions as vnc_exc
 from vnc_api.vnc_api import *
