@@ -35,31 +35,16 @@ LOG = logging.getLogger(__name__)
 vnc_opts = [
     cfg.StrOpt('api_server_ip', default='127.0.0.1'),
     cfg.StrOpt('api_server_port', default='8082'),
+    cfg.BoolOpt('multi_tenancy', default=False),
 ]
 
-
-def _read_cfg(cfg_parser, section, option, default):
-        try:
-            val = cfg_parser.get(section, option)
-        except (AttributeError,
-                ConfigParser.NoOptionError,
-                ConfigParser.NoSectionError):
-            val = default
-
-        return val
-#end _read_cfg
-
-
-def _read_cfg_boolean(cfg_parser, section, option, default):
-        try:
-            val = cfg_parser.getboolean(section, option)
-        except (AttributeError, ValueError,
-                ConfigParser.NoOptionError,
-                ConfigParser.NoSectionError):
-            val = default
-
-        return val
-#end _read_cfg
+keystone_opts = [
+    cfg.StrOpt('admin_user', default='user1'),
+    cfg.StrOpt('admin_password', default='password1'),
+    cfg.StrOpt('admin_token', default='token1'),
+    cfg.StrOpt('admin_tenant_name', default='admin'),
+    cfg.StrOpt('auth_url', default=''),
+]
 
 
 #TODO define ABC PluginBase for ipam and policy and derive mixin from them
@@ -87,20 +72,14 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @classmethod
     def _parse_class_args(cls, cfg_parser):
-        cfg_parser.read("/etc/neutron/plugins/juniper/contrail/ContrailPlugin.ini")
-        cls._multi_tenancy = _read_cfg_boolean(cfg_parser, 'APISERVER',
-                                               'multi_tenancy', False)
-        cls._admin_token = _read_cfg(cfg_parser, 'KEYSTONE', 'admin_token', '')
-        cls._auth_url = _read_cfg(cfg_parser, 'KEYSTONE', 'auth_url', '')
-        cls._admin_user = _read_cfg(cfg_parser, 'KEYSTONE', 'admin_user',
-                                    'user1')
-        cls._admin_password = _read_cfg(cfg_parser, 'KEYSTONE',
-                                        'admin_password', 'password1')
-        cls._admin_tenant_name = _read_cfg(cfg_parser, 'KEYSTONE',
-                                           'admin_tenant_name',
-                                           'default-domain')
+        cls._multi_tenancy = cfg.CONF.APISERVER.multi_tenancy
+        cls._admin_user = cfg.CONF.KEYSTONE.admin_user
+        cls._admin_password = cfg.CONF.KEYSTONE.admin_password
+        cls._admin_token = cfg.CONF.KEYSTONE.admin_token
+        cls._admin_tenant_name = cfg.CONF.KEYSTONE.admin_tenant_name
+        cls._auth_url = cfg.CONF.KEYSTONE.auth_url
+
         cls._tenants_api = '%s/tenants' % (cls._auth_url)
-        pass
     #end _parse_class_args
 
     @classmethod
@@ -173,6 +152,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     def __init__(self):
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
+        cfg.CONF.register_opts(keystone_opts, 'KEYSTONE')
 
         cfg_parser = ConfigParser.ConfigParser()
         ContrailPlugin._parse_class_args(cfg_parser)
