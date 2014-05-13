@@ -87,7 +87,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
     @classmethod
     def _parse_class_args(cls, cfg_parser):
-        cfg_parser.read("/etc/neutron/plugins/juniper/contrail/ContrailPlugin.ini")
+        cfg_parser.read("/etc/neutron/plugins/opencontrail/ContrailPlugin.ini")
         cls._multi_tenancy = _read_cfg_boolean(cfg_parser, 'APISERVER',
                                                'multi_tenancy', False)
         cls._admin_token = _read_cfg(cfg_parser, 'KEYSTONE', 'admin_token', '')

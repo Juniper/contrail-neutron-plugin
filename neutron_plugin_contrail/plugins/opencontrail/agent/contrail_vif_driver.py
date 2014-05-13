@@ -24,7 +24,7 @@ from vnc_api.vnc_api import *
 
 LOG = logging.getLogger(__name__)
 
-CONTRAIL_CFG_FILE = '/etc/neutron/plugins/juniper/contrail/ContrailPlugin.ini'
+CONTRAIL_CFG_FILE = '/etc/neutron/plugins/opencontrail/ContrailPlugin.ini'
 
 
 def _read_cfg(cfg_parser, section, option, default):
