@@ -166,7 +166,14 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     #end __init__
 
     def _get_base_binding_dict(self):
-        binding = {
+        if hasattr(portbindings, 'VIF_DETAILS'):
+            binding = {
+            portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
+            portbindings.VIF_DETAILS: {
+                portbindings.CAP_PORT_FILTER:
+                'security-group' in self.supported_extension_aliases}}
+        else:
+            binding = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
             portbindings.CAPABILITIES: {
                 portbindings.CAP_PORT_FILTER:
