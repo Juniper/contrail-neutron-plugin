@@ -1418,8 +1418,22 @@ class DBInterface(object):
         else:
             # Assigned by address manager
             default_gw = None
+        if subnet_q['allocation_pools'] != attr.ATTR_NOT_SPECIFIED:
+            alloc_pools = subnet_q['allocation_pools']
+        else:
+            # Assigned by address manager
+            alloc_pools = None
+        if subnet_q['dns_nameservers'] != attr.ATTR_NOT_SPECIFIED:
+            dns_server = subnet_q['dns_nameservers']
+        else:
+            dns_server = None
+
+        dhcp_config = subnet_q['enable_dhcp']
         subnet_vnc = IpamSubnetType(subnet=SubnetType(pfx, pfx_len),
-                                    default_gateway=default_gw)
+                                    default_gateway=default_gw,
+                                    enable_dhcp=dhcp_config,
+                                    dns_nameservers=dns_server,
+                                    allocation_pools=alloc_pools)
 
         return subnet_vnc
     #end _subnet_neutron_to_vnc
@@ -1441,16 +1455,24 @@ class DBInterface(object):
         sn_q_dict['id'] = sn_id
 
         sn_q_dict['gateway_ip'] = subnet_vnc.default_gateway
+        alloc_obj_list = subnet_vnc.get_allocation_pools()
+        allocation_pools = []
+        for alloc_obj in alloc_obj_list:
+            first_ip = alloc_obj.get_start()
+            last_ip = alloc_obj.get_end()
+            alloc_dict = {'first_ip':first_ip, 'last_ip':last_ip}
+            allocation_pools.append(alloc_dict)
 
-        # TODO fix this to not hard-code
-        first_ip = str(IPNetwork(cidr).network + 1)
-        last_ip = str(IPNetwork(cidr).broadcast - 2)
-        sn_q_dict['allocation_pools'] = \
-            [{'id': 'TODO-allocation_pools-id',
-             'subnet_id': sn_id,
-             'first_ip': first_ip,
-             'last_ip': last_ip,
-             'available_ranges': {}}]
+        if allocation_pools is None or not allocation_pools:
+            if (int(IPNetwork(sn_q_dict['gateway_ip']).network) ==
+                int(IPNetwork(cidr).network+1)):
+                first_ip = str(IPNetwork(cidr).network + 2)
+            else:
+                first_ip = str(IPNetwork(cidr).network + 1)
+            last_ip = str(IPNetwork(cidr).broadcast - 1)
+            cidr_pool = {'first_ip':first_ip, 'last_ip':last_ip}
+            allocation_pools.append(cidr_pool)
+        sn_q_dict['allocation_pools'] = allocation_pools
 
         # TODO get from ipam_obj
         sn_q_dict['enable_dhcp'] = False
@@ -2691,7 +2713,7 @@ class DBInterface(object):
             except Exception as e:
                 # ResourceExhaustionError, resources are not available
                 self._virtual_machine_interface_delete(port_id=port_id)
-                raise e
+                raise exceptions.ResourceExhausted()
         # shared ip address
         else:
             if ip_addr == ip_obj.get_instance_ip_address():
