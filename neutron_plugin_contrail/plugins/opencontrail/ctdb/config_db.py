@@ -1430,6 +1430,8 @@ class DBInterface(object):
         sn_q_dict['tenant_id'] = net_obj.parent_uuid.replace('-', '')
         sn_q_dict['network_id'] = net_obj.uuid
         sn_q_dict['ip_version'] = 4  # TODO ipv6?
+        sn_q_dict['ipv6_ra_mode'] = None
+        sn_q_dict['ipv6_address_mode'] = None
 
         cidr = '%s/%s' % (subnet_vnc.subnet.get_ip_prefix(),
                           subnet_vnc.subnet.get_ip_prefix_len())
