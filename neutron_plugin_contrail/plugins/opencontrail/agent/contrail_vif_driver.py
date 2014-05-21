@@ -12,14 +12,15 @@
 # under the License.
 
 import ConfigParser
+import uuid
 
 from neutron.agent.linux import interface
 from neutron.agent.linux import ip_lib
 from neutron.openstack.common import log as logging
+from neutron.openstack.common import loopingcall
 from oslo.config import cfg
 
-from contrail_lib import rpc_client_instance
-from contrail_lib import uuid_from_string
+from contrail_vrouter_api.vrouter_api import ContrailVRouterApi
 from vnc_api.vnc_api import *
 
 LOG = logging.getLogger(__name__)
@@ -53,6 +54,9 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         super(ContrailInterfaceDriver, self).__init__(conf)
         self._port_dict = {}
         self._client = self._connect_to_api_server()
+        self._vrouter_client = ContrailVRouterApi()
+        timer = loopingcall.FixedIntervalLoopingCall(self._keep_alive)
+        timer.start(interval=2)
 
     def _connect_to_api_server(self):
         cfg_parser = ConfigParser.ConfigParser()
@@ -64,38 +68,32 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         except:
             pass
 
-    def _add_port(self, data):
-        rpc = rpc_client_instance()
-        if not rpc:
-            return False
-        try:
-            rpc.AddPort([data])
-        except socket.error:
-            LOG.error('RPC failure')
-            return False
-
-        return True
+    def _keep_alive(self):
+        self._vrouter_client.periodic_connection_check()
 
     def _delete_port(self, port_id):
-        rpc = rpc_client_instance()
-        if not rpc:
-            return False
-        try:
-            rpc.DeletePort(port_id)
-        except socket.error:
-            LOG.error('RPC failure')
-            return False
+        self._vrouter_client.delete_port(port_id)
 
-        return True
+    def _instance_locate(self, port_obj):
+        """ lookup the instance associated with the port object.
+        Create the vm instance if port object is not associated
+        with a vm instance
+        """
+        if port_obj.get_virtual_machine_refs() is not None:
+            try:
+                vm_uuid = port_obj.get_virtual_machine_refs()[0]['uuid']
+                instance_obj = self._client.virtual_machine_read(id=vm_uuid)
+                return instance_obj
+            except NoIdError:
+                pass
 
-    def _instance_lookup(self, instance_name):
-        """ lookup the instance."""
-        fq_name = instance_name.split(':')
-        try:
-            vm_instance = self._client.virtual_machine_read(fq_name=fq_name)
-            return vm_instance
-        except NoIdError:
-            pass
+        vm_uuid = str(uuid.uuid4())
+        instance_obj = VirtualMachine(vm_uuid)
+        instance_obj.uuid = vm_uuid
+        self._client.virtual_machine_create(instance_obj)
+        port_obj.set_virtual_machine(instance_obj)
+        self._client.virtual_machine_interface_update(port_obj)
+        return instance_obj
 
     def _add_port_to_agent(self, port_id, net_id, iface_name, mac_address):
         port_obj = self._client.virtual_machine_interface_read(id=port_id)
@@ -117,25 +115,17 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
             return
 
         # get the instance object the port is attached to
-        instance_obj = self._instance_lookup(port_obj.parent_name)
+        instance_obj = self._instance_locate(port_obj)
 
         if instance_obj is None:
             return
 
-        from nova_contrail_vif.gen_py.instance_service import ttypes
-        data = ttypes.Port(uuid_from_string(port_id),
-                           uuid_from_string(instance_obj.uuid),
-                           iface_name,
-                           ip_addr,
-                           uuid_from_string(net_id),
-                           mac_address,
-                           None,
-                           None,
-                           None,
-                           uuid_from_string(net_obj.parent_uuid))
-
-        if self._add_port(data):
-            return data
+        kwargs = {}
+        kwargs['ip_address'] = ip_addr
+        kwargs['network_uuid'] = net_id
+        kwargs['vm_project_uuid'] = net_obj.parent_uuid
+        self._vrouter_client.add_port(instance_obj.uuid, port_id, iface_name,
+                                      mac_address, **kwargs)
 
     def plug(self, network_id, port_id, device_name, mac_address,
              bridge=None, namespace=None, prefix=None):
@@ -153,20 +143,16 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
             ns_dev.link.set_up()
             root_dev.link.set_up()
 
-            port_data = self._add_port_to_agent(port_id, network_id,
-                                                tap_name, mac_address)
-            if port_data is None:
-                LOG.warn(_("Failed adding %s to the interface"), device_name)
-                return
-
-            self._port_dict[tap_name] = port_data
+            self._add_port_to_agent(port_id, network_id,
+                                    tap_name, mac_address)
+            self._port_dict[tap_name] = port_id
         else:
             LOG.warn(_("Device %s already exists"), device_name)
 
     def unplug(self, device_name, bridge=None, namespace=None, prefix=None):
         tap_name = device_name.replace(prefix or 'veth', 'veth')
         if tap_name in self._port_dict:
-            self._delete_port(self._port_dict[tap_name].port_id)
+            self._delete_port(self._port_dict[tap_name])
             del self._port_dict[tap_name]
 
         device = ip_lib.IPDevice(device_name, self.root_helper, namespace)
