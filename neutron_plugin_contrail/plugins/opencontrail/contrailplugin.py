@@ -36,7 +36,7 @@ vnc_opts = [
     cfg.StrOpt('api_server_ip', default='127.0.0.1'),
     cfg.StrOpt('api_server_port', default='8082'),
     cfg.BoolOpt('multi_tenancy', default=False),
-    cfg.StrOpt('contrail_extensions', default='',
+    cfg.StrOpt('contrail_extensions', default='ipam,policy,route-table',
                help='Contrail extensions support'),
 ]
 
