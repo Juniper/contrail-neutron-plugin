@@ -2650,6 +2650,12 @@ class DBInterface(object):
         return len(floatingip_info)
     #end floatingip_count
 
+    def _ip_addr_in_net_id(self, ip_addr, net_id):
+        """Checks if ip address is present in net-id."""
+        net_ip_list = [ipobj.get_instance_ip_address() for ipobj in 
+                                self._instance_ip_list(back_ref_id=[net_id])]
+        return ip_addr in net_ip_list
+
     # port api handlers
     def port_create(self, port_q):
         net_id = port_q['network_id']
@@ -2669,36 +2675,27 @@ class DBInterface(object):
                 # before accessing it.
                 if 'ip_address' in port_q['fixed_ips'][0]:
                     ip_addr = port_q['fixed_ips'][0]['ip_address']
-                    ip_name = '%s %s' % (net_id, ip_addr)
-                    try:
-                        ip_obj = self._instance_ip_read(fq_name=[ip_name])
-                        ip_id = ip_obj.uuid
-                    except Exception as e:
-                        ip_obj = None
+                    if self._ip_addr_in_net_id(ip_addr, net_id):
+                        raise exceptions.IpAddressInUse(net_id=net_id,
+                                                        ip_address=ip_addr)
 
         # create the object
         port_id = self._virtual_machine_interface_create(port_obj)
 
         # initialize ip object
-        if ip_obj == None:
-            ip_name = str(uuid.uuid4())
-            ip_obj = InstanceIp(name=ip_name)
-            ip_obj.uuid = ip_name
-            ip_obj.set_virtual_machine_interface(port_obj)
-            ip_obj.set_virtual_network(net_obj)
-            if ip_addr:
-                ip_obj.set_instance_ip_address(ip_addr)
-            try:
-                ip_id = self._instance_ip_create(ip_obj)
-            except Exception as e:
-                # ResourceExhaustionError, resources are not available
-                self._virtual_machine_interface_delete(port_id=port_id)
-                raise e
-        # shared ip address
-        else:
-            if ip_addr == ip_obj.get_instance_ip_address():
-                ip_obj.add_virtual_machine_interface(port_obj)
-                self._instance_ip_update(ip_obj)
+        ip_name = str(uuid.uuid4())
+        ip_obj = InstanceIp(name=ip_name)
+        ip_obj.uuid = ip_name
+        ip_obj.set_virtual_machine_interface(port_obj)
+        ip_obj.set_virtual_network(net_obj)
+        if ip_addr:
+            ip_obj.set_instance_ip_address(ip_addr)
+        try:
+            ip_id = self._instance_ip_create(ip_obj)
+        except Exception as e:
+            # ResourceExhaustionError, resources are not available
+            self._virtual_machine_interface_delete(port_id=port_id)
+            raise e
 
         # TODO below reads back default parent name, fix it
         port_obj = self._virtual_machine_interface_read(port_id=port_id,
