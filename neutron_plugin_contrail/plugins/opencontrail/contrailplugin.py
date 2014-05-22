@@ -37,7 +37,7 @@ vnc_opts = [
     cfg.StrOpt('api_server_port', default='8082'),
     cfg.BoolOpt('multi_tenancy', default=False),
     cfg.StrOpt('contrail_extensions', default='',
-                help='Contrail extensions support'),
+               help='Contrail extensions support'),
 ]
 
 keystone_opts = [
