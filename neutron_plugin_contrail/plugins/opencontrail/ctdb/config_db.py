@@ -2654,9 +2654,7 @@ class DBInterface(object):
         """Checks if ip address is present in net-id."""
         net_ip_list = [ipobj.get_instance_ip_address() for ipobj in 
                                 self._instance_ip_list(back_ref_id=[net_id])]
-        if ip_addr in net_ip_list:
-            return True
-        return False
+        return ip_addr in net_ip_list
 
     # port api handlers
     def port_create(self, port_q):
