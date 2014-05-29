@@ -36,6 +36,8 @@ vnc_opts = [
     cfg.StrOpt('api_server_ip', default='127.0.0.1'),
     cfg.StrOpt('api_server_port', default='8082'),
     cfg.BoolOpt('multi_tenancy', default=False),
+    cfg.StrOpt('contrail_extensions', default='ipam,policy,route-table',
+               help='Contrail extensions support'),
 ]
 
 keystone_opts = [
@@ -58,8 +60,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     """
 
     # agent extension is added to avoid return 404 for get_agents
-    supported_extension_aliases = ["ipam", "policy", "security-group",
-                                   "router", "route-table", "port-security",
+    supported_extension_aliases = ["security-group", "router", "port-security",
                                    "binding", "agent", "quotas", "external-net"]
     _cfgdb = None
     _args = None
@@ -80,6 +81,15 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         cls._auth_url = cfg.CONF.KEYSTONE.auth_url
 
         cls._tenants_api = '%s/tenants' % (cls._auth_url)
+        
+        # contrail extension format:
+        #  contrail_extensions=ipam,policy
+        ext_aliases = ContrailPlugin.supported_extension_aliases
+        contrail_exts_conf = cfg.CONF.APISERVER.contrail_extensions
+        if contrail_exts_conf:
+            supp_exts = contrail_exts_conf.split(",")
+            for supp_ext in supp_exts:
+                ext_aliases.append(supp_ext)
     #end _parse_class_args
 
     @classmethod
