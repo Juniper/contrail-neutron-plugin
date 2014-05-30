@@ -2142,6 +2142,7 @@ class DBInterface(object):
                 if len(orig_subnets) != len(new_subnets):
                     # matched subnet to be deleted
                     ipam_ref['attr'].set_ipam_subnets(new_subnets)
+                    net_obj._pending_field_updates.add('network_ipam_refs')
                     try:
                         self._virtual_network_update(net_obj)
                     except RefsExistError:
