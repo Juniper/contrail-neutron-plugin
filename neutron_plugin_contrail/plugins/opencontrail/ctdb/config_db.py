@@ -2476,7 +2476,9 @@ class DBInterface(object):
                 if not self._filters_is_present(filters, 'contrail:fq_name',
                                                 proj_rtr_fq_name):
                     continue
-
+                rtr_name = proj_rtr['fq_name'][-1]
+                if not self._filters_is_present(filters, 'name', rtr_name):
+                    continue
                 try:
                     rtr_obj = self._logical_router_read(proj_rtr['uuid'])
                     rtr_info = self._router_vnc_to_neutron(rtr_obj,
