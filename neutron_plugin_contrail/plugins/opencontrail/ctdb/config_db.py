@@ -2929,6 +2929,8 @@ class DBInterface(object):
                                               parent_id=dev_id,
                                               back_ref_id=dev_id,
                                               fields=['instance_ip_back_refs'])
+                if not port_obj:
+                    raise NoIdError(None)
                 for port_obj in port_objs:
                     port_info = self._port_vnc_to_neutron(port_obj)
                     ret_q_ports.append(port_info)
@@ -2938,8 +2940,7 @@ class DBInterface(object):
                     intfs = router_obj.get_virtual_machine_interface_refs()
                     for intf in (intfs or []):
                         try:
-                            port_info = self._port_read(intf['uuid'],
-                                                        port_req_memo)
+                            port_info = self.port_read(intf['uuid'])
                         except NoIdError:
                             continue
                         ret_q_ports.append(port_info)
