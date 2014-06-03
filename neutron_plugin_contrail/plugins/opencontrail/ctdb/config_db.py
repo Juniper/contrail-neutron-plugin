@@ -2877,7 +2877,7 @@ class DBInterface(object):
                                               parent_id=dev_id,
                                               back_ref_id=dev_id,
                                               fields=['instance_ip_back_refs'])
-                if not port_obj:
+                if not port_objs:
                     raise NoIdError(None)
                 for port_obj in port_objs:
                     port_info = self._port_vnc_to_neutron(port_obj)
