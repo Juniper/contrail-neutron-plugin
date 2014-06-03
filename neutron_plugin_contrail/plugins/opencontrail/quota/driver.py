@@ -30,7 +30,7 @@ class QuotaDriver(object):
             'floatingip': 'floating_ip',
             'route_table': 'logical_router',
             'security_group': 'security_group',
-            'security_group_rule': 'security_group',
+            'security_group_rule': 'security_group_rule',
             'router': 'logical_router',
             'port': 'virtual_machine_interface',
             };
