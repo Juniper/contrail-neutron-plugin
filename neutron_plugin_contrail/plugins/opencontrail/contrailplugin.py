@@ -350,6 +350,10 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     # Subnet API handlers
     def create_subnet(self, context, subnet):
         try:
+            if subnet['subnet']['ip_version'] == 6:
+                msg = _("IPv6 is not supported")
+		raise exc.BadRequest(resource='subnet', msg=msg)
+
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
             subnet_info = cfgdb.subnet_create(subnet['subnet'])
 
