@@ -1598,6 +1598,13 @@ class DBInterface(object):
             # TODO for now create from default pool, later
             # use first available pool on net
             net_id = fip_q['floating_network_id']
+            try:
+                fq_name = self._fip_pool_list_network(net_id)[0]['fq_name']
+            except IndexError:
+                # IndexError could happens when an attempt to
+                # retrieve a floating ip pool from a private network.
+                raise Exception(
+                    "Network %s doesn't provide a floatingip pool", net_id)
             fq_name = self._fip_pool_list_network(net_id)[0]['fq_name']
             fip_pool_obj = self._vnc_lib.floating_ip_pool_read(fq_name=fq_name)
             fip_name = str(uuid.uuid4())
@@ -2587,6 +2594,14 @@ class DBInterface(object):
 
     # floatingip api handlers
     def floatingip_create(self, fip_q):
+        try:
+            fip_obj = self._floatingip_neutron_to_vnc(fip_q, CREATE)
+        except Exception, e:
+            logging.exception(e)
+            msg = _('Internal error when trying to create floating ip. '
+                    'Please be sure the network %s is an external '
+                    'network.') % (fip_q['floating_network_id'])
+            raise exceptions.BadRequest(resource='floatingip', msg=msg)
         fip_obj = self._floatingip_neutron_to_vnc(fip_q, CREATE)
         fip_uuid = self._vnc_lib.floating_ip_create(fip_obj)
         fip_obj = self._vnc_lib.floating_ip_read(id=fip_uuid)
