@@ -2649,15 +2649,17 @@ class DBInterface(object):
 
         if port_ids:
             fip_objs = self._floatingip_list(back_ref_id=port_ids)
-            for fip_obj in fip_objs:
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
         elif proj_ids:
             fip_objs = self._floatingip_list(back_ref_id=proj_ids)
-            for fip_obj in fip_objs:
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
         else:
             fip_objs = self._floatingip_list()
-            for fip_obj in fip_objs:
+
+        for fip_obj in fip_objs:
+            if 'floating_ip_address' in filters:
+                if fip_obj.get_floating_ip_address() in \
+                    filters['floating_ip_address']:
+                    ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
+            else:
                 ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
 
         return ret_list
@@ -2835,8 +2837,12 @@ class DBInterface(object):
         all_project_ids = []
 
         # TODO used to find dhcp server field. support later...
-        if 'device_owner' in filters:
-            return ret_q_ports
+        # nova calls neutron.get_ports with 'device_owner' set in the filters
+        # for nova floating-ip-* commands.
+        # commenting the below check for now to support these commands
+        
+        #if 'device_owner' in filters:
+        #    return ret_q_ports
 
         if not 'device_id' in filters:
             # Listing from back references
