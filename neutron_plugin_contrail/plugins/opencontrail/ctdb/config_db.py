@@ -2781,7 +2781,10 @@ class DBInterface(object):
         except KeyError:
             pass
 
-        port_obj = self._virtual_machine_interface_read(port_id=port_id)
+        try:
+            port_obj = self._virtual_machine_interface_read(port_id=port_id)
+        except NoIdError:
+            raise exceptions.PortNotFound(port_id=port_id)
 
         ret_port_q = self._port_vnc_to_neutron(port_obj)
         self._db_cache['q_ports'][port_id] = ret_port_q
