@@ -94,6 +94,10 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         self._parse_class_args()
 
+        # Register dict extend functions for ports
+        db_base_plugin_v2.NeutronDbPluginV2.register_dict_extend_funcs(
+            attr.PORTS, ['_extend_port_dict_security_group'])
+
     def __getattr__(self, name):
         for extension_class in self._contrail_extensions_class:
             try:
