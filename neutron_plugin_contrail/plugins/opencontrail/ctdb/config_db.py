@@ -1679,7 +1679,6 @@ class DBInterface(object):
                 instance_obj = self._ensure_instance_exists(instance_name)
                 port_obj.set_virtual_machine(instance_obj)
 
-        port_obj.set_security_group_list([])
         if ('security_groups' in port_q and
             port_q['security_groups'].__class__ is not object):
             for sg_id in port_q['security_groups']:
