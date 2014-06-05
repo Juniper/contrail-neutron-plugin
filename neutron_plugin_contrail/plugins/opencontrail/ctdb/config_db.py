@@ -2666,15 +2666,16 @@ class DBInterface(object):
 
         if port_ids:
             fip_objs = self._floatingip_list(back_ref_id=port_ids)
-            for fip_obj in fip_objs:
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
         elif proj_ids:
             fip_objs = self._floatingip_list(back_ref_id=proj_ids)
-            for fip_obj in fip_objs:
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
         else:
             fip_objs = self._floatingip_list()
-            for fip_obj in fip_objs:
+
+        for fip_obj in fip_objs:
+            if 'floating_ip_address' in filters:
+                if (fip_obj.get_floating_ip_address() not in
+                        filters['floating_ip_address']):
+                    continue
                 ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
 
         return ret_list
@@ -2852,7 +2853,7 @@ class DBInterface(object):
 
         # TODO used to find dhcp server field. support later...
         if 'device_owner' in filters:
-            return ret_q_ports
+            pass
 
         if not 'device_id' in filters:
             # Listing from back references
@@ -2932,7 +2933,8 @@ class DBInterface(object):
 
     def port_count(self, filters=None):
         if 'device_owner' in filters:
-            return 0
+            # TODO: Need to store device owner in the port object
+            pass
 
         if 'tenant_id' in filters:
             if isinstance(filters['tenant_id'], list):
