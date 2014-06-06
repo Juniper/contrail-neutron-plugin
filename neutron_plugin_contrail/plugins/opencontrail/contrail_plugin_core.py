@@ -19,14 +19,18 @@ import copy
 import netaddr
 from oslo.config import cfg
 import requests
+import webob
 
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
 from neutron.db import api as db
 from neutron.db import db_base_plugin_v2
+from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
+from neutron.db import securitygroups_db
 from neutron.extensions import external_net
 from neutron.extensions import l3
+from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
 from neutron.openstack.common import importutils
 from neutron.openstack.common import jsonutils as json
@@ -42,8 +46,8 @@ vnc_opts = [
                help='Port to connect to VNC controller'),
     cfg.BoolOpt('multi_tenancy', default=False,
                 help='Enable multi-tenancy support'),
-    cfg.StrOpt('contrail_extensions', default='',
-               help='Enable Contrail extensions(policy, ipam)'),
+    cfg.DictOpt('contrail_extensions', default={},
+                help='Enable Contrail extensions(policy, ipam)'),
     cfg.IntOpt('max_retries', default=-1,
                help='Maximum retries to VNC Server(-1 for no limit)'),
     cfg.IntOpt('retry_interval', default=3,
@@ -51,8 +55,42 @@ vnc_opts = [
 ]
 
 
+class ContrailNotFoundError(exc.NotFound):
+    message = '%(msg)s'
+
+
+class ContrailConflictError(exc.Conflict):
+    message = '%(msg)s'
+
+
+class ContrailBadRequestError(exc.BadRequest):
+    message = '%(msg)s'
+
+
+class ContrailServiceUnavaiableError(exc.ServiceUnavailable):
+    message = '%(msg)s'
+
+
+class ContrailNotAuthorizedError(exc.NotAuthorized):
+    message = '%(msg)s'
+
+
+class InvalidContrailExtensionError(exc.ServiceUnavailable):
+    message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
+
+
+CONTRAIL_EXCEPTION_MAP = {
+    webob.exc.HTTPNotFound.code: ContrailNotFoundError,
+    webob.exc.HTTPConflict.code: ContrailConflictError,
+    webob.exc.HTTPBadRequest.code: ContrailBadRequestError,
+    webob.exc.HTTPServiceUnavailable.code: ContrailServiceUnavaiableError,
+    webob.exc.HTTPForbidden.code: ContrailNotAuthorizedError,
+}
+
+
 class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
-                                  securitygroup.SecurityGroupPluginBase,
+                                  securitygroups_db.SecurityGroupDbMixin,
+                                  portbindings_base.PortBindingBaseMixin,
                                   external_net.External_net):
 
     supported_extension_aliases = ["security-group", "router",
@@ -60,6 +98,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                                    "quotas", "external-net"]
     _args = None
     PLUGIN_URL_PREFIX = '/neutron'
+    __native_bulk_support = False
 
     def _parse_class_args(self):
         """Parse the contrailplugin.ini file.
@@ -70,36 +109,50 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         contrail_extensions=ipam:<classpath>,policy:<classpath>
         """
 
-        ext_aliases = NeutronPluginContrailCoreV2.supported_extension_aliases
-        self._contrail_extensions_class = []
-        contrail_exts_conf = cfg.CONF.APISERVER.contrail_extensions
-        if contrail_exts_conf:
-            supp_exts = contrail_exts_conf.split(",")
-            for supp_ext in supp_exts:
-                ext_name, colon, ext_class = supp_ext.partition(':')
+        self._contrail_extensions_instances = []
+        contrail_extensions = cfg.CONF.APISERVER.contrail_extensions
+        #If multiple class specified for same extension, last one will win
+        #according to DictOpt beheivior
+        for ext_name, ext_class in contrail_extensions.items():
+            try:
                 if not ext_class:
-                    LOG.debug('Malformed contrail extension...')
+                    LOG.error(_('Malformed contrail extension...'))
                     continue
-                ext_aliases.append(ext_name)
+                self.supported_extension_aliases.append(ext_name)
                 ext_class = importutils.import_class(ext_class)
                 ext_instance = ext_class()
                 ext_instance.set_core(self)
-                self._contrail_extensions_class.append(ext_instance)
+                self._contrail_extensions_instances.append(ext_instance)
+            except Exception:
+                LOG.exception()
+                raise InvalidContrailExtensionError(
+                    ext_name=ext_name, ext_class=ext_class)
 
         self._multi_tenancy = cfg.CONF.APISERVER.multi_tenancy
         self._max_retries = cfg.CONF.APISERVER.max_retries
         self._retry_interval = cfg.CONF.APISERVER.retry_interval
 
     def __init__(self):
+        super(NeutronPluginContrailCoreV2, self).__init__()
+        portbindings_base.register_port_dict_function()
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         self._parse_class_args()
 
-        # Register dict extend functions for ports
-        db_base_plugin_v2.NeutronDbPluginV2.register_dict_extend_funcs(
-            attr.PORTS, ['_extend_port_dict_security_group'])
+    def _get_base_binding_dict(self):
+        binding = {
+            portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
+            portbindings.VIF_DETAILS: {
+                # TODO(rkukura): Replace with new VIF security details
+                portbindings.CAP_PORT_FILTER:
+                'security-group' in self.supported_extension_aliases
+            }
+        }
+        return binding
 
     def __getattr__(self, name):
-        for extension_class in self._contrail_extensions_class:
+        # We design contrail extensions by contract of which
+        # the class only have proper method for target extension
+        for extension_class in self._contrail_extensions_instances:
             try:
                 return getattr(extension_class, name)
             except AttributeError:
@@ -159,18 +212,22 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     def _transform_response(self, status_code, info=None, info_list=None,
                             fields=None, obj_name=None):
-        funcname = "_make_" + obj_name + "_dict"
-        func = getattr(self, funcname)
+        if status_code == requests.codes.ok:
+            func = getattr(self, "_make_%s_dict" % obj_name)
+            if info:
+                return func(info, fields)
+            else:
+                return [func(i, fields) for i in info_list]
+        self._raise_contrail_error(status_code, info, obj_name)
 
-        info_dicts = []
-        if info:
-            info_dicts = func(info, status_code, fields)
-        else:
-            for info_entry in info_list:
-                info_dict = func(info_entry, status_code, fields)
-                info_dicts.append(info_dict)
-
-        return info_dicts
+    def _raise_contrail_error(self, status_code, info, obj_name):
+        if status_code == webob.exc.HTTPBadRequest.code:
+            raise ContrailBadRequestError(
+                msg=info['message'], resource=obj_name)
+        error_clazz = CONTRAIL_EXCEPTION_MAP[status_code]
+        e = error_clazz(msg=info['message'])
+        e.__class__.__name__ = str(info['type'])
+        raise e
 
     def _create_resource(self, res_type, context, res_data):
         res_dict = self._encode_resource(resource=res_data[res_type])
@@ -206,7 +263,11 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
     def _delete_resource(self, res_type, context, id):
         res_dict = self._encode_resource(resource_id=id)
         LOG.debug("delete_%s(): %r", res_type, id)
-        return self._request_backend(context, res_dict, res_type, 'DELETE')
+        status_code, res_info = self._request_backend(context, res_dict,
+                                                      res_type, 'DELETE')
+        if status_code != requests.codes.ok:
+            self._raise_contrail_error(status_code, info=res_info,
+                                       obj_name=res_type)
 
     def _list_resource(self, res_type, context, filters, fields):
         res_dict = self._encode_resource(filters=filters, fields=fields)
@@ -226,19 +287,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         LOG.debug("get_%ss_count(): %r", res_type, str(res_count))
         return res_count
 
-    # Network API handlers
-    def _make_network_dict(self, entry, status_code=None, fields=None):
-        if status_code == requests.codes.ok:
-            return super(NeutronPluginContrailCoreV2, self)._make_network_dict(
-                entry, fields)
-
-        if entry['type'] == 'InvalidSharedSetting':
-            raise exc.InvalidSharedSetting(network=entry['name'])
-        if entry['type'] == 'NetworkInUse':
-            raise exc.NetworkInUse(net_id=entry['id'])
-        raise exc.BadRequest(resource='network')
-
-    def _get_network(self, context, id):
+    def _get_network(self, context, id, fields=None):
         return self._get_resource('network', context, id, None)
 
     def create_network(self, context, network):
@@ -255,9 +304,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     def get_network(self, context, network_id, fields=None):
         """Get the attributes of a particular Virtual Network."""
-
-        return self._get_resource('network', context, network_id,
-                                  fields)
+        return self._get_network(context, network_id, fields)
 
     def update_network(self, context, network_id, network):
         """Updates the attributes of a particular Virtual Network."""
@@ -272,10 +319,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         belonging to the specified tenant.
         """
 
-        status_code, msg = self._delete_resource('network', context,
-                                                 network_id)
-        if status_code == requests.codes.conflict:
-            raise exc.NetworkInUse(net_id=network_id)
+        self._delete_resource('network', context, network_id)
 
     def get_networks(self, context, filters=None, fields=None):
         """Get the list of Virtual Networks."""
@@ -288,24 +332,6 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
         networks_count = self._count_resource('network', context, filters)
         return networks_count['count']
-
-    # Subnet API handlers
-    def _make_subnet_dict(self, entry, status_code=None, fields=None):
-        if status_code == requests.codes.ok:
-            return super(NeutronPluginContrailCoreV2, self)._make_subnet_dict(
-                entry, fields)
-
-        if entry['type'] == 'SubnetInUse':
-            raise exc.SubnetInUse(subnet_id=entry['id'])
-        if entry['type'] == 'GatewayConflictWithAllocationPools':
-            pool_range = netaddr.IPRange(entry['pool']['start'],
-                                         entry['pool']['end'])
-            gateway_ip = entry['ip_address']
-            raise exc.GatewayConflictWithAllocationPools(pool=pool_range,
-                                                         ip_address=gateway_ip)
-        if entry['type'] == 'SubnetNotFound':
-            raise exc.SubnetNotFound(subnet_id=entry['id'])
-        raise exc.BadRequest(resource='subnet')
 
     def _get_subnet(self, context, id):
         return self._get_resource('subnet', context, id, None)
@@ -337,20 +363,33 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
         for subnet in subnet_list:
             if (netaddr.IPSet([subnet['cidr']]) & new_subnet_ipset):
+                # don't give out details of the overlapping subnet
+                err_msg = (_("Requested subnet with cidr: %(cidr)s for "
+                             "network: %(network_id)s overlaps with another "
+                             "subnet") %
+                           {'cidr': new_subnet_cidr,
+                            'network_id': network['id']})
                 LOG.error(_("Validation for CIDR: %(new_cidr)s failed - "
                             "overlaps with subnet %(subnet_id)s "
                             "(CIDR: %(cidr)s)"),
                           {'new_cidr': new_subnet_cidr,
                            'subnet_id': subnet['id'],
                            'cidr': subnet['cidr']})
+                raise exc.InvalidInput(error_message=err_msg)
+
+    def _make_subnet_dict(self, subnet, fields=None):
+        if subnet['gateway_ip'] == '0.0.0.0':
+            subnet['gateway_ip'] = None
+        return super(
+            NeutronPluginContrailCoreV2,
+            self)._make_subnet_dict(subnet, fields)
 
     def create_subnet(self, context, subnet):
         """Creates a new subnet, and assigns it a symbolic name."""
 
-        if subnet['subnet']['ip_version'] == 6:
-            msg = _("IPv6 is not supported")
-            raise exc.BadRequest(resource='subnet', msg=msg)
-
+        net = netaddr.IPNetwork(subnet['subnet']['cidr'])
+        # turn the CIDR into a proper subnet
+        subnet['subnet']['cidr'] = '%s/%s' % (net.network, net.prefixlen)
         plugin_subnet = copy.deepcopy(subnet)
         for key, value in subnet['subnet'].items():
             if value == attr.ATTR_NOT_SPECIFIED:
@@ -409,13 +448,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         belonging to the specified tenant.
         """
 
-        status_code, msg = self._delete_resource('subnet', context, subnet_id)
-
-        if status_code == requests.codes.ok:
-            return
-        elif status_code == requests.codes.conflict:
-            raise exc.SubnetInUse(subnet_id=subnet_id)
-        raise exc.BadRequest(resource='subnet')
+        self._delete_resource('subnet', context, subnet_id)
 
     def get_subnets(self, context, filters=None, fields=None):
         """Get the list of subnets."""
@@ -427,18 +460,6 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
         subnets_count = self._count_resource('subnet', context, filters)
         return subnets_count['count']
-
-    def _make_port_dict(self, entry, status_code=None, fields=None):
-        if status_code == requests.codes.ok:
-            return super(NeutronPluginContrailCoreV2, self)._make_port_dict(
-                entry, fields)
-
-        if entry['type'] == 'IpAddressInUse':
-            raise exc.IpAddressInUse(net_id=entry['network_id'],
-                                     ip_address=entry['ip_address'])
-        if entry['type'] == 'IpAddressGenerationFailure':
-            raise exc.IpAddressGenerationFailure(net_id=entry['network_id'])
-        return entry
 
     def _extend_port_dict_security_group(self, port_res, port_db):
         # Security group bindings will be retrieved from the sqlalchemy
@@ -540,21 +561,28 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
-
-        for key, value in port['port'].items():
+        port_in = port['port']
+        network_id = port_in['network_id']
+        for key, value in port_in.items():
             if value == attr.ATTR_NOT_SPECIFIED:
-                port['port'][key] = None
-
-        if port['port']['fixed_ips']:
+                port_in[key] = None
+        if port_in['fixed_ips']:
             self._validate_fixed_ips_for_port(
-                context, port['port']['network_id'], port['port']['fixed_ips'])
+                context, network_id, port_in['fixed_ips'])
+        port_res = self._create_resource('port', context, port)
+        res_type = port_res.get('type')
+        if res_type == 'MacAddressInUse':
+            raise exc.MacAddressInUse(net_id=network_id,
+                                      mac=port_in['mac_address'])
+        if res_type == 'MacAddressGenerationFailure':
+            raise exc.MacAddressGenerationFailure(net_id=network_id)
 
-        return self._create_resource('port', context, port)
+        return port_res
 
     def get_port(self, context, port_id, fields=None):
         """Get the attributes of a particular port."""
 
-        return self._get_resource('port', context, port_id, fields)
+        return self._get_port(context, port_id)
 
     def update_port(self, context, port_id, port):
         """Updates a port.
@@ -598,18 +626,15 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         ports_count = self._count_resource('port', context, filters)
         return ports_count['count']
 
-    def _make_router_dict(self, router, status_code=None, fields=None,
+    def _make_router_dict(self, router, fields=None,
                           process_extensions=True):
         res = {'id': router['id'],
                'name': router['name'],
                'tenant_id': router['tenant_id'],
                'admin_state_up': router['admin_state_up'],
                'status': router['status'],
-               'external_gateway_info': None,
+               'external_gateway_info': router['external_gateway_info'],
                'gw_port_id': router['gw_port_id']}
-        if router['gw_port_id']:
-            nw_id = router['gw_port_id']['network_id']
-            res['external_gateway_info'] = {'network_id': nw_id}
         if process_extensions:
             self._apply_dict_extend_functions(
                 l3.ROUTERS, res, router)
@@ -668,7 +693,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                                          resource=interface_info)
         status_code, res_info = self._request_backend(context, res_dict,
                                                       'router', 'ADDINTERFACE')
-
+        if status_code != requests.codes.ok:
+            self._raise_contrail_error(status_code, info=res_info,
+                                       obj_name='add_router_interface')
         return res_info
 
     def remove_router_interface(self, context, router_id, interface_info):
@@ -682,16 +709,19 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                                          resource=interface_info)
         status_code, res_info = self._request_backend(context, res_dict,
                                                       'router', 'DELINTERFACE')
-
+        if status_code != requests.codes.ok:
+            self._raise_contrail_error(status_code, info=res_info,
+                                       obj_name='remove_router_interface')
         return res_info
 
     # Floating IP API handlers
-    def _make_floatingip_dict(self, floatingip, status_code=None, fields=None):
+    def _make_floatingip_dict(self, floatingip, fields=None):
         res = {'id': floatingip['id'],
                'tenant_id': floatingip['tenant_id'],
                'floating_ip_address': floatingip['floating_ip_address'],
                'floating_network_id': floatingip['floating_network_id'],
                'router_id': floatingip['router_id'],
+               'status': floatingip['status'],
                'port_id': floatingip['port_id'],
                'fixed_ip_address': floatingip['fixed_ip_address']}
         return self._fields(res, fields)
@@ -755,18 +785,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         db.port_unset_attachment(port_id, net_id)
 
     # Security Group handlers
-    def _make_security_group_rule_dict(self, security_group_rule,
-                                       status_code=None, fields=None):
-        if status_code != requests.codes.ok:
-            if security_group_rule['type'] == 'BadRequest':
-                raise exc.BadRequest(resource='security-group-rule',
-                                     msg=security_group_rule['msg'])
-            if security_group_rule['type'] == 'Conflict':
-                raise exc.Conflict(resource='security-group-rule',
-                                   msg=security_group_rule['msg'])
-            if security_group_rule['type'] == 'NotFound':
-                raise exc.NotFound(resource='security-group-rule',
-                                   msg=security_group_rule['msg'])
+    def _make_security_group_rule_dict(self, security_group_rule, fields=None):
         res = {'id': security_group_rule['id'],
                'tenant_id': security_group_rule['tenant_id'],
                'security_group_id': security_group_rule['security_group_id'],
@@ -777,26 +796,23 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                'port_range_max': security_group_rule['port_range_max'],
                'remote_ip_prefix': security_group_rule['remote_ip_prefix'],
                'remote_group_id': security_group_rule['remote_group_id']}
-
         return self._fields(res, fields)
 
-    def _make_security_group_dict(self, security_group, status_code=None,
-                                  fields=None):
+    def _make_security_group_dict(self, security_group, fields=None):
         res = {'id': security_group['id'],
                'name': security_group['name'],
                'tenant_id': security_group['tenant_id'],
                'description': security_group.get('description')}
         res['security_group_rules'] = [self._make_security_group_rule_dict(
-            r, status_code) for r in security_group.get('rules', [])]
+            r) for r in security_group.get('rules', [])]
         return self._fields(res, fields)
 
     def create_security_group(self, context, security_group):
         """Creates a Security Group."""
-
         return self._create_resource('security_group', context,
                                      security_group)
 
-    def get_security_group(self, context, sg_id, fields=None):
+    def get_security_group(self, context, sg_id, fields=None, tenant_id=None):
         """Get the attributes of a security group."""
 
         return self._get_resource('security_group', context, sg_id, fields)
@@ -810,12 +826,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
     def delete_security_group(self, context, sg_id):
         """Deletes a security group."""
 
-        status, value = self._delete_resource('security_group', context, sg_id)
-        if status != requests.codes.ok:
-            if value['type'] == 'SecurityGroupCannotRemoveDefault':
-                raise securitygroup.SecurityGroupCannotRemoveDefault()
-            if value['type'] == 'SecurityGroupInUse':
-                raise securitygroup.SecurityGroupInUse(id=sg_id)
+        self._delete_resource('security_group', context, sg_id)
 
     def get_security_groups(self, context, filters=None, fields=None,
                             sorts=None, limit=None, marker=None,
@@ -827,7 +838,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     def create_security_group_rule(self, context, security_group_rule):
         """Creates a security group rule."""
-
+        rule = security_group_rule.get('security_group_rule')
+        self._validate_port_range(rule)
+        self._validate_ip_prefix(rule)
         return self._create_resource('security_group_rule', context,
                                      security_group_rule)
 
