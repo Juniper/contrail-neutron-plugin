@@ -1416,8 +1416,9 @@ class DBInterface(object):
         if subnet_q['gateway_ip'] != attr.ATTR_NOT_SPECIFIED:
             default_gw = subnet_q['gateway_ip']
         else:
-            # Assigned by address manager
-            default_gw = None
+            # Assigned first+1 from cidr 
+            network = IPNetwork('%s/%s' % (pfx, pfx_len))
+            default_gw = str(IPAddress(network.first + 1))
         if subnet_q['allocation_pools'] != attr.ATTR_NOT_SPECIFIED:
             alloc_pools = subnet_q['allocation_pools']
         else:
@@ -1433,7 +1434,8 @@ class DBInterface(object):
                                     default_gateway=default_gw,
                                     enable_dhcp=dhcp_config,
                                     dns_nameservers=dns_server,
-                                    allocation_pools=alloc_pools)
+                                    allocation_pools=alloc_pools,
+                                    addr_from_start=True)
 
         return subnet_vnc
     #end _subnet_neutron_to_vnc
@@ -1475,12 +1477,20 @@ class DBInterface(object):
             cidr_pool = {'first_ip':first_ip, 'last_ip':last_ip}
             allocation_pools.append(cidr_pool)
         sn_q_dict['allocation_pools'] = allocation_pools
-
+        sn_q_dict['enable_dhcp'] = subnet_vnc.get_enable_dhcp()
+        nameservers = subnet_vnc.get_dns_nameservers()
+        if nameservers is None or not nameservers:
+            sn_q_dict['dns_nameservers'] = [{'address': '169.254.169.254',
+                                             'subnet_id': sn_id}]
+        else:
+            nameserver_dict_list = list()
+            for nameserver in nameservers:
+                nameserver_entry = {'address': nameserver,
+                                    'subnet_id': sn_id}
+                nameserver_dict_list.append(nameserver_entry) 
+            sn_q_dict['dns_nameservers'] = nameserver_dict_list
+             
         # TODO get from ipam_obj
-        sn_q_dict['enable_dhcp'] = False
-        sn_q_dict['dns_nameservers'] = [{'address': '169.254.169.254',
-                                        'subnet_id': sn_id}]
-
         sn_q_dict['routes'] = [{'destination': 'TODO-destination',
                                'nexthop': 'TODO-nexthop',
                                'subnet_id': sn_id}]
@@ -2668,15 +2678,16 @@ class DBInterface(object):
 
         if port_ids:
             fip_objs = self._floatingip_list(back_ref_id=port_ids)
-            for fip_obj in fip_objs:
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
         elif proj_ids:
             fip_objs = self._floatingip_list(back_ref_id=proj_ids)
-            for fip_obj in fip_objs:
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
         else:
             fip_objs = self._floatingip_list()
-            for fip_obj in fip_objs:
+
+        for fip_obj in fip_objs:
+            if 'floating_ip_address' in filters:
+                if (fip_obj.get_floating_ip_address() not in
+                        filters['floating_ip_address']):
+                    continue
                 ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
 
         return ret_list
@@ -2854,7 +2865,7 @@ class DBInterface(object):
 
         # TODO used to find dhcp server field. support later...
         if 'device_owner' in filters:
-            return ret_q_ports
+            pass
 
         if not 'device_id' in filters:
             # Listing from back references
@@ -2934,7 +2945,8 @@ class DBInterface(object):
 
     def port_count(self, filters=None):
         if 'device_owner' in filters:
-            return 0
+            # TODO: Need to store device owner in the port object
+            pass
 
         if 'tenant_id' in filters:
             if isinstance(filters['tenant_id'], list):
