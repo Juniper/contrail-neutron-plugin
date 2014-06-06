@@ -13,7 +13,7 @@ import sys
 import cgitb
 import uuid
 
-from neutron.plugins.juniper.contrail.contrailplugin import ContrailPlugin
+from neutron_plugin_contrail.plugins.opencontrail.contrailplugin import ContrailPlugin
 
 LOG = logging.getLogger(__name__)
 
