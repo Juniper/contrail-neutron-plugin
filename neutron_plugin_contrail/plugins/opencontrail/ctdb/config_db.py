@@ -2686,7 +2686,7 @@ class DBInterface(object):
                 if (fip_obj.get_floating_ip_address() not in
                         filters['floating_ip_address']):
                     continue
-                ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
+            ret_list.append(self._floatingip_vnc_to_neutron(fip_obj))
 
         return ret_list
     #end floatingip_list
