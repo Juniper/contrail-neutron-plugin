@@ -29,7 +29,6 @@ from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
 from neutron.db import securitygroups_db
 from neutron.extensions import external_net
-from neutron.extensions import l3
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
 from neutron.openstack.common import importutils
@@ -55,6 +54,8 @@ vnc_opts = [
 ]
 
 
+# ContrailError message have translated already.
+# so there is no need to use i18n here.
 class ContrailNotFoundError(exc.NotFound):
     message = '%(msg)s'
 
@@ -124,7 +125,8 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                 ext_instance.set_core(self)
                 self._contrail_extensions_instances.append(ext_instance)
             except Exception:
-                LOG.exception()
+                LOG.exception(_("Contrail Backend Error"))
+                #Converting contrail backend error to Neutron Exception
                 raise InvalidContrailExtensionError(
                     ext_name=ext_name, ext_class=ext_class)
 
@@ -235,7 +237,8 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                                                       res_type, 'CREATE')
         res_dicts = self._transform_response(status_code, info=res_info,
                                              obj_name=res_type)
-        LOG.debug("create_%s(): %r", res_type, res_dicts)
+        LOG.debug("create_%(res_type)s(): %(res_dicts)s",
+                  {'res_type': res_type, 'res_dicts': res_dicts})
 
         return res_dicts
 
@@ -244,8 +247,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'READ')
         res_dicts = self._transform_response(status_code, info=res_info,
-                                             obj_name=res_type)
-        LOG.debug("get_%s(): %r", res_type, res_dicts)
+                                             fields=fields, obj_name=res_type)
+        LOG.debug("get_%(res_type)s(): %(res_dicts)s",
+                  {'res_type': res_type, 'res_dicts': res_dicts})
 
         return res_dicts
 
@@ -256,13 +260,15 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                                                       res_type, 'UPDATE')
         res_dicts = self._transform_response(status_code, info=res_info,
                                              obj_name=res_type)
-        LOG.debug("update_%s(): %r", res_type, res_dicts)
+        LOG.debug("update_%(res_type)s(): %(res_dicts)s",
+                  {'res_type': res_type, 'res_dicts': res_dicts})
 
         return res_dicts
 
     def _delete_resource(self, res_type, context, id):
         res_dict = self._encode_resource(resource_id=id)
-        LOG.debug("delete_%s(): %r", res_type, id)
+        LOG.debug("delete_%(res_type)s(): %(id)s",
+                  {'res_type': res_type, 'id': id})
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'DELETE')
         if status_code != requests.codes.ok:
@@ -276,7 +282,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         res_dicts = self._transform_response(status_code, info_list=res_info,
                                              fields=fields, obj_name=res_type)
         LOG.debug(
-            "get_%ss(): filters: %r data: %r", res_type, filters, res_dicts)
+            "get_%(res_type)s(): filters: %(filters)r data: %(res_dicts)r",
+            {'res_type': res_type, 'filters': filters,
+             'res_dicts': res_dicts})
 
         return res_dicts
 
@@ -284,11 +292,12 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         res_dict = self._encode_resource(filters=filters)
         status_code, res_count = self._request_backend(context, res_dict,
                                                        res_type, 'READCOUNT')
-        LOG.debug("get_%ss_count(): %r", res_type, str(res_count))
+        LOG.debug("get_%(res_type)s_count(): %(res_count)r",
+                  {'res_type': res_type, 'res_count': res_count})
         return res_count
 
     def _get_network(self, context, id, fields=None):
-        return self._get_resource('network', context, id, None)
+        return self._get_resource('network', context, id, fields)
 
     def create_network(self, context, network):
         """Creates a new Virtual Network."""
@@ -364,17 +373,17 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         for subnet in subnet_list:
             if (netaddr.IPSet([subnet['cidr']]) & new_subnet_ipset):
                 # don't give out details of the overlapping subnet
-                err_msg = (_("Requested subnet with cidr: %(cidr)s for "
-                             "network: %(network_id)s overlaps with another "
-                             "subnet") %
-                           {'cidr': new_subnet_cidr,
-                            'network_id': network['id']})
                 LOG.error(_("Validation for CIDR: %(new_cidr)s failed - "
                             "overlaps with subnet %(subnet_id)s "
                             "(CIDR: %(cidr)s)"),
                           {'new_cidr': new_subnet_cidr,
                            'subnet_id': subnet['id'],
                            'cidr': subnet['cidr']})
+                err_msg = (_("Requested subnet with cidr: %(cidr)s for "
+                             "network: %(network_id)s overlaps with another "
+                             "subnet") %
+                           {'cidr': new_subnet_cidr,
+                            'network_id': network['id']})
                 raise exc.InvalidInput(error_message=err_msg)
 
     def _make_subnet_dict(self, subnet, fields=None):
@@ -469,8 +478,8 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
             'security_groups', []) or []
         return port_res
 
-    def _get_port(self, context, id):
-        return self._get_resource('port', context, id, None)
+    def _get_port(self, context, id, fields=None):
+        return self._get_resource('port', context, id, fields)
 
     def _validate_fixed_ips_for_port(self, context, network_id, fixed_ips):
         """Test fixed IPs for port.
@@ -563,26 +572,20 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         """Creates a port on the specified Virtual Network."""
         port_in = port['port']
         network_id = port_in['network_id']
+        if port_in.get('security_groups') == attr.ATTR_NOT_SPECIFIED:
+            del port_in['security_groups']
         for key, value in port_in.items():
             if value == attr.ATTR_NOT_SPECIFIED:
                 port_in[key] = None
         if port_in['fixed_ips']:
             self._validate_fixed_ips_for_port(
                 context, network_id, port_in['fixed_ips'])
-        port_res = self._create_resource('port', context, port)
-        res_type = port_res.get('type')
-        if res_type == 'MacAddressInUse':
-            raise exc.MacAddressInUse(net_id=network_id,
-                                      mac=port_in['mac_address'])
-        if res_type == 'MacAddressGenerationFailure':
-            raise exc.MacAddressGenerationFailure(net_id=network_id)
-
-        return port_res
+        return self._create_resource('port', context, port)
 
     def get_port(self, context, port_id, fields=None):
         """Get the attributes of a particular port."""
 
-        return self._get_port(context, port_id)
+        return self._get_port(context, port_id, fields)
 
     def update_port(self, context, port_id, port):
         """Updates a port.
@@ -635,9 +638,6 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                'status': router['status'],
                'external_gateway_info': router['external_gateway_info'],
                'gw_port_id': router['gw_port_id']}
-        if process_extensions:
-            self._apply_dict_extend_functions(
-                l3.ROUTERS, res, router)
         return self._fields(res, fields)
 
     # Router API handlers
