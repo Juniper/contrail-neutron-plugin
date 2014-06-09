@@ -57,7 +57,8 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
-                                   "quotas", "external-net"]
+                                   "quotas", "external-net",
+                                   "allowed-address-pairs"]
     _args = None
     PLUGIN_URL_PREFIX = '/neutron'
 
