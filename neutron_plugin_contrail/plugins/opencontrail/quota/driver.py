@@ -12,8 +12,9 @@ import string
 import sys
 import cgitb
 import uuid
+import time
 
-from neutron.plugins.juniper.contrail.contrailplugin import ContrailPlugin
+from neutron_plugin_contrail.plugins.opencontrail.contrailplugin import ContrailPlugin
 
 LOG = logging.getLogger(__name__)
 
@@ -131,7 +132,13 @@ class QuotaDriver(object):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
             proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = cfgdb._project_read(proj_id)
+            for i in range(10):
+                try:
+                    proj_obj = cfgdb._project_read(proj_id)
+                    break
+                except Exception as e:
+                    time.sleep(2)
+
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
