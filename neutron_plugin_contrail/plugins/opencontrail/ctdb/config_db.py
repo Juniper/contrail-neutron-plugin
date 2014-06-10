@@ -2118,10 +2118,12 @@ class DBInterface(object):
         return {}
     #end subnet_read
 
-    #def subnet_update(self, subnet_id, subnet_q):
-    #    # TODO implement this
-    #    return subnet_q
-    ##end subnet_update
+    def subnet_update(self, subnet_id, subnet_q)
+        msg = _("subnet update not yet supported")
+        raise exceptions.BadRequest(resource='subnet', msg=msg)
+        # TODO implement this
+        # return subnet_q
+    # end subnet_update
 
     def subnet_delete(self, subnet_id):
         subnet_key = self._subnet_vnc_read_mapping(id=subnet_id)
