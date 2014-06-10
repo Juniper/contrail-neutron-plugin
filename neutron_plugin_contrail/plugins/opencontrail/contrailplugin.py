@@ -21,6 +21,8 @@ from neutron.extensions import portbindings
 from neutron_plugin_contrail.extensions import vpcroutetable
 from neutron.openstack.common import log as logging
 
+from cfgm_common.exceptions import RefsExistError
+
 from oslo.config import cfg
 from httplib2 import Http
 import re
@@ -243,6 +245,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             LOG.debug("create_network(): " + pformat(net_dict) + "\n")
             return net_dict
+        except RefsExistError as e:
+            raise exc.BadRequest(resource='network', msg=str(e))
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
