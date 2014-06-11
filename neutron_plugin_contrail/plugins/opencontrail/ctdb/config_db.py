@@ -249,9 +249,12 @@ class DBInterface(object):
             # Seed the cache and return
             if q_type == 'port':
                 port_obj = self._virtual_machine_interface_read(obj_uuid)
-                net_id = port_obj.get_virtual_network_refs()[0]['uuid']
-                # recurse up type-hierarchy
-                tenant_id = self._get_obj_tenant_id('network', net_id)
+                if port_obj.parent_type != "project":
+                    net_id = port_obj.get_virtual_network_refs()[0]['uuid']
+                    # recurse up type-hierarchy
+                    tenant_id = self._get_obj_tenant_id('network', net_id)
+                else:
+                    tenant_id = port_obj.parent_uuid.replace('-', '')
                 self._set_obj_tenant_id(obj_uuid, tenant_id)
                 return tenant_id
 
@@ -1371,9 +1374,9 @@ class DBInterface(object):
             net_q_dict['shared'] = False
         net_q_dict['status'] = constants.NET_STATUS_ACTIVE
         if net_obj.router_external:
-            extra_dict['router:external'] = True
+            net_q_dict['router:external'] = True
         else:
-            extra_dict['router:external'] = False
+            net_q_dict['router:external'] = False
 
         if net_repr == 'SHOW' or net_repr == 'LIST':
             extra_dict['contrail:instance_count'] = 0
@@ -1705,6 +1708,11 @@ class DBInterface(object):
                                                id_perms=id_perms)
             port_obj.uuid = port_uuid
             port_obj.set_virtual_network(net_obj)
+            if ('mac_address' in port_q and 
+                port_q['mac_address'].__class__ is not object):
+                mac_addrs_obj = MacAddressesType()
+                mac_addrs_obj.set_mac_address(port_q['mac_address'])
+                port_obj.set_virtual_machine_interface_mac_addresses(mac_addrs_obj)
         else:  # READ/UPDATE/DELETE
             port_obj = self._virtual_machine_interface_read(
                 port_id=port_q['id'], fields=['instance_ip_back_refs',
@@ -1720,7 +1728,7 @@ class DBInterface(object):
         port_obj.set_security_group_list([])
         if ('security_groups' in port_q and
             port_q['security_groups'].__class__ is not object):
-            for sg_id in port_q['security_groups']:
+            for sg_id in port_q['security_groups'] or []:
                 # TODO optimize to not read sg (only uuid/fqn needed)
                 sg_obj = self._vnc_lib.security_group_read(id=sg_id)
                 port_obj.add_security_group(sg_obj)
@@ -1764,7 +1772,10 @@ class DBInterface(object):
             subnets_info = self._virtual_network_to_subnets(net_obj)
             port_req_memo['subnets'][net_id] = subnets_info
 
-        proj_id = net_obj.parent_uuid.replace('-', '')
+        if port_obj.parent_type != "project":
+            proj_id = net_obj.parent_uuid.replace('-', '')
+        else:
+            proj_id = port_obj.parent_uuid.replace('-', '')
         self._set_obj_tenant_id(port_obj.uuid, proj_id)
 
         port_q_dict['tenant_id'] = proj_id
@@ -2701,7 +2712,7 @@ class DBInterface(object):
         net_id = port_q['network_id']
         # TODO optimize to not read net (only uuid/fqn needed)
         net_obj = self._network_read(net_id)
-        proj_id = net_obj.parent_uuid
+        proj_id = str(uuid.UUID(port_q['tenant_id']))
 
         # initialize port object
         port_obj = self._port_neutron_to_vnc(port_q, net_obj, CREATE)
@@ -2715,27 +2726,41 @@ class DBInterface(object):
                 # before accessing it.
                 if 'ip_address' in port_q['fixed_ips'][0]:
                     ip_addr = port_q['fixed_ips'][0]['ip_address']
-                    if self._ip_addr_in_net_id(ip_addr, net_id):
-                        raise exceptions.IpAddressInUse(net_id=net_id,
-                                                        ip_address=ip_addr)
+
+                    # check for ecmp shared iip
+                    ip_name = '%s %s' % (net_id, ip_addr)
+                    try:
+                        ip_obj = self._instance_ip_read(fq_name=[ip_name])
+                        ip_id = ip_obj.uuid
+                    except Exception as e:
+                        ip_obj = None
+                        if self._ip_addr_in_net_id(ip_addr, net_id):
+                            raise exceptions.IpAddressInUse(net_id=net_id,
+                                                            ip_address=ip_addr)
 
         # create the object
         port_id = self._virtual_machine_interface_create(port_obj)
 
         # initialize ip object
-        ip_name = str(uuid.uuid4())
-        ip_obj = InstanceIp(name=ip_name)
-        ip_obj.uuid = ip_name
-        ip_obj.set_virtual_machine_interface(port_obj)
-        ip_obj.set_virtual_network(net_obj)
-        if ip_addr:
-            ip_obj.set_instance_ip_address(ip_addr)
-        try:
-            ip_id = self._instance_ip_create(ip_obj)
-        except Exception as e:
-            # ResourceExhaustionError, resources are not available
-            self._virtual_machine_interface_delete(port_id=port_id)
-            raise exceptions.ResourceExhausted()
+        if ip_obj == None:
+            ip_name = str(uuid.uuid4())
+            ip_obj = InstanceIp(name=ip_name)
+            ip_obj.uuid = ip_name
+            ip_obj.set_virtual_machine_interface(port_obj)
+            ip_obj.set_virtual_network(net_obj)
+            if ip_addr:
+                ip_obj.set_instance_ip_address(ip_addr)
+            try:
+                ip_id = self._instance_ip_create(ip_obj)
+            except Exception as e:
+                # ResourceExhaustionError, resources are not available
+                self._virtual_machine_interface_delete(port_id=port_id)
+                raise exceptions.ResourceExhausted()
+        # shared ip address
+        else:
+            if ip_addr == ip_obj.get_instance_ip_address():
+                ip_obj.add_virtual_machine_interface(port_obj)
+                self._instance_ip_update(ip_obj)
 
         # TODO below reads back default parent name, fix it
         port_obj = self._virtual_machine_interface_read(port_id=port_id,

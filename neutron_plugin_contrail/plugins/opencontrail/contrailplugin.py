@@ -175,7 +175,14 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         ContrailPlugin._tenant_list_from_keystone()
         self.base_binding_dict = self._get_base_binding_dict()
         portbindings_base.register_port_dict_function()
+        self.register_dict_extend_funcs('networks', ['_extend_network_dict_l3'])
     #end __init__
+
+    def _extend_network_dict_l3(self, network_res, network_db):
+        # Comparing with None for converting uuid into bool
+        network_res[external_net.EXTERNAL] = network_db[external_net.EXTERNAL]
+        return network_res
+
 
     def _get_base_binding_dict(self):
         if hasattr(portbindings, 'VIF_DETAILS'):
