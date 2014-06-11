@@ -1028,7 +1028,7 @@ class DBInterface(object):
                     if IPAddress(ip_addr) in IPSet([cidr]):
                         subnet_key = self._subnet_vnc_get_key(subnet_vnc,
                                                               net_obj.uuid)
-                        subnet_id = self._subnet_vnc_read_mapping(
+                        subnet_id = self._subnet_vnc_read_or_create_mapping(
                             key=subnet_key)
                         return subnet_id
 
@@ -1046,7 +1046,7 @@ class DBInterface(object):
                 for subnet_vnc in subnet_vncs:
                     subnet_key = self._subnet_vnc_get_key(subnet_vnc,
                                                           net_obj.uuid)
-                    subnet_id = self._subnet_vnc_read_mapping(key=subnet_key)
+                    subnet_id = self._subnet_vnc_read_or_create_mapping(key=subnet_key)
                     cidr = '%s/%s' % (subnet_vnc.subnet.get_ip_prefix(),
                                       subnet_vnc.subnet.get_ip_prefix_len())
                     ret_subnets.append({'id': subnet_id, 'cidr': cidr})
