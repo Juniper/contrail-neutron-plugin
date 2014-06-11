@@ -137,15 +137,13 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         #keystone
         self._authn_token = None
         if cfg.CONF.auth_strategy == 'keystone':
-            user = cfg.CONF.keystone_authtoken.admin_user
-            password = cfg.CONF.keystone_authtoken.admin_password
-            tenant = cfg.CONF.keystone_authtoken.admin_tenant_name
-            authn_body = '{"auth":{"passwordCredentials":{'
-            authn_body = authn_body + ' "username": "%s",' % (user)
-            authn_body = authn_body + ' "password": "%s"},' % (password)
-            authn_body = authn_body + ' "tenantName":"%s"}}' % (tenant)
+            kcfg = cfg.CONF.keystone_authtoken
+            body = '{"auth":{"passwordCredentials":{'
+            body = body + ' "username": "%s",' % (kcfg.admin_user)
+            body = body + ' "password": "%s"},' % (kcfg.admin_password)
+            body = body + ' "tenantName":"%s"}}' % (kcfg.admin_tenant_name)
 
-            self._authn_body = authn_body
+            self._authn_body = body
             self._authn_token = cfg.CONF.keystone_authtoken.admin_token
             self._keystone_url = "%s://%s:%s%s" % (
                 cfg.CONF.keystone_authtoken.auth_protocol,
@@ -187,7 +185,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
     def _request_api_server(self, url, data=None, headers=None):
         # Attempt to post to Api-Server
         response = requests.post(url, data=data, headers=headers)
-        if (response.status_code == requests.codes.UNAUTHORIZED):
+        if (response.status_code == requests.codes.unauthorized):
             # Get token from keystone and save it for next request
             response = requests.post(self._keystone_url,
                 data=self._authn_body,
