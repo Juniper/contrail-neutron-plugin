@@ -2108,7 +2108,7 @@ class DBInterface(object):
         return {}
     #end subnet_read
 
-    def subnet_update(self, subnet_id, subnet_q)
+    def subnet_update(self, subnet_id, subnet_q):
         msg = _("subnet update not yet supported")
         raise exceptions.BadRequest(resource='subnet', msg=msg)
         # TODO implement this
