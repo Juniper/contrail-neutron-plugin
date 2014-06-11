@@ -1721,7 +1721,7 @@ class DBInterface(object):
         port_obj.set_security_group_list([])
         if ('security_groups' in port_q and
             port_q['security_groups'].__class__ is not object):
-            for sg_id in port_q['security_groups']:
+            for sg_id in port_q['security_groups'] or []:
                 # TODO optimize to not read sg (only uuid/fqn needed)
                 sg_obj = self._vnc_lib.security_group_read(id=sg_id)
                 port_obj.add_security_group(sg_obj)
