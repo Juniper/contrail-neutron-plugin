@@ -134,6 +134,21 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         self._max_retries = cfg.CONF.APISERVER.max_retries
         self._retry_interval = cfg.CONF.APISERVER.retry_interval
 
+        #keystone
+        self._authn_token = None
+        if cfg.CONF.auth_strategy == 'keystone':
+            self._authn_body = \
+                '{"auth":{"passwordCredentials":{' + \
+                ' "username": "%s",' % (cfg.CONF.keystone_authtoken.admin_user) + \
+                ' "password": "%s"},' % (cfg.CONF.keystone_authtoken.admin_password) + \
+                ' "tenantName":"%s"}}' % (cfg.CONF.keystone_authtoken.admin_tenant_name) 
+            self._authn_token = cfg.CONF.keystone_authtoken.admin_token
+            self._keystone_url = "%s://%s:%s%s" % \
+                                     (cfg.CONF.keystone_authtoken.auth_protocol,
+                                      cfg.CONF.keystone_authtoken.auth_host,
+                                      cfg.CONF.keystone_authtoken.auth_port,
+                                      "/v2.0/tokens")
+
     def __init__(self):
         super(NeutronPluginContrailCoreV2, self).__init__()
         portbindings_base.register_port_dict_function()
@@ -166,7 +181,29 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return []
 
     def _request_api_server(self, url, data=None, headers=None):
-        return requests.post(url, data=data, headers=headers)
+        response  = requests.post(url, data=data, headers=headers)
+        if (response.status_code == 401): 
+            # Get token from keystone and save it for next request
+            response = requests.post(self._keystone_url, 
+                                     data = self._authn_body, 
+                                     headers={'Content-type': 'application/json'}) 
+            if (response.status_code == 200):
+                # plan is to re-issue original request with new token
+                auth_headers = headers or {}
+                authn_content = json.loads(response.text)
+                self._authn_token = authn_content['access']['token']['id']
+                auth_headers['X-AUTH-TOKEN'] = self._authn_token
+                response = self._request_api_server(url, data, auth_headers)
+            else:
+                raise RuntimeError('Authentication Failure')
+        return response 
+
+    def _request_api_server_authn(self, url, data=None, headers=None):
+        authn_headers = headers or {}
+        if self._authn_token is not None:
+            authn_headers['X-AUTH-TOKEN'] = self._authn_token
+        response  = self._request_api_server(url, data=data, headers=authn_headers)
+        return response 
 
     def _relay_request(self, url_path, data=None):
         """Send received request to api server."""
@@ -175,7 +212,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                                   cfg.CONF.APISERVER.api_server_port,
                                   url_path)
 
-        return self._request_api_server(
+        return self._request_api_server_authn(
             url, data=data, headers={'Content-type': 'application/json'})
 
     def _request_backend(self, context, data_dict, obj_name, action):
