@@ -139,9 +139,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         if cfg.CONF.auth_strategy == 'keystone':
             kcfg = cfg.CONF.keystone_authtoken
             body = '{"auth":{"passwordCredentials":{'
-            body = body + ' "username": "%s",' % (kcfg.admin_user)
-            body = body + ' "password": "%s"},' % (kcfg.admin_password)
-            body = body + ' "tenantName":"%s"}}' % (kcfg.admin_tenant_name)
+            body += ' "username": "%s",' % (kcfg.admin_user)
+            body += ' "password": "%s"},' % (kcfg.admin_password)
+            body += ' "tenantName":"%s"}}' % (kcfg.admin_tenant_name)
 
             self._authn_body = body
             self._authn_token = cfg.CONF.keystone_authtoken.admin_token
