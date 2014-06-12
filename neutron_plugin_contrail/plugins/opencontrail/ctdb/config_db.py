@@ -1635,7 +1635,10 @@ class DBInterface(object):
             # TODO for now create from default pool, later
             # use first available pool on net
             net_id = fip_q['floating_network_id']
-            fq_name = self._fip_pool_list_network(net_id)[0]['fq_name']
+            fip_pool_list = self._fip_pool_list_network(net_id)
+            if not fip_pool_list:
+                raise exceptions.NetworkNotFound(net_id=net_id)
+            fq_name = fip_pool_list[0]['fq_name']
             fip_pool_obj = self._vnc_lib.floating_ip_pool_read(fq_name=fq_name)
             fip_name = str(uuid.uuid4())
             fip_obj = FloatingIp(fip_name, fip_pool_obj)
