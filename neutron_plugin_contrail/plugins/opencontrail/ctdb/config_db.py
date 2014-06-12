@@ -2873,8 +2873,9 @@ class DBInterface(object):
         all_project_ids = []
 
         # TODO used to find dhcp server field. support later...
-        if 'device_owner' in filters:
-            pass
+        if (filters.get('device_owner') == 'network:dhcp' or
+            'network:dhcp' in filters.get('device_owner', [])):
+            return ret_q_ports
 
         if not 'device_id' in filters:
             # Listing from back references
@@ -2954,9 +2955,9 @@ class DBInterface(object):
     #end port_list
 
     def port_count(self, filters=None):
-        if 'device_owner' in filters:
-            # TODO: Need to store device owner in the port object
-            pass
+        if (filters.get('device_owner') == 'network:dhcp' or
+            'network:dhcp' in filters.get('device_owner', [])):
+            return 0
 
         if 'tenant_id' in filters:
             if isinstance(filters['tenant_id'], list):
