@@ -280,6 +280,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         """
         Updates the attributes of a particular Virtual Network.
         """
+        if 'name' in network['network'].keys():
+            raise exc.BadRequest(resource='network', msg='network.name attribute can not be modified')
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
             net_info = cfgdb.network_update(net_id, network['network'])
