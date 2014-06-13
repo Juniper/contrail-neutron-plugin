@@ -1642,7 +1642,6 @@ class DBInterface(object):
                 # retrieve a floating ip pool from a private network.
                 raise Exception(
                     "Network %s doesn't provide a floatingip pool", net_id)
-            fq_name = self._fip_pool_list_network(net_id)[0]['fq_name']
             fip_pool_obj = self._vnc_lib.floating_ip_pool_read(fq_name=fq_name)
             fip_name = str(uuid.uuid4())
             fip_obj = FloatingIp(fip_name, fip_pool_obj)
@@ -2475,7 +2474,9 @@ class DBInterface(object):
                 if not self._filters_is_present(filters, 'contrail:fq_name',
                                                 proj_rtr_fq_name):
                     continue
-
+                rtr_name = proj_rtr['fq_name'][-1]
+                if not self._filters_is_present(filters, 'name', rtr_name):
+                    continue
                 try:
                     rtr_obj = self._logical_router_read(proj_rtr['uuid'])
                     rtr_info = self._router_vnc_to_neutron(rtr_obj,
@@ -2784,7 +2785,10 @@ class DBInterface(object):
         except KeyError:
             pass
 
-        port_obj = self._virtual_machine_interface_read(port_id=port_id)
+        try:
+            port_obj = self._virtual_machine_interface_read(port_id=port_id)
+        except NoIdError:
+            raise exceptions.PortNotFound(port_id=port_id)
 
         ret_port_q = self._port_vnc_to_neutron(port_obj)
         self._db_cache['q_ports'][port_id] = ret_port_q
@@ -2873,8 +2877,9 @@ class DBInterface(object):
         all_project_ids = []
 
         # TODO used to find dhcp server field. support later...
-        if 'device_owner' in filters:
-            pass
+        if (filters.get('device_owner') == 'network:dhcp' or
+            'network:dhcp' in filters.get('device_owner', [])):
+            return ret_q_ports
 
         if not 'device_id' in filters:
             # Listing from back references
@@ -2932,6 +2937,8 @@ class DBInterface(object):
                                               parent_id=dev_id,
                                               back_ref_id=dev_id,
                                               fields=['instance_ip_back_refs'])
+                if not port_objs:
+                    raise NoIdError(None)
                 for port_obj in port_objs:
                     port_info = self._port_vnc_to_neutron(port_obj)
                     ret_q_ports.append(port_info)
@@ -2941,8 +2948,7 @@ class DBInterface(object):
                     intfs = router_obj.get_virtual_machine_interface_refs()
                     for intf in (intfs or []):
                         try:
-                            port_info = self._port_read(intf['uuid'],
-                                                        port_req_memo)
+                            port_info = self.port_read(intf['uuid'])
                         except NoIdError:
                             continue
                         ret_q_ports.append(port_info)
@@ -2953,9 +2959,9 @@ class DBInterface(object):
     #end port_list
 
     def port_count(self, filters=None):
-        if 'device_owner' in filters:
-            # TODO: Need to store device owner in the port object
-            pass
+        if (filters.get('device_owner') == 'network:dhcp' or
+            'network:dhcp' in filters.get('device_owner', [])):
+            return 0
 
         if 'tenant_id' in filters:
             if isinstance(filters['tenant_id'], list):
