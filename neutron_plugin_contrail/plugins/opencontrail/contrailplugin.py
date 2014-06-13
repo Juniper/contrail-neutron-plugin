@@ -1338,6 +1338,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                             page_reverse=False):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
+            if not context.is_admin:
+                filters['tenant_id'] = [str(context.tenant)]
             security_groups_info = cfgdb.security_group_list(context, filters)
 
             security_groups_dicts = []
@@ -1405,6 +1407,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                                  page_reverse=False):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
+            if not context.is_admin:
+                filters['tenant_id'] = [str(context.tenant)]
             security_group_rules_info = cfgdb.security_group_rule_list(filters)
 
             security_group_rules_dicts = []
