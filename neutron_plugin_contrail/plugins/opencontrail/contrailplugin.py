@@ -20,7 +20,6 @@ from neutron.extensions import portbindings
 from neutron.openstack.common import log as logging
 
 from cfgm_common.exceptions import RefsExistError
-from vnc_api.vnc_api import _
 
 from oslo.config import cfg
 from httplib2 import Http
