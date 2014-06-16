@@ -2024,6 +2024,16 @@ class DBInterface(object):
 
     # subnet api handlers
     def subnet_create(self, subnet_q):
+        if subnet_q['gateway_ip'] == None:
+            # return exception. This attribute is not supported yet
+            msg = _("Disable gateway is not supported")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
+
+        if subnet_q['host_routes'] != attr.ATTR_NOT_SPECIFIED:
+            # return exception. This attribute is not supported yet
+            msg = _("Setting host routes is not supported")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
+
         net_id = subnet_q['network_id']
         net_obj = self._virtual_network_read(net_id=net_id)
 
