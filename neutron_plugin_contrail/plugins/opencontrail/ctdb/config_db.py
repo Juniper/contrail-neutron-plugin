@@ -1486,10 +1486,8 @@ class DBInterface(object):
                 nameserver_dict_list.append(nameserver_entry) 
             sn_q_dict['dns_nameservers'] = nameserver_dict_list
              
-        # TODO get from ipam_obj
-        sn_q_dict['routes'] = [{'destination': 'TODO-destination',
-                               'nexthop': 'TODO-nexthop',
-                               'subnet_id': sn_id}]
+        # TODO get from ipam_obj when host-routes is supported
+        sn_q_dict['routes'] = []
 
         if net_obj.is_shared:
             sn_q_dict['shared'] = True
@@ -2024,6 +2022,16 @@ class DBInterface(object):
 
     # subnet api handlers
     def subnet_create(self, subnet_q):
+        if subnet_q['gateway_ip'] == None:
+            # return exception. This attribute is not supported yet
+            msg = _("Disable gateway is not supported")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
+
+        if subnet_q['host_routes'] != attr.ATTR_NOT_SPECIFIED:
+            # return exception. This attribute is not supported yet
+            msg = _("Setting host routes is not supported")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
+
         net_id = subnet_q['network_id']
         net_obj = self._virtual_network_read(net_id=net_id)
 
