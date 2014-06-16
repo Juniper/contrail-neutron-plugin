@@ -1486,10 +1486,8 @@ class DBInterface(object):
                 nameserver_dict_list.append(nameserver_entry) 
             sn_q_dict['dns_nameservers'] = nameserver_dict_list
              
-        # TODO get from ipam_obj
-        sn_q_dict['routes'] = [{'destination': 'TODO-destination',
-                               'nexthop': 'TODO-nexthop',
-                               'subnet_id': sn_id}]
+        # TODO get from ipam_obj when host-routes is supported
+        sn_q_dict['routes'] = []
 
         if net_obj.is_shared:
             sn_q_dict['shared'] = True
