@@ -884,25 +884,15 @@ class DBInterface(object):
         else:
             ret_val = []
 
-        net_objs = self._virtual_network_list(project_id,
-                         fields=['virtual_machine_interface_back_refs'],
-                         detail=True)
-        if not net_objs:
-            return ret_val
-
+        port_objs = self._virtual_machine_interface_list(parent_id=project_id,
+                                                         fields=['instance_ip_back_refs'])
         if count:
-            for net_obj in net_objs:
-                port_back_refs = (
-                    net_obj.get_virtual_machine_interface_back_refs() or [])
-                ret_val = ret_val + len(port_back_refs)
+            ret_val = ret_val + len(port_objs)
             return ret_val
 
-        net_ids = [net_obj.uuid for net_obj in net_objs]
-        port_objs = self._virtual_machine_interface_list(back_ref_id=net_ids,
-                                          fields=['instance_ip_back_refs'])
-        iip_objs = self._instance_ip_list(back_ref_id=net_ids)
+        iip_objs = self._instance_ip_list()
 
-        ret_val = self._port_list(net_objs, port_objs, iip_objs)
+        ret_val = self._port_list([], port_objs, iip_objs)
 
         return ret_val
     #end _port_list_project
