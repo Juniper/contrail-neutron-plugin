@@ -885,7 +885,7 @@ class DBInterface(object):
             ret_val = []
 
         port_objs = self._virtual_machine_interface_list(parent_id=project_id,
-                                                         fields=['instance_ip_back_refs'])
+                                          fields=['instance_ip_back_refs'])
         if count:
             ret_val = ret_val + len(port_objs)
             return ret_val
