@@ -4,11 +4,8 @@ import ConfigParser
 from pprint import pformat
 
 from neutron.openstack.common import log as logging
+from neutron.common import exceptions
 
-from oslo.config import cfg
-from httplib2 import Http
-import re
-import string
 import sys
 import cgitb
 import uuid
@@ -19,6 +16,7 @@ from neutron_plugin_contrail.plugins.opencontrail.contrailplugin import Contrail
 LOG = logging.getLogger(__name__)
 
 class QuotaDriver(object):
+    
     """Configuration driver.
 
     Driver to perform necessary checks to enforce quotas and obtain
@@ -34,7 +32,7 @@ class QuotaDriver(object):
             'security_group_rule': 'security_group_rule',
             'router': 'logical_router',
             'port': 'virtual_machine_interface',
-            };
+    }
 
     def _get_quotas(self, context, resources, keys):
         """Get quotas.
@@ -121,7 +119,7 @@ class QuotaDriver(object):
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        for k,v in quota.__dict__.items():
+        for k, v in quota.__dict__.items():
             if k != 'defaults':
                 quota.__dict__[k] = quota.defaults
         proj_obj.set_quota(quota)

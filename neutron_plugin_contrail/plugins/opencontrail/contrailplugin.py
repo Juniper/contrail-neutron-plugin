@@ -7,21 +7,20 @@
 .. attention:: Fix the license string
 """
 
-import logging
 import ConfigParser
 from pprint import pformat
 
-from neutron.manager import NeutronManager
 from neutron.common import exceptions as exc
 from neutron.db import db_base_plugin_v2
 from neutron.db import portbindings_base
 from neutron.db import l3_db
+from neutron.db import api as db
 from neutron.extensions import l3, securitygroup, external_net
 from neutron.extensions import portbindings
-from neutron_plugin_contrail.extensions import vpcroutetable
 from neutron.openstack.common import log as logging
 
 from cfgm_common.exceptions import RefsExistError
+from vnc_api.vnc_api import _
 
 from oslo.config import cfg
 from httplib2 import Http
@@ -118,7 +117,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             return cls._cfgdb
         user_id = context.user_id
         role = string.join(context.roles, ",")
-        if not user_id in cls._cfgdb_map:
+        if user_id not in cls._cfgdb_map:
             cls._cfgdb_map[user_id] = ctdb.config_db.DBInterface(
                 cls._admin_user, cls._admin_password, cls._admin_tenant_name,
                 cfg.CONF.APISERVER.api_server_ip,
@@ -159,9 +158,6 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             cls._tenant_name_dict[tenant['name']] = tenant['id']
     #end _tenant_list_from_keystone
 
-    def update_security_group(self, context, id, security_group):
-        pass
-
     def __init__(self):
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         cfg.CONF.register_opts(keystone_opts, 'KEYSTONE')
@@ -187,16 +183,16 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def _get_base_binding_dict(self):
         if hasattr(portbindings, 'VIF_DETAILS'):
             binding = {
-            portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
-            portbindings.VIF_DETAILS: {
-                portbindings.CAP_PORT_FILTER:
-                'security-group' in self.supported_extension_aliases}}
+                portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
+                portbindings.VIF_DETAILS: {
+                    portbindings.CAP_PORT_FILTER:
+                    'security-group' in self.supported_extension_aliases}}
         else:
             binding = {
-            portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
-            portbindings.CAPABILITIES: {
-                portbindings.CAP_PORT_FILTER:
-                'security-group' in self.supported_extension_aliases}}
+                portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
+                portbindings.CAPABILITIES: {
+                    portbindings.CAP_PORT_FILTER:
+                    'security-group' in self.supported_extension_aliases}}
         return binding
 
     @classmethod
@@ -233,7 +229,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     # Return empty list of agents.
     def get_agents(self, context, filters=None, fields=None):
         agents = []
-        return agents;
+        return agents
 
     # Network API handlers
     def create_network(self, context, network):
@@ -354,7 +350,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         try:
             if subnet['subnet']['ip_version'] == 6:
                 msg = _("IPv6 is not supported")
-		raise exc.BadRequest(resource='subnet', msg=msg)
+                raise exc.BadRequest(resource='subnet', msg=msg)
 
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
             subnet_info = cfgdb.subnet_create(subnet['subnet'])
@@ -378,7 +374,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             if not fields:
                 # should return all fields
-                subnet_dict = self._make_subnet_dict(subnet_info['q_api_data'], 
+                subnet_dict = self._make_subnet_dict(subnet_info['q_api_data'],
                                                      fields)
                 subnet_dict.update(subnet_info['q_extra_data'])
             else:
@@ -929,7 +925,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 fips_dicts.append(fip_dict)
 
             LOG.debug("get_floatingips(): filters: " + pformat(filters) +
-                      "data: " +pformat(fips_dicts))
+                      "data: " + pformat(fips_dicts))
             return fips_dicts
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -940,7 +936,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
             floatingips_count = cfgdb.floatingip_count(context, filters)
-            LOG.debug("get_floatingips_count(): filters: " + 
+            LOG.debug("get_floatingips_count(): filters: " +
                       pformat(filters) + " data: " + str(floatingips_count))
             return floatingips_count
         except Exception as e:
@@ -960,8 +956,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # verify transformation is conforming to api
             port_dict = self._make_port_dict(port_info['q_api_data'])
             self._process_portbindings_create_and_update(context,
-                                                     port['port'],
-                                                     port_dict)
+                                                         port['port'],
+                                                         port_dict)
 
             port_dict.update(port_info['q_extra_data'])
 
@@ -980,8 +976,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # verify transformation is conforming to api
             port_dict = self._make_port_dict(port_info['q_api_data'], fields)
             self._process_portbindings_create_and_update(context,
-                                                     port_info,
-                                                     port_dict)
+                                                         port_info,
+                                                         port_dict)
 
             port_dict.update(port_info['q_extra_data'])
 
@@ -1003,8 +999,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
             # verify transformation is conforming to api
             port_dict = self._make_port_dict(port_info['q_api_data'])
             self._process_portbindings_create_and_update(context,
-                                                     port['port'],
-                                                     port_info)
+                                                         port['port'],
+                                                         port_info)
 
             port_dict.update(port_info['q_extra_data'])
 
@@ -1045,8 +1041,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
                 # verify transformation is conforming to api
                 p_dict = self._make_port_dict(p_info['q_api_data'], fields)
                 self._process_portbindings_create_and_update(context,
-                                                         p_info,
-                                                         p_dict)
+                                                             p_info,
+                                                             p_dict)
 
                 if not fields:
                     p_dict.update(p_info['q_extra_data'])
@@ -1117,8 +1113,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def create_route_table(self, context, route_table):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
-            rt_info = cfgdb.route_table_create(
-                          route_table['route_table'])
+            rt_info = cfgdb.route_table_create(route_table['route_table'])
 
             # verify transformation is conforming to api
             rt_dict = self._make_route_table_dict(rt_info['q_api_data'])
@@ -1209,8 +1204,7 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def create_nat_instance(self, context, nat_instance):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
-            si_info = cfgdb.svc_instance_create(
-                          nat_instance['nat_instance'])
+            si_info = cfgdb.svc_instance_create(nat_instance['nat_instance'])
 
             # verify transformation is conforming to api
             si_dict = self._make_svc_instance_dict(si_info['q_api_data'])

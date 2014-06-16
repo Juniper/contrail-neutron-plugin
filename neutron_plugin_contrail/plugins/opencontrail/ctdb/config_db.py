@@ -11,7 +11,6 @@ import re
 import uuid
 import json
 import time
-import socket
 import netaddr
 from netaddr import IPNetwork, IPSet, IPAddress
 import eventlet
@@ -327,7 +326,7 @@ class DBInterface(object):
 
             for sg_obj in project_sgs:
                 sgr_entries = sg_obj.get_security_group_entries()
-                if sgr_entries == None:
+                if sgr_entries is None:
                     continue
 
                 for sg_rule in sgr_entries.get_policy_rule():
@@ -599,6 +598,8 @@ class DBInterface(object):
 
     def _floating_ip_pool_delete(self, fip_pool_id):
         fip_pool_uuid = self._vnc_lib.floating_ip_pool_delete(id=fip_pool_id)
+
+        return fip_pool_uuid
     # end _floating_ip_pool_delete
 
     # find projects on a given domain
@@ -670,11 +671,11 @@ class DBInterface(object):
         return sg_objs
     #end _security_group_list_project
 
-    def _security_group_entries_list_sg(self, sg_id):
+    def _security_group_entries_list_sg(self, project_id):
         try:
-            sg_uuid = str(uuid.UUID(project_id))
+            project_uuid = str(uuid.UUID(project_id))
         except Exception:
-            print "Error in converting SG uuid %s" % (sg_id)
+            print "Error in converting uuid %s" % (project_id)
 
         resp_dict = self._vnc_lib.security_groups_list(parent_id=project_uuid)
 
@@ -698,7 +699,7 @@ class DBInterface(object):
         except Exception:
             print "Error in converting uuid %s" % (project_id)
 
-        resp_dict = self._vnc_lib.service_instances_list(parent_id=project_id)
+        resp_dict = self._vnc_lib.service_instances_list(parent_id=project_uuid)
 
         return resp_dict['service-instances']
     #end _svc_instance_list_project
@@ -920,7 +921,7 @@ class DBInterface(object):
             if key_name in filters:
                 try:
                     if key_name == 'tenant_id':
-                        filter_value = [str(uuid.UUID(t_id)) \
+                        filter_value = [str(uuid.UUID(t_id))
                                         for t_id in filters[key_name]]
                     else:
                         filter_value = filters[key_name]
@@ -1201,7 +1202,7 @@ class DBInterface(object):
 
     def _security_group_rule_vnc_to_neutron(self, sg_id, sg_rule, sg_obj=None):
         sgr_q_dict = {}
-        if sg_id == None:
+        if sg_id is None:
             return {'q_api_data': sgr_q_dict,
                     'q_extra_data': {}}
 
@@ -1228,8 +1229,7 @@ class DBInterface(object):
             remote_cidr = '%s/%s' % (addr.get_subnet().get_ip_prefix(),
                                      addr.get_subnet().get_ip_prefix_len())
         elif addr.get_security_group():
-            if addr.get_security_group() != 'any' and \
-                addr.get_security_group() != 'local':
+            if addr.get_security_group() not in ['any', 'local']:
                 remote_sg = addr.get_security_group()
                 try:
                     remote_sg_obj = self._vnc_lib.security_group_read(
@@ -1344,7 +1344,7 @@ class DBInterface(object):
 
                 net_obj.add_network_policy(policy_obj,
                                            VirtualNetworkPolicyType(
-                                           sequence=SequenceType(seq, 0)))
+                                                sequence=SequenceType(seq, 0)))
                 seq = seq + 1
 
         if 'vpc:route_table' in network_q:
@@ -1365,7 +1365,6 @@ class DBInterface(object):
         extra_dict = {}
 
         id_perms = net_obj.get_id_perms()
-        perms = id_perms.permissions
         net_q_dict['id'] = net_obj.uuid
         net_q_dict['name'] = net_obj.name
         extra_dict['contrail:fq_name'] = net_obj.get_fq_name()
@@ -1422,7 +1421,7 @@ class DBInterface(object):
         if subnet_q['gateway_ip'] != attr.ATTR_NOT_SPECIFIED:
             default_gw = subnet_q['gateway_ip']
         else:
-            # Assigned first+1 from cidr 
+            # Assigned first+1 from cidr
             network = IPNetwork('%s/%s' % (pfx, pfx_len))
             default_gw = str(IPAddress(network.first + 1))
         if subnet_q['allocation_pools'] != attr.ATTR_NOT_SPECIFIED:
@@ -1470,17 +1469,17 @@ class DBInterface(object):
         for alloc_obj in alloc_obj_list:
             first_ip = alloc_obj.get_start()
             last_ip = alloc_obj.get_end()
-            alloc_dict = {'first_ip':first_ip, 'last_ip':last_ip}
+            alloc_dict = {'first_ip': first_ip, 'last_ip': last_ip}
             allocation_pools.append(alloc_dict)
 
         if allocation_pools is None or not allocation_pools:
             if (int(IPNetwork(sn_q_dict['gateway_ip']).network) ==
-                int(IPNetwork(cidr).network+1)):
+                int(IPNetwork(cidr).network + 1)):
                 first_ip = str(IPNetwork(cidr).network + 2)
             else:
                 first_ip = str(IPNetwork(cidr).network + 1)
             last_ip = str(IPNetwork(cidr).broadcast - 1)
-            cidr_pool = {'first_ip':first_ip, 'last_ip':last_ip}
+            cidr_pool = {'first_ip': first_ip, 'last_ip': last_ip}
             allocation_pools.append(cidr_pool)
         sn_q_dict['allocation_pools'] = allocation_pools
         sn_q_dict['enable_dhcp'] = subnet_vnc.get_enable_dhcp()
@@ -1493,7 +1492,7 @@ class DBInterface(object):
             for nameserver in nameservers:
                 nameserver_entry = {'address': nameserver,
                                     'subnet_id': sn_id}
-                nameserver_dict_list.append(nameserver_entry) 
+                nameserver_dict_list.append(nameserver_entry)
             sn_q_dict['dns_nameservers'] = nameserver_dict_list
              
         # TODO get from ipam_obj
@@ -1708,7 +1707,7 @@ class DBInterface(object):
                                                id_perms=id_perms)
             port_obj.uuid = port_uuid
             port_obj.set_virtual_network(net_obj)
-            if ('mac_address' in port_q and 
+            if ('mac_address' in port_q and
                 port_q['mac_address'].__class__ is not object):
                 mac_addrs_obj = MacAddressesType()
                 mac_addrs_obj.set_mac_address(port_q['mac_address'])
@@ -1977,7 +1976,7 @@ class DBInterface(object):
             net_objs = self._network_list_project(None)
             all_net_objs.extend(net_objs)
         elif filters and 'shared' in filters:
-            if filters['shared'][0] == True:
+            if filters['shared'][0]:
                 nets = self._network_list_shared()
                 for net in nets:
                     net_info = self._network_vnc_to_neutron(net,
@@ -1998,7 +1997,7 @@ class DBInterface(object):
             if not self._filters_is_present(filters, 'name',
                                             net_obj.get_fq_name()[-1]):
                 continue
-            if net_obj.is_shared == None:
+            if net_obj.is_shared is None:
                 is_shared = False
             else:
                 is_shared = net_obj.is_shared
@@ -2025,15 +2024,15 @@ class DBInterface(object):
 
     # subnet api handlers
     def subnet_create(self, subnet_q):
-        if subnet_q['gateway_ip'] == None:
+        if subnet_q['gateway_ip'] is None:
             # return exception. This attribute is not supported yet
-             msg = _("Disable gateway is not supported")
-             raise exceptions.BadRequest(resource='subnet', msg=msg)
+            msg = _("Disable gateway is not supported")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
 
         if subnet_q['host_routes'] != attr.ATTR_NOT_SPECIFIED:
-             # return exception. This attribute is not supported yet
-             msg = _("Setting host routes is not supported")
-             raise exceptions.BadRequest(resource='subnet', msg=msg)  
+            # return exception. This attribute is not supported yet
+            msg = _("Setting host routes is not supported")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
 
         net_id = subnet_q['network_id']
         net_obj = self._virtual_network_read(net_id=net_id)
@@ -2111,8 +2110,7 @@ class DBInterface(object):
             for ipam_ref in ipam_refs:
                 subnet_vncs = ipam_ref['attr'].get_ipam_subnets()
                 for subnet_vnc in subnet_vncs:
-                    if self._subnet_vnc_get_key(subnet_vnc, net_id) == \
-                        subnet_key:
+                    if subnet_key == self._subnet_vnc_get_key(subnet_vnc, net_id):
                         ret_subnet_q = self._subnet_vnc_to_neutron(
                             subnet_vnc, net_obj, ipam_ref['to'])
                         self._db_cache['q_subnets'][subnet_id] = ret_subnet_q
@@ -2159,7 +2157,6 @@ class DBInterface(object):
 
     def subnets_list(self, context, filters=None):
         ret_subnets = []
-
         all_net_objs = []
         if filters and 'id' in filters:
             # required subnets are specified,
@@ -2200,7 +2197,7 @@ class DBInterface(object):
                         sn_net_id = sn_info['q_api_data']['network_id']
 
                         if (filters and 'shared' in filters and
-                                        filters['shared'][0] == True):
+                                        filters['shared'][0]):
                             if not net_obj.is_shared:
                                 continue
                         elif filters:
@@ -2431,7 +2428,7 @@ class DBInterface(object):
         ret_list = []
 
         if filters and 'shared' in filters:
-            if filters['shared'][0] == True:
+            if filters['shared'][0]:
                 # no support for shared routers
                 return ret_list
 
@@ -2450,7 +2447,7 @@ class DBInterface(object):
                     ret_list.append(rtr_info)
             else:
                 # read all routers in project, and prune below
-                project_ids = [str(uuid.UUID(id)) \
+                project_ids = [str(uuid.UUID(id))
                                for id in filters['tenant_id']]
                 for p_id in project_ids:
                     if 'router:external' in filters:
@@ -2600,10 +2597,8 @@ class DBInterface(object):
                                                        subnet_id=subnet_id)
             subnet_id = port_subnet_id
             subnet = self.subnet_read(subnet_id)['q_api_data']
-            network_id = subnet['network_id']
         elif subnet_id:
             subnet = self.subnet_read(subnet_id)['q_api_data']
-            network_id = subnet['network_id']
 
             for intf in router_obj.get_virtual_machine_interface_refs() or []:
                 port_id = intf['uuid']
@@ -2704,7 +2699,7 @@ class DBInterface(object):
 
     def _ip_addr_in_net_id(self, ip_addr, net_id):
         """Checks if ip address is present in net-id."""
-        net_ip_list = [ipobj.get_instance_ip_address() for ipobj in 
+        net_ip_list = [ipobj.get_instance_ip_address() for ipobj in
                                 self._instance_ip_list(back_ref_id=[net_id])]
         if ip_addr in net_ip_list:
             return True
@@ -2745,7 +2740,7 @@ class DBInterface(object):
         port_id = self._virtual_machine_interface_create(port_obj)
 
         # initialize ip object
-        if ip_obj == None:
+        if ip_obj is None:
             ip_name = str(uuid.uuid4())
             ip_obj = InstanceIp(name=ip_name)
             ip_obj.uuid = ip_name
@@ -2880,7 +2875,6 @@ class DBInterface(object):
     #end port_delete
 
     def port_list(self, context=None, filters=None):
-        project_obj = None
         ret_q_ports = []
         all_project_ids = []
 
@@ -2889,7 +2883,7 @@ class DBInterface(object):
             'network:dhcp' in filters.get('device_owner', [])):
             return ret_q_ports
 
-        if not 'device_id' in filters:
+        if 'device_id' not in filters:
             # Listing from back references
             if not filters:
                 # TODO once vmi is linked to project in schema, use project_id
@@ -3114,7 +3108,7 @@ class DBInterface(object):
 
             sgr_entries = sg_obj.get_security_group_entries()
             sg_rules = []
-            if sgr_entries == None:
+            if sgr_entries is None:
                 return
 
             for sg_rule in sgr_entries.get_policy_rule():
