@@ -54,38 +54,16 @@ vnc_opts = [
 ]
 
 
-# ContrailError message have translated already.
-# so there is no need to use i18n here.
-class ContrailNotFoundError(exc.NotFound):
-    message = '%(msg)s'
-
-
-class ContrailConflictError(exc.Conflict):
-    message = '%(msg)s'
-
-
-class ContrailBadRequestError(exc.BadRequest):
-    message = '%(msg)s'
-
-
-class ContrailServiceUnavaiableError(exc.ServiceUnavailable):
-    message = '%(msg)s'
-
-
-class ContrailNotAuthorizedError(exc.NotAuthorized):
-    message = '%(msg)s'
-
-
 class InvalidContrailExtensionError(exc.ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
 
 
 CONTRAIL_EXCEPTION_MAP = {
-    webob.exc.HTTPNotFound.code: ContrailNotFoundError,
-    webob.exc.HTTPConflict.code: ContrailConflictError,
-    webob.exc.HTTPBadRequest.code: ContrailBadRequestError,
-    webob.exc.HTTPServiceUnavailable.code: ContrailServiceUnavaiableError,
-    webob.exc.HTTPForbidden.code: ContrailNotAuthorizedError,
+    webob.exc.HTTPNotFound.code: exc.NotFound,
+    webob.exc.HTTPConflict.code: exc.Conflict,
+    webob.exc.HTTPBadRequest.code: exc.BadRequest,
+    webob.exc.HTTPServiceUnavailable.code: exc.ServiceUnavailable,
+    webob.exc.HTTPForbidden.code: exc.NotAuthorized,
 }
 
 
@@ -264,8 +242,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     def _raise_contrail_error(self, status_code, info, obj_name):
         if status_code == webob.exc.HTTPBadRequest.code:
-            raise ContrailBadRequestError(
-                msg=info['message'], resource=obj_name)
+            raise exc.BadRequest(msg=info['message'], resource=obj_name)
         error_clazz = CONTRAIL_EXCEPTION_MAP[status_code]
         e = error_clazz(msg=info['message'])
         e.__class__.__name__ = str(info['type'])
