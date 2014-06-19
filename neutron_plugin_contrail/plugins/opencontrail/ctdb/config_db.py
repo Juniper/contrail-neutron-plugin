@@ -2145,12 +2145,6 @@ class DBInterface(object):
                 msg = _("Gateway disabling is not supported")
                 raise exceptions.BadRequest(resource='subnet', msg=msg)
  
-        if 'host_routes' in subnet_q:
-            if subnet_q['host_routes'] != attr.ATTR_NOT_SPECIFIED:
-                # return exception. This attribute is not supported yet
-                msg = _("update of host-routes is not supported")
-                raise exceptions.BadRequest(resource='subnet', msg=msg) 
-
         if 'allocation_pools' in subnet_q:
             if subnet_q['allocation_pools'] != attr.ATTR_NOT_SPECIFIED:
                 # return exception. This attribute is not supported yet
@@ -2181,7 +2175,25 @@ class DBInterface(object):
         
                     if 'dns_nameservers' in subnet_q:
                         if subnet_q['dns_nameservers'] != attr.ATTR_NOT_SPECIFIED:
-                            subnet_vnc.set_dns_nameservers(subnet_q['dns_nameservers'])
+                            dhcp_options=[]
+                            for dns_server in subnet_q['dns_nameservers']:
+                                dhcp_options.append(DhcpOptionType(dhcp_option_name='6',
+                                                                   dhcp_option_value=dns_server))
+                            if dhcp_options:
+                                subnet_vnc.set_dhcp_option_list(DhcpOptionsListType(dhcp_options))
+                            else:
+                                subnet_vnc.set_dhcp_option_list(None)
+ 
+                    if 'host_routes' in subnet_q:
+                        if subnet_q['host_routes'] != attr.ATTR_NOT_SPECIFIED:
+                            host_routes=[]
+                            for host_route in subnet_q['host_routes']:
+                                host_routes.append(RouteType(prefix=host_route['destination'],
+                                                             next_hop=host_route['nexthop']))
+                            if host_routes:
+                                subnet_vnc.set_host_routes(RouteTableType(host_routes))
+                            else:
+                                subnet_vnc.set_host_routes(None)
                 
                     net_obj._pending_field_updates.add('network_ipam_refs')
                     self._virtual_network_update(net_obj)
