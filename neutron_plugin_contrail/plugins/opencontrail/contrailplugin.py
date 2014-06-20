@@ -965,6 +965,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
 
             LOG.debug("create_port(): " + pformat(port_dict))
             return port_dict
+        except RefsExistError as e:
+            raise exc.BadRequest(resource='port', msg=str(e))
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
