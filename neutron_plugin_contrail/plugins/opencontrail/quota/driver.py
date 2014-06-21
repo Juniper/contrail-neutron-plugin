@@ -100,7 +100,7 @@ class QuotaDriver(object):
         quotas = {}
         sub_resources = dict((k, v) for k, v in resources.items())
         for resource in sub_resources.values():
-            if resource.name in qn2c.keys():
+            if quota and resource.name in qn2c.keys():
                 quotas[resource.name] = quota.__dict__[qn2c[resource.name]] or quota.get_defaults()
             else:
                 quotas[resource.name] = resource.default
