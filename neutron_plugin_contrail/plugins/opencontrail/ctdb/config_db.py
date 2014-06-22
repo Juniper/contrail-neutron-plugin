@@ -2146,6 +2146,9 @@ class DBInterface(object):
                 # return exception. This attribute is not supported yet
                 msg = _("Gateway disabling is not supported")
                 raise exceptions.BadRequest(resource='subnet', msg=msg)
+            elif subnet_q['gateway_ip'] != attr.ATTR_NOT_SPECIFIED:
+                msg = _("update of gateway is not supported")
+                raise exceptions.BadRequest(resource='subnet', msg=msg)
  
         if 'allocation_pools' in subnet_q:
             if subnet_q['allocation_pools'] != attr.ATTR_NOT_SPECIFIED:
@@ -2170,11 +2173,7 @@ class DBInterface(object):
                     if 'enable_dhcp' in subnet_q:
                         if subnet_q['enable_dhcp'] != attr.ATTR_NOT_SPECIFIED: 
                             subnet_vnc.set_enable_dhcp(subnet_q['enable_dhcp'])
-                                                    
-                    if 'gateway_ip' in subnet_q:
-                        if subnet_q['gateway_ip'] != attr.ATTR_NOT_SPECIFIED:
-                            subnet_vnc.set_default_gateway(subnet_q['gateway_ip'])
-        
+ 
                     if 'dns_nameservers' in subnet_q:
                         if subnet_q['dns_nameservers'] != attr.ATTR_NOT_SPECIFIED:
                             dhcp_options=[]
@@ -2185,7 +2184,7 @@ class DBInterface(object):
                                 subnet_vnc.set_dhcp_option_list(DhcpOptionsListType(dhcp_options))
                             else:
                                 subnet_vnc.set_dhcp_option_list(None)
- 
+
                     if 'host_routes' in subnet_q:
                         if subnet_q['host_routes'] != attr.ATTR_NOT_SPECIFIED:
                             host_routes=[]
