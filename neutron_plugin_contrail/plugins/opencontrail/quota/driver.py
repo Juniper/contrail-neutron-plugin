@@ -88,6 +88,7 @@ class QuotaDriver(object):
     def get_tenant_quotas(context, resources, tenant_id):
         try:
             proj_id = str(uuid.UUID(tenant_id))
+            cfgdb = ContrailPlugin._get_user_cfgdb(context)
             proj_obj = cfgdb._project_read(proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
