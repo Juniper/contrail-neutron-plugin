@@ -13,7 +13,7 @@ import sys
 import cgitb
 import uuid
 import time
-
+from neutron.common import exceptions
 from neutron_plugin_contrail.plugins.opencontrail.contrailplugin import ContrailPlugin
 
 LOG = logging.getLogger(__name__)
@@ -140,6 +140,8 @@ class QuotaDriver(object):
                     time.sleep(2)
 
             quota = proj_obj.get_quota()
+        except ValueError as e:
+            raise exceptions.BadRequest(resource=resource, msg="Bad tenant id")
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
