@@ -12,7 +12,7 @@ import string
 import sys
 import cgitb
 import uuid
-
+from neutron.common import exceptions
 from neutron.plugins.juniper.contrail.contrailplugin import ContrailPlugin
 
 LOG = logging.getLogger(__name__)
@@ -133,6 +133,8 @@ class QuotaDriver(object):
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cfgdb._project_read(proj_id)
             quota = proj_obj.get_quota()
+        except ValueError as e:
+            raise exceptions.BadRequest(resource=resource, msg="Bad tenant id")
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
