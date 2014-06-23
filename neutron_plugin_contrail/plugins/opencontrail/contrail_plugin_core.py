@@ -853,11 +853,17 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return self._list_resource('security_group', context,
                                    filters, fields)
 
+    def get_security_groups_count(self, context, filters=None):
+        return 0
+
+    def get_security_group_rules_count(self, context, filters=None):
+        return 0
+
     def create_security_group_rule(self, context, security_group_rule):
         """Creates a security group rule."""
         rule = security_group_rule.get('security_group_rule')
         self._validate_port_range(rule)
-        self._validate_ip_prefix(rule)
+        #self._validate_ip_prefix(rule)
         return self._create_resource('security_group_rule', context,
                                      security_group_rule)
 
