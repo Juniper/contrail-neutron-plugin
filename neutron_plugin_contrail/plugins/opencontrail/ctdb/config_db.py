@@ -2000,6 +2000,12 @@ class DBInterface(object):
                     net_info = self._network_vnc_to_neutron(net,
                                                             net_repr='LIST')
                     ret_dict[net.uuid] = net_info
+        elif filters and 'router:external' in filters:
+            nets = self._network_list_router_external()
+            if filters['router:external'][0] == True:
+                for net in nets:
+                    net_info = self._network_vnc_to_neutron(net, net_repr='LIST')
+                    ret_dict[net.uuid] = net_info
         else:
             # read all networks in all projects
             all_net_objs.extend(self._virtual_network_list(detail=True))
