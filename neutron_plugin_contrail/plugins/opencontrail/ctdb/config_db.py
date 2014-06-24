@@ -2801,48 +2801,57 @@ class DBInterface(object):
 
         # if ip address passed then use it
         ip_addr = None
-        ip_obj = None
-        if port_q['fixed_ips'].__class__ is not object:
-            if len(port_q['fixed_ips']) > 0:
-                # check if 'ip_address' key is present or not
-                # before accessing it.
-                if 'ip_address' in port_q['fixed_ips'][0]:
-                    ip_addr = port_q['fixed_ips'][0]['ip_address']
+        ip_objs = []
+        if port_q['fixed_ips'] != attr.ATTR_NOT_SPECIFIED:
+            for fixed_ip in port_q['fixed_ips']:
+                # subnet_id in fixed_ips is not yet supported.
+                # Raise a bad request 
+                if 'subnet_id' in fixed_ip:
+                    msg = _("fixed-ips doesn't support subnet id")
+                    raise exceptions.BadRequest(resource='subnet', msg=msg)
 
+                ip_dict = {'ip_obj' : None, 'ip_addr':None}
+                if 'ip_address' in fixed_ip:
+                    ip_addr = fixed_ip['ip_address']
+                    ip_dict['ip_addr'] = ip_addr
                     # check for ecmp shared iip
                     ip_name = '%s %s' % (net_id, ip_addr)
                     try:
                         ip_obj = self._instance_ip_read(fq_name=[ip_name])
-                        ip_id = ip_obj.uuid
+                        ip_id = ip_obj.uuid   
+                        ip_dict['ip_obj'] = ip_obj                                             
                     except Exception as e:
-                        ip_obj = None
                         if self._ip_addr_in_net_id(ip_addr, net_id):
                             raise exceptions.IpAddressInUse(net_id=net_id,
                                                             ip_address=ip_addr)
+                ip_objs.append(ip_dict)
+        else:
+            ip_objs = [{'ip_obj' : None, 'ip_addr':None}]
 
         # create the object
         port_id = self._virtual_machine_interface_create(port_obj)
 
-        # initialize ip object
-        if ip_obj == None:
-            ip_name = str(uuid.uuid4())
-            ip_obj = InstanceIp(name=ip_name)
-            ip_obj.uuid = ip_name
-            ip_obj.set_virtual_machine_interface(port_obj)
-            ip_obj.set_virtual_network(net_obj)
-            if ip_addr:
-                ip_obj.set_instance_ip_address(ip_addr)
-            try:
-                ip_id = self._instance_ip_create(ip_obj)
-            except Exception as e:
-                # ResourceExhaustionError, resources are not available
-                self._virtual_machine_interface_delete(port_id=port_id)
-                raise exceptions.ResourceExhausted()
-        # shared ip address
-        else:
-            if ip_addr == ip_obj.get_instance_ip_address():
-                ip_obj.add_virtual_machine_interface(port_obj)
-                self._instance_ip_update(ip_obj)
+        for ip_dict in ip_objs:
+            ip_obj = ip_dict['ip_obj']
+            if ip_obj == None:
+                ip_name = str(uuid.uuid4())
+                ip_obj = InstanceIp(name=ip_name)
+                ip_obj.uuid = ip_name
+                ip_obj.set_virtual_machine_interface(port_obj)
+                ip_obj.set_virtual_network(net_obj)
+                if ip_dict['ip_addr']:
+                    ip_obj.set_instance_ip_address(ip_dict['ip_addr'])
+                try:
+                    ip_id = self._instance_ip_create(ip_obj)
+                except Exception as e:
+                    # ResourceExhaustionError, resources are not available
+                    self._virtual_machine_interface_delete(port_id=port_id)
+                    raise exceptions.ResourceExhausted()
+            # shared ip address
+            else:
+                if ip_dict['ip_addr'] == ip_obj.get_instance_ip_address():
+                    ip_obj.add_virtual_machine_interface(port_obj)
+                    self._instance_ip_update(ip_obj)
 
         # TODO below reads back default parent name, fix it
         port_obj = self._virtual_machine_interface_read(port_id=port_id,
