@@ -154,14 +154,15 @@ class DBInterface(object):
         if context and not context.is_admin:
             return [context.tenant]
 
-        return_project_ids = []
+        return_project_uuids = []
         for project_id in project_ids:
             try:
-                return_project_ids.append(str(uuid.UUID(project_id)))
-            except ValueError:
+                project_uuid = str(uuid.UUID(project_id))
+                self._vnc_lib.project_read(id=project_uuid)
+            except (ValueError, NoIdError):
                 continue
-
-        return return_project_ids
+            return_project_uuids.append(project_uuid)
+        return return_project_uuids
 
     def _obj_to_dict(self, obj):
         return self._vnc_lib.obj_to_dict(obj)
