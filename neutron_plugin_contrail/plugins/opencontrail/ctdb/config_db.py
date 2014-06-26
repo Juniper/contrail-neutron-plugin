@@ -1415,9 +1415,14 @@ class DBInterface(object):
     #end _network_vnc_to_neutron
 
     def _subnet_neutron_to_vnc(self, subnet_q):
-        cidr = subnet_q['cidr'].split('/')
-        pfx = cidr[0]
-        pfx_len = int(cidr[1])
+        try:
+            cidr = netaddr.IPNetwork(subnet_q['cidr'])
+            pfx = str(cidr.network)
+            pfx_len = int(cidr.prefixlen)
+        except AddrFormatError:
+            msg = _("Invalid CIDR format")
+            raise exceptions.BadRequest(resource='subnet', msg=msg)
+
         if subnet_q['gateway_ip'] != attr.ATTR_NOT_SPECIFIED:
             default_gw = subnet_q['gateway_ip']
         else:
