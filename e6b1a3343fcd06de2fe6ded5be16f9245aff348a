@@ -1,0 +1,8 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Sachin Bansal <bansalsachin@hotmail.com>
+Code-Review+2: Sachin Bansal <bansalsachin@hotmail.com>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Wed, 25 Jun 2014 23:56:24 -0700
+Reviewed-on: https://review.opencontrail.org/554
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/R1.06
