@@ -774,7 +774,11 @@ class DBInterface(object):
             rtr_obj = self._db_cache['vnc_routers'][rtr_id]
             fq_name_str = json.dumps(rtr_obj.get_fq_name())
         except KeyError:
-            pass
+            rtr_obj = self._logical_router_read(rtr_id)
+
+        if rtr_obj.get_virtual_machine_interface_refs():
+            msg = (_("Router %s still has ports") % rtr_id)
+            raise exceptions.BadRequest(resource='router', msg=msg)
 
         self._vnc_lib.logical_router_delete(id=rtr_id)
 
