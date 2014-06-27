@@ -2717,7 +2717,13 @@ class DBInterface(object):
 
     # floatingip api handlers
     def floatingip_create(self, fip_q):
-        fip_obj = self._floatingip_neutron_to_vnc(fip_q, CREATE)
+        try:
+            fip_obj = self._floatingip_neutron_to_vnc(fip_q, CREATE)
+        except Exception, e:
+            msg = _('Internal error when trying to create floating ip. '
+                    'Please be sure the network %s is an external '
+                    'network.') % (fip_q['floating_network_id'])
+            raise exceptions.BadRequest(resource='floatingip', msg=msg)
         fip_uuid = self._vnc_lib.floating_ip_create(fip_obj)
         fip_obj = self._vnc_lib.floating_ip_read(id=fip_uuid)
 
