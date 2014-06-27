@@ -21,6 +21,7 @@ import uuid
 import mock
 import netaddr
 from oslo.config import cfg
+from testtools import matchers
 import webob.exc
 
 from neutron.api import extensions
@@ -28,9 +29,11 @@ from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base as api_base
 from neutron.common import exceptions as exc
 from neutron import context as neutron_context
+from neutron.db import api as db
 from neutron.db import db_base_plugin_v2
 from neutron.db import external_net_db
 from neutron.db import l3_db
+from neutron.db import quota_db  # noqa
 from neutron.db import securitygroups_db
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup as ext_sg
@@ -48,20 +51,15 @@ class FakeServer(db_base_plugin_v2.NeutronDbPluginV2,
                  external_net_db.External_net_db_mixin,
                  securitygroups_db.SecurityGroupDbMixin,
                  l3_db.L3_NAT_db_mixin):
+    """FakeServer for contrail api server.
+
+    This class mocks behaviour of contrail API server.
+    """
     supported_extension_aliases = ['external-net', 'router', 'floatingip']
 
     @property
     def _core_plugin(self):
         return self
-
-    def update_subnet(self, context, id, subnet):
-        updated_subnet = super(
-            FakeServer, self).update_subnet(context, id, subnet)
-        updated_subnet['dns_nameservers'] = [
-            {'address': address}
-            for address in updated_subnet.get('dns_nameservers', [])]
-        updated_subnet['routes'] = updated_subnet.get('host_routes', [])
-        return updated_subnet
 
     def create_port(self, context, port):
         self._ensure_default_security_group_on_port(context, port)
@@ -112,55 +110,6 @@ class FakeServer(db_base_plugin_v2.NeutronDbPluginV2,
     def delete_network(self, context, id):
         self.delete_disassociated_floatingips(context, id)
         super(FakeServer, self).delete_network(context, id)
-
-    def _make_security_group_dict(self, security_group, fields=None):
-        res = {'id': security_group['id'],
-               'name': security_group['name'],
-               'tenant_id': security_group['tenant_id'],
-               'description': security_group.get('description')}
-        res['rules'] = [
-            self._make_security_group_rule_dict(r)
-            for r in security_group.get('rules', [])]
-        return self._fields(res, fields)
-
-    def _make_subnet_dict(self, subnet, fields=None):
-        res = {'id': subnet['id'],
-               'name': subnet['name'],
-               'tenant_id': subnet['tenant_id'],
-               'network_id': subnet['network_id'],
-               'ip_version': subnet['ip_version'],
-               'cidr': subnet['cidr'],
-               'allocation_pools': [{'first_ip': pool['first_ip'],
-                                     'last_ip': pool['last_ip']}
-                                    for pool in subnet['allocation_pools']],
-               'gateway_ip': subnet['gateway_ip'],
-               'enable_dhcp': subnet['enable_dhcp'],
-               'ipv6_ra_mode': subnet['ipv6_ra_mode'],
-               'ipv6_address_mode': subnet['ipv6_address_mode'],
-               'dns_nameservers': [{'address': dns['address']}
-                                   for dns in subnet['dns_nameservers']],
-               'routes': [{'destination': route['destination'],
-                           'nexthop': route['nexthop']}
-                          for route in subnet['routes']],
-               'shared': subnet['shared']
-               }
-        return self._fields(res, fields)
-
-    def _make_network_dict(self, network, fields=None,
-                           process_extensions=True):
-        res = {'id': network['id'],
-               'name': network['name'],
-               'tenant_id': network['tenant_id'],
-               'admin_state_up': network['admin_state_up'],
-               'status': network['status'],
-               'shared': network['shared'],
-               'subnets': [self._make_subnet_dict(subnet)
-                           for subnet in network['subnets']]}
-        # Call auxiliary extend functions, if any
-        if process_extensions:
-            self._apply_dict_extend_functions(
-                attr.NETWORKS, res, network)
-        return self._fields(res, fields)
 
     def request(self, *args, **kwargs):
         request_data = json.loads(kwargs['data'])
@@ -219,15 +168,14 @@ class FakeServer(db_base_plugin_v2.NeutronDbPluginV2,
                 obj['id'] = data.get('id')
         response = mock.MagicMock()
         response.status_code = code
-        response.content = json.dumps(obj)
+
+        def return_obj():
+            return obj
+        response.json = return_obj
         return response
 
 
 FAKE_SERVER = FakeServer()
-
-
-def init_mock():
-    mock.patch('requests.post').start().side_effect = FAKE_SERVER.request
 
 
 class Context(object):
@@ -264,59 +212,80 @@ class JVContrailPluginTestCase(test_plugin.NeutronDbPluginV2TestCase):
     def setUp(self, plugin=None, ext_mgr=None):
 
         cfg.CONF.keystone_authtoken = KeyStoneInfo()
+        mock.patch('requests.post').start().side_effect = FAKE_SERVER.request
+        db.configure_db()
         super(JVContrailPluginTestCase, self).setUp(self._plugin_name)
 
 
 class TestContrailNetworksV2(test_plugin.TestNetworksV2,
                              JVContrailPluginTestCase):
     def setUp(self):
-        init_mock()
         super(TestContrailNetworksV2, self).setUp()
 
 
 class TestContrailSubnetsV2(test_plugin.TestSubnetsV2,
                             JVContrailPluginTestCase):
     def setUp(self):
-        init_mock()
         super(TestContrailSubnetsV2, self).setUp()
 
-    # Support ipv6 in contrail
+    # Support ipv6 in contrail is planned in Juno
     def test_update_subnet_ipv6_attributes(self):
-        pass
+        self.skipTest("Contrail isn't supporting ipv6 yet")
 
     def test_update_subnet_ipv6_inconsistent_address_attribute(self):
-        pass
+        self.skipTest("Contrail isn't supporting ipv6 yet")
 
     def test_update_subnet_ipv6_inconsistent_enable_dhcp(self):
-        pass
+        self.skipTest("Contrail isn't supporting ipv6 yet")
 
     def test_update_subnet_ipv6_inconsistent_ra_attribute(self):
-        pass
+        self.skipTest("Contrail isn't supporting ipv6 yet")
 
     def test_delete_subnet_dhcp_port_associated_with_other_subnets(self):
-        # There is no dhcp port in contrail
-        pass
+        self.skipTest("There is no dhcp port in contrail")
+
+    def _helper_test_validate_subnet(self, option, exception):
+        cfg.CONF.set_override(option, 0)
+        with self.network() as network:
+            subnet = {'network_id': network['network']['id'],
+                      'cidr': '10.0.2.0/24',
+                      'ip_version': 4,
+                      'tenant_id': network['network']['tenant_id'],
+                      'gateway_ip': '10.0.2.1',
+                      'dns_nameservers': ['8.8.8.8'],
+                      'host_routes': [{'destination': '135.207.0.0/16',
+                                       'nexthop': '1.2.3.4'}]}
+            e = self.assertRaises(exception,
+                                  FAKE_SERVER._validate_subnet,
+                                  neutron_context.get_admin_context(
+                                      load_admin_roles=False),
+                                  subnet)
+            self.assertThat(
+                str(e),
+                matchers.Not(matchers.Contains('built-in function id')))
 
 
 class TestContrailPortsV2(test_plugin.TestPortsV2,
                           JVContrailPluginTestCase):
     def setUp(self):
-        init_mock()
         super(TestContrailPortsV2, self).setUp()
 
     def test_delete_ports_by_device_id(self):
-        # This method tests rpc API of which contrail isn't using
-        pass
+        self.skipTest("This method tests rpc API of "
+                      "which contrail isn't using")
 
     def test_delete_ports_by_device_id_second_call_failure(self):
-        # This method tests rpc API of which contrail isn't using
-        pass
+        self.skipTest("This method tests rpc API of "
+                      "which contrail isn't using")
+
+    def test_delete_ports_ignores_port_not_found(self):
+        self.skipTest("This method tests private method of "
+                      "which contrail isn't using")
 
 
 class TestContrailSecurityGroups(test_sg.TestSecurityGroups,
                                  JVContrailPluginTestCase):
     def setUp(self, plugin=None, ext_mgr=None):
-        init_mock()
         super(TestContrailSecurityGroups, self).setUp(self._plugin_name,
                                                       ext_mgr)
         ext_mgr = extensions.PluginAwareExtensionManager.get_instance()
@@ -329,7 +298,6 @@ class TestContrailPortBinding(JVContrailPluginTestCase,
     HAS_PORT_FILTER = True
 
     def setUp(self):
-        init_mock()
         super(TestContrailPortBinding, self).setUp()
 
 
@@ -338,5 +306,4 @@ class TestContrailL3NatTestCase(JVContrailPluginTestCase,
     mock_rescheduling = False
 
     def setUp(self):
-        init_mock()
         super(TestContrailL3NatTestCase, self).setUp()

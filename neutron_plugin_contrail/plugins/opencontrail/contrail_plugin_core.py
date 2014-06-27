@@ -14,23 +14,17 @@
 #
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
-import copy
-
-import netaddr
 from oslo.config import cfg
 import requests
-import webob
 
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
-from neutron.db import api as db
-from neutron.db import db_base_plugin_v2
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
-from neutron.db import securitygroups_db
 from neutron.extensions import external_net
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
+from neutron import neutron_plugin_base_v2
 from neutron.openstack.common import importutils
 from neutron.openstack.common import jsonutils as json
 from neutron.openstack.common import log as logging
@@ -43,15 +37,31 @@ vnc_opts = [
                help='IP address to connect to VNC controller'),
     cfg.StrOpt('api_server_port', default='8082',
                help='Port to connect to VNC controller'),
-    cfg.BoolOpt('multi_tenancy', default=False,
-                help='Enable multi-tenancy support'),
     cfg.DictOpt('contrail_extensions', default={},
                 help='Enable Contrail extensions(policy, ipam)'),
-    cfg.IntOpt('max_retries', default=-1,
-               help='Maximum retries to VNC Server(-1 for no limit)'),
-    cfg.IntOpt('retry_interval', default=3,
-               help='Retry Interval in seconds to connect to VNC Server'),
 ]
+
+
+# ContrailError message have translated already.
+# so there is no need to use i18n here.
+class ContrailNotFoundError(exc.NotFound):
+    message = '%(msg)s'
+
+
+class ContrailConflictError(exc.Conflict):
+    message = '%(msg)s'
+
+
+class ContrailBadRequestError(exc.BadRequest):
+    message = '%(msg)s'
+
+
+class ContrailServiceUnavailableError(exc.ServiceUnavailable):
+    message = '%(msg)s'
+
+
+class ContrailNotAuthorizedError(exc.NotAuthorized):
+    message = '%(msg)s'
 
 
 class InvalidContrailExtensionError(exc.ServiceUnavailable):
@@ -59,23 +69,22 @@ class InvalidContrailExtensionError(exc.ServiceUnavailable):
 
 
 CONTRAIL_EXCEPTION_MAP = {
-    webob.exc.HTTPNotFound.code: exc.NotFound,
-    webob.exc.HTTPConflict.code: exc.Conflict,
-    webob.exc.HTTPBadRequest.code: exc.BadRequest,
-    webob.exc.HTTPServiceUnavailable.code: exc.ServiceUnavailable,
-    webob.exc.HTTPForbidden.code: exc.NotAuthorized,
+    requests.codes.not_found: ContrailNotFoundError,
+    requests.codes.conflict: ContrailConflictError,
+    requests.codes.bad_request: ContrailBadRequestError,
+    requests.codes.service_unavailable: ContrailServiceUnavailableError,
+    requests.codes.unauthorized: ContrailNotAuthorizedError,
 }
 
 
-class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
-                                  securitygroups_db.SecurityGroupDbMixin,
+class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
+                                  securitygroup.SecurityGroupPluginBase,
                                   portbindings_base.PortBindingBaseMixin,
                                   external_net.External_net):
 
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
                                    "quotas", "external-net"]
-    _args = None
     PLUGIN_URL_PREFIX = '/neutron'
     __native_bulk_support = False
 
@@ -88,10 +97,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         contrail_extensions=ipam:<classpath>,policy:<classpath>
         """
 
-        self._contrail_extensions_instances = []
         contrail_extensions = cfg.CONF.APISERVER.contrail_extensions
-        #If multiple class specified for same extension, last one will win
-        #according to DictOpt beheivior
+        # If multiple class specified for same extension, last one will win
+        # according to DictOpt behavior
         for ext_name, ext_class in contrail_extensions.items():
             try:
                 if not ext_class:
@@ -101,16 +109,16 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                 ext_class = importutils.import_class(ext_class)
                 ext_instance = ext_class()
                 ext_instance.set_core(self)
-                self._contrail_extensions_instances.append(ext_instance)
+                for method in dir(ext_instance):
+                    for prefix in ['get', 'update', 'delete', 'create']:
+                        if method.startswith('%s_' % prefix):
+                            setattr(self, method,
+                                    ext_instance.__getattribute__(method))
             except Exception:
                 LOG.exception(_("Contrail Backend Error"))
-                #Converting contrail backend error to Neutron Exception
+                # Converting contrail backend error to Neutron Exception
                 raise InvalidContrailExtensionError(
                     ext_name=ext_name, ext_class=ext_class)
-
-        self._multi_tenancy = cfg.CONF.APISERVER.multi_tenancy
-        self._max_retries = cfg.CONF.APISERVER.max_retries
-        self._retry_interval = cfg.CONF.APISERVER.retry_interval
 
         #keystone
         self._authn_token = None
@@ -139,25 +147,15 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         binding = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
             portbindings.VIF_DETAILS: {
-                # TODO(rkukura): Replace with new VIF security details
+                # TODO(praneetb): Replace with new VIF security details
                 portbindings.CAP_PORT_FILTER:
                 'security-group' in self.supported_extension_aliases
             }
         }
         return binding
 
-    def __getattr__(self, name):
-        # We design contrail extensions by contract of which
-        # the class only have proper method for target extension
-        for extension_class in self._contrail_extensions_instances:
-            try:
-                return getattr(extension_class, name)
-            except AttributeError:
-                pass
-
-        raise AttributeError()
-
     def get_agents(self, context, filters=None, fields=None):
+        # This method is implemented so that horizon is happy
         return []
 
     def _request_api_server(self, url, data=None, headers=None):
@@ -203,7 +201,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         url_path = "%s/%s" % (self.PLUGIN_URL_PREFIX, obj_name)
         response = self._relay_request(url_path, data=data)
         if response.content:
-            return response.status_code, json.loads(response.content)
+            return response.status_code, response.json()
         else:
             return response.status_code, response.content
 
@@ -230,25 +228,39 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         resource_dict['fields'] = fields
         return resource_dict
 
-    def _transform_response(self, status_code, info=None, info_list=None,
-                            fields=None, obj_name=None):
+    def _prune(self, resource_dict, fields):
+        if fields:
+            return dict(((key, item) for key, item in resource_dict.items()
+                         if key in fields))
+        return resource_dict
+
+    def _transform_response(self, status_code, info=None, obj_name=None,
+                            fields=None):
         if status_code == requests.codes.ok:
-            func = getattr(self, "_make_%s_dict" % obj_name)
-            if info:
-                return func(info, fields)
+            if not isinstance(info, list):
+                return self._prune(info, fields)
             else:
-                return [func(i, fields) for i in info_list]
+                return [self._prune(items, fields) for items in info]
         self._raise_contrail_error(status_code, info, obj_name)
 
     def _raise_contrail_error(self, status_code, info, obj_name):
-        if status_code == webob.exc.HTTPBadRequest.code:
-            raise exc.BadRequest(msg=info['message'], resource=obj_name)
-        error_clazz = CONTRAIL_EXCEPTION_MAP[status_code]
-        e = error_clazz(msg=info['message'])
-        e.__class__.__name__ = str(info['type'])
-        raise e
+        if status_code == requests.codes.bad_request:
+            raise ContrailBadRequestError(
+                msg=info['message'], resource=obj_name)
+        error_class = CONTRAIL_EXCEPTION_MAP[status_code]
+        raise error_class(msg=info['message'])
 
     def _create_resource(self, res_type, context, res_data):
+        """Create a resource in API server.
+
+        This method encodes neutron model, and sends it to the
+        contrail api server.
+        """
+
+        for key, value in res_data[res_type].items():
+            if value == attr.ATTR_NOT_SPECIFIED:
+                res_data[res_type][key] = None
+
         res_dict = self._encode_resource(resource=res_data[res_type])
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'CREATE')
@@ -260,6 +272,11 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return res_dicts
 
     def _get_resource(self, res_type, context, id, fields):
+        """Get a resource from API server.
+
+        This method gets a resource from the contrail api server
+        """
+
         res_dict = self._encode_resource(resource_id=id, fields=fields)
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'READ')
@@ -271,6 +288,11 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return res_dicts
 
     def _update_resource(self, res_type, context, id, res_data):
+        """Update a resource in API server.
+
+        This method updates a resource in the contrail api server
+        """
+
         res_dict = self._encode_resource(resource_id=id,
                                          resource=res_data[res_type])
         status_code, res_info = self._request_backend(context, res_dict,
@@ -283,6 +305,11 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return res_dicts
 
     def _delete_resource(self, res_type, context, id):
+        """Delete a resource in API server
+
+        This method deletes a resource in the contrail api server
+        """
+
         res_dict = self._encode_resource(resource_id=id)
         LOG.debug("delete_%(res_type)s(): %(id)s",
                   {'res_type': res_type, 'id': id})
@@ -296,7 +323,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         res_dict = self._encode_resource(filters=filters, fields=fields)
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'READALL')
-        res_dicts = self._transform_response(status_code, info_list=res_info,
+        res_dicts = self._transform_response(status_code, info=res_info,
                                              fields=fields, obj_name=res_type)
         LOG.debug(
             "get_%(res_type)s(): filters: %(filters)r data: %(res_dicts)r",
@@ -319,17 +346,11 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
     def create_network(self, context, network):
         """Creates a new Virtual Network."""
 
-        if network['network']['router:external'] == attr.ATTR_NOT_SPECIFIED:
-            del network['network']['router:external']
-
-        for key, value in network['network'].items():
-            if value == attr.ATTR_NOT_SPECIFIED:
-                network['network'][key] = None
-
         return self._create_resource('network', context, network)
 
     def get_network(self, context, network_id, fields=None):
         """Get the attributes of a particular Virtual Network."""
+
         return self._get_network(context, network_id, fields)
 
     def update_network(self, context, network_id, network):
@@ -359,114 +380,41 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         networks_count = self._count_resource('network', context, filters)
         return networks_count['count']
 
-    def _get_subnet(self, context, id):
-        return self._get_resource('subnet', context, id, None)
-
-    def _get_all_subnets(self, context):
-        all_networks = self.get_networks(context)
-        all_subnets = []
-        for network in all_networks:
-            subnets = [self._get_subnet(
-                context, id) for id in network['subnets']]
-            all_subnets.extend(subnets)
-
-        return all_subnets
-
-    def _validate_subnet_cidr(self, context, network, new_subnet_cidr):
-        """Validate the CIDR for a subnet.
-
-        Verifies the specified CIDR does not overlap with the ones defined
-        for the other subnets specified for this network, or with any other
-        CIDR if overlapping IPs are disabled.
-        """
-
-        new_subnet_ipset = netaddr.IPSet([new_subnet_cidr])
-        if cfg.CONF.allow_overlapping_ips:
-            subnet_ids = network['subnets']
-            subnet_list = [self._get_subnet(context, id) for id in subnet_ids]
-        else:
-            subnet_list = self._get_all_subnets(context)
-
-        for subnet in subnet_list:
-            if (netaddr.IPSet([subnet['cidr']]) & new_subnet_ipset):
-                # don't give out details of the overlapping subnet
-                LOG.error(_("Validation for CIDR: %(new_cidr)s failed - "
-                            "overlaps with subnet %(subnet_id)s "
-                            "(CIDR: %(cidr)s)"),
-                          {'new_cidr': new_subnet_cidr,
-                           'subnet_id': subnet['id'],
-                           'cidr': subnet['cidr']})
-                err_msg = (_("Requested subnet with cidr: %(cidr)s for "
-                             "network: %(network_id)s overlaps with another "
-                             "subnet") %
-                           {'cidr': new_subnet_cidr,
-                            'network_id': network['id']})
-                raise exc.InvalidInput(error_message=err_msg)
-
-    def _make_subnet_dict(self, subnet, fields=None):
-        if subnet['gateway_ip'] == '0.0.0.0':
-            subnet['gateway_ip'] = None
-        return super(
-            NeutronPluginContrailCoreV2,
-            self)._make_subnet_dict(subnet, fields)
-
     def create_subnet(self, context, subnet):
         """Creates a new subnet, and assigns it a symbolic name."""
 
-        net = netaddr.IPNetwork(subnet['subnet']['cidr'])
-        # turn the CIDR into a proper subnet
-        subnet['subnet']['cidr'] = '%s/%s' % (net.network, net.prefixlen)
-        plugin_subnet = copy.deepcopy(subnet)
-        for key, value in subnet['subnet'].items():
-            if value == attr.ATTR_NOT_SPECIFIED:
-                plugin_subnet['subnet'][key] = None
-
         if subnet['subnet']['gateway_ip'] is None:
-            plugin_subnet['subnet']['gateway_ip'] = '0.0.0.0'
+            subnet['subnet']['gateway_ip'] = '0.0.0.0'
 
-        if plugin_subnet['subnet']['host_routes']:
-            if (len(plugin_subnet['subnet']['host_routes']) >
+        if subnet['subnet']['host_routes'] != attr.ATTR_NOT_SPECIFIED:
+            if (len(subnet['subnet']['host_routes']) >
                     cfg.CONF.max_subnet_host_routes):
-                raise exc.HostRoutesExhausted(subnet_id=plugin_subnet[
+                raise exc.HostRoutesExhausted(subnet_id=subnet[
                     'subnet'].get('id', _('new subnet')),
                     quota=cfg.CONF.max_subnet_host_routes)
 
-        self._validate_subnet(context, plugin_subnet['subnet'])
-        if plugin_subnet['subnet']['allocation_pools']:
-            self._validate_allocation_pools(
-                plugin_subnet['subnet']['allocation_pools'],
-                plugin_subnet['subnet']['cidr'])
-        if (plugin_subnet['subnet']['gateway_ip'] and
-                plugin_subnet['subnet']['allocation_pools']):
-            self._validate_gw_out_of_pools(
-                plugin_subnet['subnet']['gateway_ip'],
-                plugin_subnet['subnet']['allocation_pools'])
-        network = self._get_network(context,
-                                    plugin_subnet['subnet']['network_id'])
-        self._validate_subnet_cidr(context, network,
-                                   plugin_subnet['subnet']['cidr'])
-        return self._create_resource('subnet', context, plugin_subnet)
+        subnet_created = self._create_resource('subnet', context, subnet)
+        return self._make_subnet_dict(subnet_created)
+
+    def _make_subnet_dict(self, subnet):
+        if 'gateway_ip' in subnet and subnet['gateway_ip'] == '0.0.0.0':
+            subnet['gateway_ip'] = None
+        return subnet
+
+    def _get_subnet(self, context, subnet_id, fields=None):
+        subnet = self._get_resource('subnet', context, subnet_id, fields)
+        return self._make_subnet_dict(subnet)
 
     def get_subnet(self, context, subnet_id, fields=None):
         """Get the attributes of a particular subnet."""
 
-        return self._get_resource('subnet', context, subnet_id, fields)
+        return self._get_subnet(context, subnet_id, fields)
 
     def update_subnet(self, context, subnet_id, subnet):
         """Updates the attributes of a particular subnet."""
 
-        existing_subnet = self._get_subnet(context, subnet_id)
-        # for self._validate these fields are needed
-        subnet['subnet']['ip_version'] = existing_subnet['ip_version']
-        subnet['subnet']['cidr'] = existing_subnet['cidr']
-        subnet['subnet']['id'] = existing_subnet['id']
-        self._validate_subnet(context, subnet['subnet'])
-        if ('gateway_ip' in subnet['subnet'] and subnet[
-                'subnet']['gateway_ip']):
-            self._validate_gw_out_of_pools(subnet['subnet']['gateway_ip'],
-                                           existing_subnet['allocation_pools'])
-
-        return self._update_resource('subnet', context, subnet_id, subnet)
+        subnet = self._update_resource('subnet', context, subnet_id, subnet)
+        return self._make_subnet_dict(subnet)
 
     def delete_subnet(self, context, subnet_id):
         """
@@ -479,7 +427,9 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
     def get_subnets(self, context, filters=None, fields=None):
         """Get the list of subnets."""
 
-        return self._list_resource('subnet', context, filters, fields)
+        return [self._make_subnet_dict(s)
+                for s in self._list_resource(
+                    'subnet', context, filters, fields)]
 
     def get_subnets_count(self, context, filters=None):
         """Get the count of subnets."""
@@ -495,69 +445,12 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
             'security_groups', []) or []
         return port_res
 
+    def _make_port_dict(self, port):
+        return port
+
     def _get_port(self, context, id, fields=None):
-        return self._get_resource('port', context, id, fields)
-
-    def _validate_fixed_ips_for_port(self, context, network_id, fixed_ips):
-        """Test fixed IPs for port.
-
-        Check that configured subnets are valid prior to allocating any
-        IPs. Include the subnet_id in the result if only an IP address is
-        configured.
-
-        :raises: InvalidInput, IpAddressInUse
-        """
-
-        fixed_ip_set = []
-        for fixed in fixed_ips:
-            found = False
-            if 'subnet_id' not in fixed:
-                if 'ip_address' not in fixed:
-                    msg = _('IP allocation requires subnet_id or ip_address')
-                    raise exc.InvalidInput(error_message=msg)
-
-                filter = {'network_id': [network_id]}
-                subnets = self.get_subnets(context, filters=filter)
-                for subnet in subnets:
-                    if super(
-                        NeutronPluginContrailCoreV2, self)._check_subnet_ip(
-                            subnet['cidr'], fixed['ip_address']):
-                        found = True
-                        subnet_id = subnet['id']
-                        break
-                if not found:
-                    msg = _('IP address %s is not a valid IP for the defined '
-                            'networks subnets') % fixed['ip_address']
-                    raise exc.InvalidInput(error_message=msg)
-            else:
-                subnet = self._get_subnet(context, fixed['subnet_id'])
-                if subnet['network_id'] != network_id:
-                    msg = (_("Failed to create port on network %(network_id)s"
-                             ", because fixed_ips included invalid subnet "
-                             "%(subnet_id)s") %
-                           {'network_id': network_id,
-                            'subnet_id': fixed['subnet_id']})
-                    raise exc.InvalidInput(error_message=msg)
-                subnet_id = subnet['id']
-
-            if 'ip_address' in fixed:
-                # Ensure that the IP is valid on the subnet
-                if (not found and
-                    not super(
-                        NeutronPluginContrailCoreV2, self)._check_subnet_ip(
-                        subnet['cidr'], fixed['ip_address'])):
-                    msg = _('IP address %s is not a valid IP for the defined '
-                            'subnet') % fixed['ip_address']
-                    raise exc.InvalidInput(error_message=msg)
-
-                fixed_ip_set.append({'subnet_id': subnet_id,
-                                     'ip_address': fixed['ip_address']})
-            else:
-                fixed_ip_set.append({'subnet_id': subnet_id})
-        if len(fixed_ip_set) > cfg.CONF.max_fixed_ips_per_port:
-            msg = _('Exceeded maximim amount of fixed ips per port')
-            raise exc.InvalidInput(error_message=msg)
-        return fixed_ip_set
+        port = self._get_resource('port', context, id, fields)
+        return self._make_port_dict(port)
 
     def _update_ips_for_port(self, context, network_id, port_id, original_ips,
                              new_ips):
@@ -580,24 +473,13 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                     new_ips.remove(new_ip)
                     prev_ips.append(original_ip)
 
-        # Check if the IP's to add are OK
-        self._validate_fixed_ips_for_port(context, network_id, new_ips)
-
         return new_ips, prev_ips
 
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
-        port_in = port['port']
-        network_id = port_in['network_id']
-        if port_in.get('security_groups') == attr.ATTR_NOT_SPECIFIED:
-            del port_in['security_groups']
-        for key, value in port_in.items():
-            if value == attr.ATTR_NOT_SPECIFIED:
-                port_in[key] = None
-        if port_in['fixed_ips']:
-            self._validate_fixed_ips_for_port(
-                context, network_id, port_in['fixed_ips'])
-        return self._create_resource('port', context, port)
+
+        port = self._create_resource('port', context, port)
+        return self._make_port_dict(port)
 
     def get_port(self, context, port_id, fields=None):
         """Get the attributes of a particular port."""
@@ -618,7 +500,8 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
-        return self._update_resource('port', context, port_id, port)
+        port = self._update_resource('port', context, port_id, port)
+        return self._make_port_dict(port)
 
     def delete_port(self, context, port_id):
         """Deletes a port.
@@ -638,24 +521,14 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         specified Virtual Network with the specfied filter.
         """
 
-        return self._list_resource('port', context, filters, fields)
+        return [self._make_port_dict(p)
+                for p in self._list_resource('port', context, filters, fields)]
 
     def get_ports_count(self, context, filters=None):
         """Get the count of ports."""
 
         ports_count = self._count_resource('port', context, filters)
         return ports_count['count']
-
-    def _make_router_dict(self, router, fields=None,
-                          process_extensions=True):
-        res = {'id': router['id'],
-               'name': router['name'],
-               'tenant_id': router['tenant_id'],
-               'admin_state_up': router['admin_state_up'],
-               'status': router['status'],
-               'external_gateway_info': router['external_gateway_info'],
-               'gw_port_id': router['gw_port_id']}
-        return self._fields(res, fields)
 
     # Router API handlers
     def create_router(self, context, router):
@@ -732,17 +605,6 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         return res_info
 
     # Floating IP API handlers
-    def _make_floatingip_dict(self, floatingip, fields=None):
-        res = {'id': floatingip['id'],
-               'tenant_id': floatingip['tenant_id'],
-               'floating_ip_address': floatingip['floating_ip_address'],
-               'floating_network_id': floatingip['floating_network_id'],
-               'router_id': floatingip['router_id'],
-               'status': floatingip['status'],
-               'port_id': floatingip['port_id'],
-               'fixed_ip_address': floatingip['fixed_ip_address']}
-        return self._fields(res, fields)
-
     def create_floatingip(self, context, floatingip):
         """Creates a floating IP."""
 
@@ -775,57 +637,10 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
         fips_count = self._count_resource('floatingip', context, filters)
         return fips_count['count']
 
-    def plug_interface(self, tenant_id, net_id, port_id, remote_interface_id):
-        """Plug an interface.
-
-        Attaches a remote interface to the specified port on the
-        specified Virtual Network.
-        """
-
-        port = self._get_port(tenant_id, net_id, port_id)
-        # Validate attachment
-        self._validate_attachment(tenant_id, net_id, port_id,
-                                  remote_interface_id)
-        if port['interface_id']:
-            raise exc.PortInUse(net_id=net_id, port_id=port_id,
-                                att_id=port['interface_id'])
-        db.port_set_attachment(port_id, net_id, remote_interface_id)
-
-    def unplug_interface(self, tenant_id, net_id, port_id):
-        """Unplug an interface.
-
-        Detaches a remote interface from the specified port on the
-        specified Virtual Network.
-        """
-
-        self._get_port(tenant_id, net_id, port_id)
-        db.port_unset_attachment(port_id, net_id)
-
     # Security Group handlers
-    def _make_security_group_rule_dict(self, security_group_rule, fields=None):
-        res = {'id': security_group_rule['id'],
-               'tenant_id': security_group_rule['tenant_id'],
-               'security_group_id': security_group_rule['security_group_id'],
-               'ethertype': security_group_rule['ethertype'],
-               'direction': security_group_rule['direction'],
-               'protocol': security_group_rule['protocol'],
-               'port_range_min': security_group_rule['port_range_min'],
-               'port_range_max': security_group_rule['port_range_max'],
-               'remote_ip_prefix': security_group_rule['remote_ip_prefix'],
-               'remote_group_id': security_group_rule['remote_group_id']}
-        return self._fields(res, fields)
-
-    def _make_security_group_dict(self, security_group, fields=None):
-        res = {'id': security_group['id'],
-               'name': security_group['name'],
-               'tenant_id': security_group['tenant_id'],
-               'description': security_group.get('description')}
-        res['security_group_rules'] = [self._make_security_group_rule_dict(
-            r) for r in security_group.get('rules', [])]
-        return self._fields(res, fields)
-
     def create_security_group(self, context, security_group):
         """Creates a Security Group."""
+
         return self._create_resource('security_group', context,
                                      security_group)
 
@@ -861,9 +676,7 @@ class NeutronPluginContrailCoreV2(db_base_plugin_v2.NeutronDbPluginV2,
 
     def create_security_group_rule(self, context, security_group_rule):
         """Creates a security group rule."""
-        rule = security_group_rule.get('security_group_rule')
-        self._validate_port_range(rule)
-        #self._validate_ip_prefix(rule)
+
         return self._create_resource('security_group_rule', context,
                                      security_group_rule)
 
