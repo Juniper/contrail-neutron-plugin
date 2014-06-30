@@ -2059,7 +2059,12 @@ class DBInterface(object):
 
     # subnet api handlers
     def subnet_create(self, subnet_q):
-        if subnet_q['gateway_ip'] == None:
+        if subnet_q['name'] != attr.ATTR_NOT_SPECIFIED:
+            if subnet_q['name'] is not None and len(subnet_q['name']):
+                msg = _("Setting subnet name not supported")
+                raise exceptions.BadRequest(resource='subnet', msg=msg)
+
+        if subnet_q['gateway_ip'] is None:
             # return exception. This attribute is not supported yet
             msg = _("Disable gateway is not supported")
             raise exceptions.BadRequest(resource='subnet', msg=msg)
