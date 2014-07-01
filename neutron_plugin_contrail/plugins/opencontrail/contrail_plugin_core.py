@@ -259,7 +259,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         for key, value in res_data[res_type].items():
             if value == attr.ATTR_NOT_SPECIFIED:
-                res_data[res_type][key] = None
+                del res_data[res_type][key]
 
         res_dict = self._encode_resource(resource=res_data[res_type])
         status_code, res_info = self._request_backend(context, res_dict,
