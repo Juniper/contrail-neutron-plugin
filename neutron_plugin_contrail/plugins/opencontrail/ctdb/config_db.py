@@ -2505,6 +2505,11 @@ class DBInterface(object):
     #end router_read
 
     def router_update(self, rtr_id, router_q):
+        if 'name' in router_q:
+            if router_q['name'] != attr.ATTR_NOT_SPECIFIED:
+                msg = _("Router name cannot be modified")
+                raise exceptions.BadRequest(resource='router', msg=msg)
+
         router_q['id'] = rtr_id
         rtr_obj = self._router_neutron_to_vnc(router_q, UPDATE)
         self._logical_router_update(rtr_obj)
