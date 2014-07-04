@@ -1472,7 +1472,6 @@ class DBInterface(object):
 
     def _subnet_vnc_to_neutron(self, subnet_vnc, net_obj, ipam_fq_name):
         sn_q_dict = {}
-        sn_q_dict['name'] = ''
         sn_q_dict['tenant_id'] = net_obj.parent_uuid.replace('-', '')
         sn_q_dict['network_id'] = net_obj.uuid
         sn_q_dict['ip_version'] = 4  # TODO ipv6?
@@ -1487,7 +1486,11 @@ class DBInterface(object):
         sn_id = self._subnet_vnc_read_or_create_mapping(key=subnet_key)
 
         sn_q_dict['id'] = sn_id
-
+        try:
+            sn_q_dict['name'] = self._vnc_lib.kv_retrieve(key='subnet_name:' 
+                                                          + sn_id)
+        except NoIdError:
+            sn_q_dict['name'] = ''
         sn_q_dict['gateway_ip'] = subnet_vnc.default_gateway
         alloc_obj_list = subnet_vnc.get_allocation_pools()
         allocation_pools = []
@@ -2122,7 +2125,9 @@ class DBInterface(object):
         # api-server
         subnet_id = str(uuid.uuid4())
         self._subnet_vnc_create_mapping(subnet_id, subnet_key)
-
+        # store the subnet name in the kv store
+        subnet_name = subnet_q.get('name', '')
+        self._vnc_lib.kv_store('subnet_name:' + subnet_id, subnet_name)
         # Read in subnet from server to get updated values for gw etc.
         subnet_vnc = self._subnet_read(net_obj.uuid, subnet_key)
         subnet_info = self._subnet_vnc_to_neutron(subnet_vnc, net_obj,
@@ -2251,6 +2256,7 @@ class DBInterface(object):
                     except RefsExistError:
                         raise exceptions.SubnetInUse(subnet_id=subnet_id)
                     self._subnet_vnc_delete_mapping(subnet_id, subnet_key)
+                    self._vnc_lib.kv_delete(key='subnet_name:' + subnet_id)
                     try:
                         del self._db_cache['q_subnets'][subnet_id]
                     except KeyError:
@@ -2316,6 +2322,10 @@ class DBInterface(object):
                             if not self._filters_is_present(filters,
                                                             'network_id',
                                                             sn_net_id):
+                                continue
+                            if not self._filters_is_present(filters,
+                                                            'name',
+                                                            sn_name):
                                 continue
 
                         ret_subnets.append(sn_info)
