@@ -15,6 +15,7 @@ import uuid
 import time
 from neutron.common import exceptions
 from neutron_plugin_contrail.plugins.opencontrail.contrailplugin import ContrailPlugin
+from vnc_api.vnc_api import *
 
 LOG = logging.getLogger(__name__)
 
@@ -88,9 +89,16 @@ class QuotaDriver(object):
     @staticmethod
     def get_tenant_quotas(context, resources, tenant_id):
         try:
-            proj_id = str(uuid.UUID(tenant_id))
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
-            proj_obj = cfgdb._project_read(proj_id)
+        except Exception as e:
+            cgitb.Hook(format="text").handle(sys.exc_info())
+            raise e
+        try:
+            project_uuid = str(uuid.UUID(tenant_id))
+            proj_obj = cfgdb._project_read(project_uuid)
+        except (ValueError, NoIdError):
+            return {}
+        try:
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -114,8 +122,15 @@ class QuotaDriver(object):
     def delete_tenant_quota(context, tenant_id):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
-            proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = cfgdb._project_read(proj_id)
+        except Exception as e:
+            cgitb.Hook(format="text").handle(sys.exc_info())
+            raise e
+        try:
+            project_uuid = str(uuid.UUID(tenant_id))
+            proj_obj = cfgdb._project_read(project_uuid)
+        except (ValueError, NoIdError):
+            return
+        try:
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -131,17 +146,22 @@ class QuotaDriver(object):
     def update_quota_limit(context, tenant_id, resource, limit):
         try:
             cfgdb = ContrailPlugin._get_user_cfgdb(context)
-            proj_id = str(uuid.UUID(tenant_id))
+        except Exception as e:
+            cgitb.Hook(format="text").handle(sys.exc_info())
+            raise e
+        try:
+            project_uuid = str(uuid.UUID(tenant_id))
             for i in range(10):
                 try:
                     proj_obj = cfgdb._project_read(proj_id)
                     break
                 except Exception as e:
                     time.sleep(2)
-
+            proj_obj = cfgdb._project_read(project_uuid)
+        except (ValueError, NoIdError):
+            return {}
+        try:
             quota = proj_obj.get_quota()
-        except ValueError as e:
-            raise exceptions.BadRequest(resource=resource, msg="Bad tenant id")
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
