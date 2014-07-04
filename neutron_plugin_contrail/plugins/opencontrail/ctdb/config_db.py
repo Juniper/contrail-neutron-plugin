@@ -2262,6 +2262,10 @@ class DBInterface(object):
     def subnets_list(self, context, filters=None):
         ret_subnets = []
 
+        # Filtering, based only on name is not supported yet
+        if 'name' in filters and len(filters.keys()) is 1:
+            return ret_subnets
+
         all_net_objs = []
         if filters and 'id' in filters:
             # required subnets are specified,
