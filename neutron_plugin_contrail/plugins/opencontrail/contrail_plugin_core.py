@@ -28,7 +28,7 @@ from neutron import neutron_plugin_base_v2
 from neutron.openstack.common import importutils
 from neutron.openstack.common import jsonutils as json
 from neutron.openstack.common import log as logging
-
+from simplejson import JSONDecodeError
 
 LOG = logging.getLogger(__name__)
 
@@ -201,9 +201,9 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         url_path = "%s/%s" % (self.PLUGIN_URL_PREFIX, obj_name)
         response = self._relay_request(url_path, data=data)
-        if response.content:
+        try:
             return response.status_code, response.json()
-        else:
+        except JSONDecodeError:
             return response.status_code, response.content
 
     def _encode_context(self, context, operation, apitype):
