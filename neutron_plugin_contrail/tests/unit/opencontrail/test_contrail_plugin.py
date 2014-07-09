@@ -44,7 +44,7 @@ from neutron.tests.unit import test_extensions
 from neutron.tests.unit import test_l3_plugin
 
 
-CONTRAIL_PKG_PATH = "neutron.plugins.opencontrail.contrail_plugin_core"
+CONTRAIL_PKG_PATH = "neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_core"
 
 
 class FakeServer(db_base_plugin_v2.NeutronDbPluginV2,
@@ -294,6 +294,7 @@ class TestContrailSecurityGroups(test_sg.TestSecurityGroups,
 
 class TestContrailPortBinding(JVContrailPluginTestCase,
                               test_bindings.PortBindingsTestCase):
+    from neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_core import NeutronPluginContrailCoreV2
     VIF_TYPE = portbindings.VIF_TYPE_VROUTER
     HAS_PORT_FILTER = True
 
