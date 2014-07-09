@@ -17,6 +17,8 @@ setup(
     zip_safe=False,
     long_description="Contrail neutron plugin",
 
+    install_requires=requirements('requirements.txt'),
+
     test_suite='neutron_plugin_contrail.tests',
     tests_require=requirements('test-requirements.txt'),
 )
