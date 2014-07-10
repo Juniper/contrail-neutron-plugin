@@ -1468,6 +1468,7 @@ class DBInterface(object):
                 host_route_list = RouteTableType(host_routes)
 
         dhcp_config = subnet_q['enable_dhcp']
+        sn_name=subnet_q.get('name')
         subnet_vnc = IpamSubnetType(subnet=SubnetType(pfx, pfx_len),
                                     default_gateway=default_gw,
                                     enable_dhcp=dhcp_config,
@@ -1475,14 +1476,19 @@ class DBInterface(object):
                                     allocation_pools=alloc_pools,
                                     addr_from_start=True,
                                     dhcp_option_list=dhcp_option_list,
-                                    host_routes=host_route_list)
+                                    host_routes=host_route_list,
+                                    subnet_name=sn_name)
 
         return subnet_vnc
     #end _subnet_neutron_to_vnc
 
     def _subnet_vnc_to_neutron(self, subnet_vnc, net_obj, ipam_fq_name):
         sn_q_dict = {}
-        sn_q_dict['name'] = ''
+        sn_name = subnet_vnc.get_subnet_name()
+        if sn_name is not None:
+            sn_q_dict['name'] = sn_name
+        else:
+            sn_q_dict['name'] = ''
         sn_q_dict['tenant_id'] = net_obj.parent_uuid.replace('-', '')
         sn_q_dict['network_id'] = net_obj.uuid
         sn_q_dict['ip_version'] = 4  # TODO ipv6?
@@ -1497,7 +1503,7 @@ class DBInterface(object):
         sn_id = self._subnet_vnc_read_or_create_mapping(key=subnet_key)
 
         sn_q_dict['id'] = sn_id
-
+        
         sn_q_dict['gateway_ip'] = subnet_vnc.default_gateway
         alloc_obj_list = subnet_vnc.get_allocation_pools()
         allocation_pools = []
@@ -2066,11 +2072,6 @@ class DBInterface(object):
 
     # subnet api handlers
     def subnet_create(self, subnet_q):
-        if subnet_q['name'] != attr.ATTR_NOT_SPECIFIED:
-            if subnet_q['name'] is not None and len(subnet_q['name']):
-                msg = _("Setting subnet name not supported")
-                raise exceptions.BadRequest(resource='subnet', msg=msg)
-
         if subnet_q['gateway_ip'] is None:
             # return exception. This attribute is not supported yet
             msg = _("Disable gateway is not supported")
@@ -2307,6 +2308,7 @@ class DBInterface(object):
                         sn_id = sn_info['q_api_data']['id']
                         sn_proj_id = sn_info['q_api_data']['tenant_id']
                         sn_net_id = sn_info['q_api_data']['network_id']
+                        sn_name = sn_info['q_api_data']['name']
 
                         if (filters and 'shared' in filters and
                                         filters['shared'][0] == True):
@@ -2323,6 +2325,10 @@ class DBInterface(object):
                             if not self._filters_is_present(filters,
                                                             'network_id',
                                                             sn_net_id):
+                                continue
+                            if not self._filters_is_present(filters,
+                                                            'name',
+                                                            sn_name):
                                 continue
 
                         ret_subnets.append(sn_info)
