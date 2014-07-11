@@ -3019,9 +3019,11 @@ class DBInterface(object):
 
                 # read all VMI and IIP in detail one-shot
                 all_port_greenlet = eventlet.spawn(
-                    self._virtual_machine_interface_list)
+                    self._virtual_machine_interface_list,
+                    parent_id=proj_id)
                 port_iip_greenlet = eventlet.spawn(self._instance_ip_list)
                 port_net_greenlet = eventlet.spawn(self._virtual_network_list,
+                                                   parent_id=proj_id,
                                                    detail=True)
 
                 all_port_objs = all_port_greenlet.wait()
