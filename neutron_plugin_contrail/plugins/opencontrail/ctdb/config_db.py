@@ -479,7 +479,7 @@ class DBInterface(object):
                                         fields=None):
         back_ref_fields = ['logical_router_back_refs', 'instance_ip_back_refs', 'floating_ip_back_refs']
         if fields:
-            n_extra_fields = list(set(fields).add(back_ref_fields))
+            n_extra_fields = list(set(fields + back_ref_fields))
         else:
             n_extra_fields = back_ref_fields
 
@@ -539,7 +539,7 @@ class DBInterface(object):
                                         obj_uuids=None, fields=None):
         back_ref_fields = ['logical_router_back_refs', 'instance_ip_back_refs', 'floating_ip_back_refs']
         if fields:
-            n_extra_fields = list(set(fields).add(back_ref_fields))
+            n_extra_fields = list(set(fields + back_ref_fields))
         else:
             n_extra_fields = back_ref_fields
         vmi_objs = self._vnc_lib.virtual_machine_interfaces_list(
