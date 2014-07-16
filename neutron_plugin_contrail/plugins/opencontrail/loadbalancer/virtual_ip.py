@@ -1,13 +1,20 @@
 #
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
-
+from neutron.api.v2 import attributes
+from neutron.common import exceptions as n_exc
 from neutron.extensions import loadbalancer
+from neutron.openstack.common import log as logging
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import IdPermsType, NoIdError
+from vnc_api.vnc_api import InstanceIp, VirtualMachineInterface
+from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import VirtualIp, VirtualIpType
 
 from resource_manager import ResourceManager
+import utils
+
+LOG = logging.getLogger(__name__)
 
 
 class VirtualIpManager(ResourceManager):
@@ -43,26 +50,41 @@ class VirtualIpManager(ResourceManager):
             return None
         return pool_refs[0]['uuid']
 
-    def make_dict(self, vip, fields=None):
-        def get_vmi_uuid(vmi):
-            if vmi is None:
-                return None
-            return vmi.uuid
-
-        vmi = None
+    def _get_interface_params(self, vip, props):
         vmi_list = vip.get_virtual_machine_interface_refs()
-        if vmi_list:
-            vmi = self._api.virtual_machine_interface_read(
-                id=vmi_list[0]['uuid'])
+        if vmi_list is None:
+            return None
 
+        port_id = vmi_list[0]['uuid']
+        if not props.address or props.address == attributes.ATTR_NOT_SPECIFIED:
+            try:
+                vmi = self._api.virtual_machine_interface_read(id=port_id)
+            except NoIdError as ex:
+                LOG.error(ex)
+                return None
+
+            ip_refs = vmi.get_instance_ip_back_refs()
+            if ip_refs:
+                try:
+                    iip = self._api.instance_ip_read(ip_refs[0]['uuid'])
+                except NoIdError as ex:
+                    LOG.error(ex)
+                    return None
+                props.address = iip.get_instance_ip_address()
+
+        return port_id
+
+    def make_dict(self, vip, fields=None):
         props = vip.get_virtual_ip_properties()
+        port_id = self._get_interface_params(vip, props)
+
         res = {'id': vip.uuid,
                'tenant_id': vip.parent_uuid,
                'name': vip.display_name,
                'description': self._get_object_description(vip),
                'subnet_id': props.subnet_id,
                'address': props.address,
-               'port_id': get_vmi_uuid(vmi),
+               'port_id': port_id,
                'protocol_port': props.protocol_port,
                'protocol': props.protocol,
                'pool_id': self._get_vip_pool_id(vip),
@@ -102,6 +124,52 @@ class VirtualIpManager(ResourceManager):
     def resource_name_plural(self):
         return "virtual-ips"
 
+    def _create_virtual_interface(self, project, vip_id, subnet_id,
+                                  ip_address):
+        network_id = utils.get_subnet_network_id(self._api, subnet_id)
+        try:
+            vnet = self._api.virtual_network_read(id=network_id)
+        except NoIdError:
+            raise n_exc.NetworkNotFound(net_id=network_id)
+
+        vmi = VirtualMachineInterface(vip_id, project)
+        vmi.set_virtual_network(vnet)
+
+        sg_obj = SecurityGroup("default", project)
+        vmi.add_security_group(sg_obj)
+        self._api.virtual_machine_interface_create(vmi)
+
+        fq_name = list(project.get_fq_name())
+        fq_name.append(vip_id)
+
+        iip_obj = InstanceIp(fq_name=fq_name)
+        iip_obj.set_virtual_network(vnet)
+        iip_obj.set_virtual_machine_interface(vmi)
+        if ip_address and ip_address != attributes.ATTR_NOT_SPECIFIED:
+            iip_obj.set_instance_ip_address(ip_address)
+        self._api.instance_ip_create(fq_name)
+
+        return vmi
+
+    def _delete_virtual_interface(self, vmi_list):
+        if vmi_list is None:
+            return
+
+        for vmi_ref in vmi_list:
+            interface_id = vmi_ref['uuid']
+            try:
+                vmi = self._api.virtual_machine_interface_read(id=interface_id)
+            except NoIdError as ex:
+                LOG.error(ex)
+                continue
+
+            ip_refs = vmi.get_instance_ip_back_refs()
+            if ip_refs:
+                for ref in ip_refs:
+                    self._api.instance_ip_delete(id=ref['uuid'])
+
+            self._api.virtual_machine_interface_delete(id=interface_id)
+
     def create(self, context, vip):
         """
         Create a VIP.
@@ -138,8 +206,22 @@ class VirtualIpManager(ResourceManager):
         if pool:
             vip.set_loadbalancer_pool(pool)
 
+        vmi = self._create_virtual_interface(project, uuid, v['subnet_id'],
+                                             v.get('address'))
+        vip.set_virtual_machine_interface(vmi)
+
         self._api.virtual_ip_create(vip)
         return self.make_dict(vip)
+
+    def delete(self, context, id):
+        try:
+            vip = self._api.virtual_ip_read(id=id)
+        except NoIdError:
+            loadbalancer.VipNotFound(vip_id=id)
+
+        self._delete_virtual_interface(
+            vip.get_virtual_machine_interface_refs())
+        super(VirtualIpManager, self).delete(context, id)
 
     def _update_virtual_ip_properties(self, props, id, vip):
         """
@@ -189,6 +271,7 @@ class VirtualIpManager(ResourceManager):
             # TODO: check that the pool has no vip configured
             # TODO: check that the protocol matches
             # TODO: check that the pool is in valid state
+            # TODO: check that the provider is the same.
             vip_db.set_localbalancer_pool(pool)
             return True
 

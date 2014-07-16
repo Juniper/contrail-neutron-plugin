@@ -26,6 +26,9 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             loadbalancer_healthmonitor.LoadbalancerHealthmonitorManager(
                 self._api)
 
+    def get_api_client(self):
+        return self._api
+
     def get_vips(self, context, filters=None, fields=None):
         return self._vip_manager.get_collection(context, filters, fields)
 
@@ -39,7 +42,6 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self._vip_manager.update(context, id, vip)
 
     def delete_vip(self, context, id):
-        # TODO: automatically delete virtual-machine-interface
         return self._vip_manager.delete(context, id)
 
     def get_pools(self, context, filters=None, fields=None):

@@ -45,8 +45,7 @@ class LoadbalancerPoolManager(ResourceManager):
             if value is not None:
                 res[mapping] = value
 
-        # TODO: report provider
-        res['provider'] = 'lbaas'
+        res['provider'] = pool.get_loadbalancer_pool_provider()
 
         # vip_id
         vip_refs = pool.get_virtual_ip_back_refs()
@@ -105,6 +104,7 @@ class LoadbalancerPoolManager(ResourceManager):
                                description=p['description'])
         pool = LoadbalancerPool(name, project,
                                 loadbalancer_pool_properties=props,
+                                loadbalancer_pool_provider=p['provider'],
                                 id_perms=id_perms, display_name=p['name'])
         pool.uuid = uuid
 

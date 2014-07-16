@@ -1,4 +1,7 @@
-import copy
+#
+# Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
+#
+
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
 from neutron.plugins.common import constants
@@ -6,16 +9,19 @@ from neutron.tests.unit import test_api_v2
 from neutron.tests.unit import test_api_v2_extension
 from neutron_plugin_contrail.plugins.opencontrail.loadbalancer.plugin \
     import LoadBalancerPlugin
-import mock
-from vnc_api.vnc_api import VncApi
 from vnc_api.vnc_api import IdPermsType
-from vnc_api.vnc_api import LoadbalancerMember, LoadbalancerMemberType
-from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
 from vnc_api.vnc_api import LoadbalancerHealthmonitor
 from vnc_api.vnc_api import LoadbalancerHealthmonitorType
+from vnc_api.vnc_api import LoadbalancerMember, LoadbalancerMemberType
+from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
 from vnc_api.vnc_api import Project
 from vnc_api.vnc_api import VirtualIp, VirtualIpType
+from vnc_api.vnc_api import VirtualNetwork
+from vnc_api.vnc_api import VncApi
 from webob import exc
+import copy
+import mock
+import neutron.services.loadbalancer.drivers.abstract_driver as abstract_driver
 
 _PLUGIN = 'neutron_plugin_contrail.plugins.opencontrail.' \
     'loadbalancer.plugin.LoadBalancerPlugin'
@@ -34,17 +40,32 @@ class OpencontrailLoadbalancerTest(test_api_v2_extension.ExtensionTestCase):
             constants.LOADBALANCER, loadbalancer.RESOURCE_ATTRIBUTE_MAP,
             loadbalancer.Loadbalancer, 'lb', use_quota=True)
 
-        plugin_path = '.'.join(_PLUGIN.split('.')[:-2])
-        plugin_path = plugin_path + '.loadbalancer_db'
+        self._plugin_patcher.stop()
 
-        self._patcher = mock.patch('%s.VncApi' % plugin_path, autospec=True)
-        self._patcher.start()
+        plugin_path = '.'.join(_PLUGIN.split('.')[:-2])
+        db_class_name = plugin_path + '.loadbalancer_db'
+        self._vnc_patcher = mock.patch('%s.VncApi' % db_class_name,
+                                       autospec=True)
+        self._vnc_patcher.start()
+
+        plugin_class_name = plugin_path + '.plugin'
+        self._driver_patcher = mock.patch(
+            '%s.service_base' % plugin_class_name, autospec=True)
+        self._driver = mock.Mock(abstract_driver.LoadBalancerAbstractDriver)
+        service_base = self._driver_patcher.start()
+        service_base.load_drivers.return_value = ({
+            'lbaas': self._driver
+        }, 'lbaas')
+
         self.loadbalancer = LoadBalancerPlugin()
+        self.loadbalancer._get_driver_for_pool = self._driver
         self.api_server = self.loadbalancer._api
+
         self._project = None
 
     def tearDown(self):
-        self._patcher.stop()
+        self._vnc_patcher.stop()
+        self._driver_patcher.stop()
         super(OpencontrailLoadbalancerTest, self).tearDown()
 
     def _project_read(self, *args, **kwargs):
@@ -67,6 +88,14 @@ class OpencontrailLoadbalancerTest(test_api_v2_extension.ExtensionTestCase):
 
         self.plugin.return_value.create_vip.side_effect = create_vip
 
+        self._port_id = None
+
+        def api_virtual_machine_interface_create(*args, **kwargs):
+            vmi = args[0]
+            vmi.uuid = _uuid()
+            self._port_id = vmi.uuid
+            return vmi.uuid
+
         def api_virtual_ip_create(*args, **kwargs):
             vip = args[0]
             vip.parent_uuid = self._project.uuid
@@ -77,6 +106,11 @@ class OpencontrailLoadbalancerTest(test_api_v2_extension.ExtensionTestCase):
         instance.project_read.side_effect = self._project_read
         instance.loadbalancer_pool_read.side_effect = \
             self._loadbalancer_pool_read
+        instance.kv_retrieve.return_value = '%s %s' % (_uuid(), _uuid())
+        vnet = VirtualNetwork('default')
+        instance.virtual_network_read.return_value = vnet
+        instance.virtual_machine_interface_create.side_effect = \
+            api_virtual_machine_interface_create
         instance.virtual_ip_create.side_effect = api_virtual_ip_create
 
         data = {'vip': {'name': 'vip1',
@@ -100,7 +134,7 @@ class OpencontrailLoadbalancerTest(test_api_v2_extension.ExtensionTestCase):
         self.assertIn('vip', res)
         expected = copy.copy(data['vip'])
         expected.update({'status': "ACTIVE",
-                         'port_id': None,
+                         'port_id': self._port_id,
                          'id': res['vip']['id']
                          })
         self.assertEqual(expected, res['vip'])

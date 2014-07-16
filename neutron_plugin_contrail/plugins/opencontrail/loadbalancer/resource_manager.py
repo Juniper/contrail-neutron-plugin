@@ -6,7 +6,7 @@ from abc import ABCMeta, abstractmethod, abstractproperty
 from eventlet import greenthread
 from neutron.common import exceptions as n_exc
 from neutron.plugins.common import constants
-from vnc_api.vnc_api import NoIdError
+from vnc_api.vnc_api import NoIdError, RefsExistError
 import six
 
 
