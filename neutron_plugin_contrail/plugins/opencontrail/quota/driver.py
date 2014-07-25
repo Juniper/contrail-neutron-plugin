@@ -12,10 +12,13 @@ import string
 import sys
 import cgitb
 import uuid
+import requests
 
-from neutron.plugins.juniper.contrail.contrailplugin import ContrailPlugin
+from vnc_api import vnc_api
 
 LOG = logging.getLogger(__name__)
+
+vnc_conn = None
 
 class QuotaDriver(object):
     """Configuration driver.
@@ -34,6 +37,25 @@ class QuotaDriver(object):
             'router': 'logical_router',
             'port': 'virtual_machine_interface',
             };
+
+    @staticmethod
+    def _get_vnc_conn():
+        global vnc_conn
+        if vnc_conn:
+            return vnc_conn
+        # Retry till a api-server is up
+        while True:
+            try:
+                vnc_conn = vnc_api.VncApi(
+                    cfg.CONF.keystone_authtoken.admin_user,
+                    cfg.CONF.keystone_authtoken.admin_password,
+                    cfg.CONF.keystone_authtoken.admin_tenant_name,
+                    cfg.CONF.APISERVER.api_server_ip,
+                    cfg.CONF.APISERVER.api_server_port)
+                return vnc_conn
+            except requests.exceptions.RequestException as e:
+                time.sleep(3)
+    # end _get_vnc_conn
 
     def _get_quotas(self, context, resources, keys):
         """Get quotas.
@@ -87,9 +109,8 @@ class QuotaDriver(object):
     @staticmethod
     def get_tenant_quotas(context, resources, tenant_id):
         try:
-            cfgdb = ContrailPlugin._get_user_cfgdb(context)
             proj_id = str(uuid.UUID(context.tenant))
-            proj_obj = cfgdb._project_read(proj_id)
+            proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -112,9 +133,8 @@ class QuotaDriver(object):
     @staticmethod
     def delete_tenant_quota(context, tenant_id):
         try:
-            cfgdb = ContrailPlugin._get_user_cfgdb(context)
             proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = cfgdb._project_read(proj_id)
+            proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -124,14 +144,13 @@ class QuotaDriver(object):
             if k != 'defaults':
                 quota.__dict__[k] = quota.defaults
         proj_obj.set_quota(quota)
-        cfgdb._vnc_lib.project_update(proj_obj)
+        QuotaDriver._get_vnc_conn().project_update(proj_obj)
 
     @staticmethod
     def update_quota_limit(context, tenant_id, resource, limit):
         try:
-            cfgdb = ContrailPlugin._get_user_cfgdb(context)
             proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = cfgdb._project_read(proj_id)
+            proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -143,4 +162,4 @@ class QuotaDriver(object):
             set_quota = getattr(quota, quota_method)
             set_quota(limit)
             proj_obj.set_quota(quota)
-            cfgdb._vnc_lib.project_update(proj_obj)
+            QuotaDriver._get_vnc_conn().project_update(proj_obj)
