@@ -2841,13 +2841,8 @@ class DBInterface(object):
         ip_objs = []
         if port_q['fixed_ips'] != attr.ATTR_NOT_SPECIFIED:
             for fixed_ip in port_q['fixed_ips']:
-                # subnet_id in fixed_ips is not yet supported.
-                # Raise a bad request 
-                if 'subnet_id' in fixed_ip:
-                    msg = _("fixed-ips doesn't support subnet id")
-                    raise exceptions.BadRequest(resource='subnet', msg=msg)
-
                 ip_dict = {'ip_obj' : None, 'ip_addr':None}
+
                 if 'ip_address' in fixed_ip:
                     ip_addr = fixed_ip['ip_address']
                     ip_dict['ip_addr'] = ip_addr
