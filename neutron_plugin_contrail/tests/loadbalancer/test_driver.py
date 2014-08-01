@@ -4,14 +4,12 @@
 
 import mock
 import unittest
-import uuid
 
 from neutron.openstack.common import uuidutils
 
 from vnc_api.vnc_api import InstanceIp
 from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
 from vnc_api.vnc_api import Project
-from vnc_api.vnc_api import ServiceInstance, ServiceInstanceType
 from vnc_api.vnc_api import ServiceTemplate
 from vnc_api.vnc_api import VirtualIp, VirtualIpType
 from vnc_api.vnc_api import VirtualMachineInterface

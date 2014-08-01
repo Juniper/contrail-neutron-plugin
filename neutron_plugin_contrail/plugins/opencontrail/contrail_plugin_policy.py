@@ -19,9 +19,6 @@
 import copy
 import logging
 from pprint import pformat
-import sys
-
-import cgitb
 
 LOG = logging.getLogger(__name__)
 

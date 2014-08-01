@@ -4,7 +4,7 @@
 
 from neutron.extensions import loadbalancer
 from neutron.extensions.loadbalancer import LoadBalancerPluginBase
-from vnc_api.vnc_api import VncApi
+from vnc_api.vnc_api import VncApi, NoIdError
 
 import loadbalancer_healthmonitor
 import loadbalancer_member
