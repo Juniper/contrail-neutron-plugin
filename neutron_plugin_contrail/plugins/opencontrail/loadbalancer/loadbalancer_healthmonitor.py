@@ -4,7 +4,7 @@
 
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
-from vnc_api.vnc_api import IdPermsType, NoIdError
+from vnc_api.vnc_api import IdPermsType
 from vnc_api.vnc_api import LoadbalancerHealthmonitor
 from vnc_api.vnc_api import LoadbalancerHealthmonitorType
 

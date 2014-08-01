@@ -28,6 +28,7 @@ from neutron import neutron_plugin_base_v2
 from neutron.openstack.common import importutils
 from neutron.openstack.common import jsonutils as json
 from neutron.openstack.common import log as logging
+from nova.openstack.common.gettextutils import _
 from simplejson import JSONDecodeError
 
 LOG = logging.getLogger(__name__)
@@ -169,8 +170,8 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         if (response.status_code == requests.codes.unauthorized):
             # Get token from keystone and save it for next request
             response = requests.post(self._keystone_url,
-                data=self._authn_body,
-                headers={'Content-type': 'application/json'})
+                                     data=self._authn_body,
+                                     headers={'Content-type': 'application/json'})
             if (response.status_code == requests.codes.ok):
                 # plan is to re-issue original request with new token
                 auth_headers = headers or {}

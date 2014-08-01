@@ -19,7 +19,6 @@
 import copy
 import logging
 from pprint import pformat
-import sys
 
 LOG = logging.getLogger(__name__)
 
@@ -87,7 +86,7 @@ class NeutronPluginContrailVpc(object):
         Deletes a route table
         """
         self._core._delete_resource('route_table', context,
-                                                    rt_id)
+                                    rt_id)
 
         LOG.debug("delete_security_group(): %s" % (rt_id))
 

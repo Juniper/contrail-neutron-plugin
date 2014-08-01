@@ -18,7 +18,6 @@ from neutron.agent.linux import interface
 from neutron.agent.linux import ip_lib
 from neutron.openstack.common import log as logging
 from neutron.openstack.common import loopingcall
-from oslo.config import cfg
 
 from contrail_vrouter_api.vrouter_api import ContrailVRouterApi
 from vnc_api.vnc_api import *

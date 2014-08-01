@@ -1,24 +1,21 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-import ConfigParser
-from pprint import pformat
-
 from neutron.openstack.common import log as logging
+from neutron.common import exceptions
 
 from oslo.config import cfg
-from httplib2 import Http
-import re
-import string
 import sys
 import cgitb
 import uuid
 import requests
+import time
 
 from vnc_api import vnc_api
 
 LOG = logging.getLogger(__name__)
 
 vnc_conn = None
+
 
 class QuotaDriver(object):
     """Configuration driver.
@@ -53,7 +50,7 @@ class QuotaDriver(object):
                     cfg.CONF.APISERVER.api_server_ip,
                     cfg.CONF.APISERVER.api_server_port)
                 return vnc_conn
-            except requests.exceptions.RequestException as e:
+            except requests.exceptions.RequestException:
                 time.sleep(3)
     # end _get_vnc_conn
 
@@ -140,7 +137,7 @@ class QuotaDriver(object):
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        for k,v in quota.__dict__.items():
+        for k, v in quota.__dict__.items():
             if k != 'defaults':
                 quota.__dict__[k] = quota.defaults
         proj_obj.set_quota(quota)
