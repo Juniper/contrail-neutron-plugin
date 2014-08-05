@@ -109,7 +109,7 @@ class QuotaDriver(object):
     @staticmethod
     def get_tenant_quotas(context, resources, tenant_id):
         try:
-            proj_id = str(uuid.UUID(context.tenant))
+            proj_id = str(uuid.UUID(tenant_id))
             proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
@@ -124,11 +124,16 @@ class QuotaDriver(object):
                 quotas[resource.name] = quota.__dict__[qn2c[resource.name]] or quota.get_defaults()
             else:
                 quotas[resource.name] = resource.default
+            quotas['tenant_id'] = tenant_id
         return quotas
 
     @staticmethod
     def get_all_quotas(context, resources):
-        return [QuotaDriver.get_tenant_quotas(context, resources, context.tenant_id)]
+        project_list = QuotaDriver._get_vnc_conn().projects_list()['projects']
+        ret_list = []
+        for project in project_list:
+            ret_list.append(QuotaDriver.get_tenant_quotas(context, resources, project['uuid']))
+        return ret_list
 
     @staticmethod
     def delete_tenant_quota(context, tenant_id):
