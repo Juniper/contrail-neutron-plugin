@@ -38,8 +38,8 @@ class QuotaDriver(object):
             'port': 'virtual_machine_interface',
             };
 
-    @staticmethod
-    def _get_vnc_conn():
+    @classmethod
+    def _get_vnc_conn(cls):
         global vnc_conn
         if vnc_conn:
             return vnc_conn
@@ -59,31 +59,6 @@ class QuotaDriver(object):
             except requests.exceptions.RequestException as e:
                 time.sleep(3)
     # end _get_vnc_conn
-
-    def _get_quotas(self, context, resources, keys):
-        """Get quotas.
-
-        A helper method which retrieves the quotas for the specific
-        resources identified by keys, and which apply to the current
-        context.
-
-        :param context: The request context, for access checks.
-        :param resources: A dictionary of the registered resources.
-        :param keys: A list of the desired quotas to retrieve.
-        """
-        # Filter resources
-        desired = set(keys)
-        sub_resources = dict((k, v) for k, v in resources.items()
-                             if k in desired)
-
-        # Make sure we accounted for all of them...
-        if len(keys) != len(sub_resources):
-            unknown = desired - set(sub_resources.keys())
-            raise exceptions.QuotaResourceUnknown(unknown=sorted(unknown))
-        quotas = {}
-        for resource in sub_resources.values():
-            quotas[resource.name] = resource.default
-        return quotas
 
     def limit_check(self, context, tenant_id,
                     resources, values):
@@ -109,40 +84,41 @@ class QuotaDriver(object):
                        quota.
         """
 
-    @staticmethod
-    def get_tenant_quotas(context, resources, tenant_id):
+    @classmethod
+    def get_tenant_quotas(cls, context, resources, tenant_id):
         try:
             proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
+            proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        qn2c = QuotaDriver.quota_neutron_to_contrail_type
+        qn2c = cls.quota_neutron_to_contrail_type
         quotas = {}
-        sub_resources = dict((k, v) for k, v in resources.items())
-        for resource in sub_resources.values():
-            if quota and resource.name in qn2c.keys():
-                quotas[resource.name] = quota.__dict__[qn2c[resource.name]] or quota.get_defaults()
+        for resource in resources:
+            if quota and resource in qn2c:
+                quotas[resource] = getattr(quota, qn2c[resource],
+                                           quota.get_defaults())
             else:
-                quotas[resource.name] = resource.default
-            quotas['tenant_id'] = tenant_id
+                quotas[resource] = resources[resource].default
         return quotas
 
-    @staticmethod
-    def get_all_quotas(context, resources):
-        project_list = QuotaDriver._get_vnc_conn().projects_list()['projects']
+    @classmethod
+    def get_all_quotas(cls, context, resources):
+        project_list = cls._get_vnc_conn().projects_list()['projects']
         ret_list = []
         for project in project_list:
-            ret_list.append(QuotaDriver.get_tenant_quotas(context, resources, project['uuid']))
+            quotas = cls.get_tenant_quotas(context, resources, project['uuid'])
+            quotas['tenant_id'] = project['uuid']
+            ret_list.append(quotas)
         return ret_list
 
-    @staticmethod
-    def delete_tenant_quota(context, tenant_id):
+    @classmethod
+    def delete_tenant_quota(cls, context, tenant_id):
         try:
             proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
+            proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
@@ -152,22 +128,22 @@ class QuotaDriver(object):
             if k != 'defaults':
                 quota.__dict__[k] = quota.defaults
         proj_obj.set_quota(quota)
-        QuotaDriver._get_vnc_conn().project_update(proj_obj)
+        cls._get_vnc_conn().project_update(proj_obj)
 
-    @staticmethod
-    def update_quota_limit(context, tenant_id, resource, limit):
+    @classmethod
+    def update_quota_limit(cls, context, tenant_id, resource, limit):
         try:
             proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = QuotaDriver._get_vnc_conn().project_read(id=proj_id)
+            proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        qn2c = QuotaDriver.quota_neutron_to_contrail_type
-        if resource in qn2c.keys():
+        qn2c = cls.quota_neutron_to_contrail_type
+        if resource in qn2c:
             quota_method = 'set_' + qn2c[resource]
             set_quota = getattr(quota, quota_method)
             set_quota(limit)
             proj_obj.set_quota(quota)
-            QuotaDriver._get_vnc_conn().project_update(proj_obj)
+            cls._get_vnc_conn().project_update(proj_obj)
