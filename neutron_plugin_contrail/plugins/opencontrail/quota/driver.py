@@ -98,8 +98,8 @@ class QuotaDriver(object):
         quotas = {}
         for resource in resources:
             if quota and resource in qn2c:
-                quotas[resource] = getattr(quota, qn2c[resource],
-                                           quota.get_defaults())
+                quotas[resource] = (getattr(quota, qn2c[resource], None) or
+                                    quota.get_defaults())
             else:
                 quotas[resource] = resources[resource].default
         return quotas
