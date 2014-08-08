@@ -1,0 +1,8 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Atul Moghe <amoghe@juniper.net>
+Code-Review+2: Atul Moghe <amoghe@juniper.net>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Fri, 08 Aug 2014 11:54:20 -0700
+Reviewed-on: https://review.opencontrail.org/1588
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/R1.10
