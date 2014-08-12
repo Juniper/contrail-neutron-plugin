@@ -84,7 +84,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
-                                   "quotas", "external-net",
+                                   "quotas", "external-net", "contrail",
                                    "allowed-address-pairs", "extra_dhcp_opt"]
     PLUGIN_URL_PREFIX = '/neutron'
     __native_bulk_support = False
@@ -111,6 +111,8 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                     LOG.error(_('Malformed contrail extension...'))
                     continue
                 self.supported_extension_aliases.append(ext_name)
+                if ext_class == 'None':
+                    continue
                 ext_class = importutils.import_class(ext_class)
                 ext_instance = ext_class()
                 ext_instance.set_core(self)

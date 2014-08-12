@@ -3,6 +3,7 @@ env = DefaultEnvironment().Clone()
 sources = [
     'neutron_plugin_contrail/__init__.py',
     'neutron_plugin_contrail/extensions/__init__.py',
+    'neutron_plugin_contrail/extensions/contrail.py',
     'neutron_plugin_contrail/extensions/ipam.py',
     'neutron_plugin_contrail/extensions/policy.py',
     'neutron_plugin_contrail/extensions/vpcroutetable.py',
