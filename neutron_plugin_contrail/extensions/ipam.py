@@ -32,45 +32,6 @@ RESOURCE_ATTRIBUTE_MAP = {
     },
 }
 
-# TODO should this be tied to ipam extension?
-EXTENDED_ATTRIBUTES_2_0 = {
-    'networks': {
-        'contrail:fq_name': {'allow_post': False,
-                             'allow_put': False,
-                             'is_visible': True},
-        'contrail:instance_count': {'allow_post': False,
-                                    'allow_put': False,
-                                    'is_visible': True},
-        'contrail:policys': {'allow_post': True,
-                             'allow_put': True,
-                             'default': '',
-                             'is_visible': True},
-        'contrail:subnet_ipam': {'allow_post': False,
-                                 'allow_put': False,
-                                 'default': '',
-                                 'is_visible': True},
-    },
-    'routers': {
-        'contrail:fq_name': {'allow_post': False,
-                             'allow_put': False,
-                             'is_visible': True},
-    },
-    'security_groups': {
-        'contrail:fq_name': {'allow_post': False,
-                             'allow_put': False,
-                             'is_visible': True},
-    },
-    'subnets': {
-        'contrail:instance_count': {'allow_post': False,
-                                    'allow_put': False,
-                                    'is_visible': True},
-        'contrail:ipam_fq_name': {'allow_post': True,
-                                  'allow_put': True,
-                                  'default': '',
-                                  'is_visible': True},
-    }
-}
-
 
 class Ipam(object):
 
@@ -118,12 +79,7 @@ class Ipam(object):
 
         return exts
 
-    def get_extended_resources(self, version):
-        if version == "2.0":
-            return EXTENDED_ATTRIBUTES_2_0
-        else:
-            return {}
-#end class Ipam
+# end class Ipam
 
 
 class IpamPluginBase(object):
@@ -147,4 +103,4 @@ class IpamPluginBase(object):
     @abstractmethod
     def get_ipams(self, context, filters=None, fields=None):
         pass
-#end class IpamPluginBase
+# end class IpamPluginBase
