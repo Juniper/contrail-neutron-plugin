@@ -14,6 +14,7 @@ import cgitb
 import uuid
 import requests
 
+from cfgm_common import exceptions as vnc_exc
 from vnc_api import vnc_api
 
 LOG = logging.getLogger(__name__)
@@ -90,6 +91,8 @@ class QuotaDriver(object):
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
+        except vnc_exc.NoIdError:
+            return {}
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
@@ -122,6 +125,8 @@ class QuotaDriver(object):
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
+        except vnc_exc.NoIdError:
+            return
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
@@ -138,6 +143,8 @@ class QuotaDriver(object):
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
+        except vnc_exc.NoIdError:
+            return
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
