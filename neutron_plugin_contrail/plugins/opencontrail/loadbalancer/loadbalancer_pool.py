@@ -41,7 +41,7 @@ class LoadbalancerPoolManager(ResourceManager):
 
         props = pool.get_loadbalancer_pool_properties()
         for key, mapping in self._loadbalancer_pool_type_mapping.iteritems():
-            value = getattr(props, key)
+            value = getattr(props, key, None)
             if value is not None:
                 res[mapping] = value
 
@@ -100,7 +100,7 @@ class LoadbalancerPoolManager(ResourceManager):
         name = self._get_resource_name('loadbalancer-pool', project,
                                        p['name'], uuid)
         props = self.make_properties(p)
-        id_perms = IdPermsType(uuid=uuid, enable=True,
+        id_perms = IdPermsType(enable=True,
                                description=p['description'])
         pool = LoadbalancerPool(name, project,
                                 loadbalancer_pool_properties=props,

@@ -8,6 +8,7 @@ from neutron.common import exceptions as n_exc
 from neutron.plugins.common import constants
 from vnc_api.vnc_api import NoIdError, RefsExistError
 import six
+import uuid
 
 
 @six.add_metaclass(ABCMeta)
@@ -112,10 +113,12 @@ class ResourceManager(object):
         """
         fq_name = list(parent.fq_name)
         fq_name.append(name)
-        obj = self._api.fq_name_to_id(resource, fq_name)
-        if obj is None:
+        try:
+            obj = self._api.fq_name_to_id(resource, fq_name)
+        except NoIdError:
             return name
-        return name + '_' + uuid
+
+        return name + '-' + uuid
 
     def _is_authorized(self, context, resource):
         return context.is_admin or context.tenant_id == resource['tenant_id']
@@ -126,7 +129,7 @@ class ResourceManager(object):
         """
         for i in range(self._max_project_read_attempts):
             try:
-                return self._api.project_read(id=project_id)
+                return self._api.project_read(id=str(uuid.UUID(project_id)))
             except NoIdError:
                 pass
             greenthread.sleep(1)

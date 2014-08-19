@@ -80,7 +80,7 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
 
         uuid = uuidutils.generate_uuid()
         props = self.make_properties(m)
-        id_perms = IdPermsType(uuid=uuid, enable=True)
+        id_perms = IdPermsType(enable=True)
         monitor_db = LoadbalancerHealthmonitor(
             uuid, project, loadbalancer_healthmonitor_properties=props,
             id_perms=id_perms)

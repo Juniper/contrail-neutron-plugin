@@ -40,7 +40,7 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
         if not pool_id:
             return self.drivers[self.default_provider]
         if pool_id in self._pool_driver:
-            return self._pool_driver['pool_id']
+            return self._pool_driver[pool_id]
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
         except NoIdError:
