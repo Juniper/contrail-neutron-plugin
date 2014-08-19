@@ -2,6 +2,8 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import uuid
+
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import IdPermsType, NoIdError
@@ -43,7 +45,7 @@ class LoadbalancerMemberManager(ResourceManager):
 
         props = member.get_loadbalancer_member_properties()
         for key, mapping in self._loadbalancer_member_type_mapping.iteritems():
-            value = getattr(props, key)
+            value = getattr(props, key, None)
             if value is not None:
                 res[mapping] = value
 
@@ -123,17 +125,17 @@ class LoadbalancerMemberManager(ResourceManager):
             raise loadbalancer.PoolNotFound(pool_id=m['pool_id'])
 
         tenant_id = self._get_tenant_id_for_create(context, m)
-        if tenant_id != pool.parent_uuid:
+        if str(uuid.UUID(tenant_id)) != pool.parent_uuid:
             raise n_exc.NotAuthorized()
 
-        uuid = uuidutils.generate_uuid()
+        obj_uuid = uuidutils.generate_uuid()
         props = self.make_properties(m)
-        id_perms = IdPermsType(uuid=uuid, enable=True)
+        id_perms = IdPermsType(enable=True)
 
         member_db = LoadbalancerMember(
-            uuid, pool, loadbalancer_member_properties=props,
+            obj_uuid, pool, loadbalancer_member_properties=props,
             id_perms=id_perms)
-        member_db.uuid = uuid
+        member_db.uuid = obj_uuid
 
         self._api.loadbalancer_member_create(member_db)
         return self.make_dict(member_db)

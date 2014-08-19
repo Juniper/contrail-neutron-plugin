@@ -34,7 +34,7 @@ class OpencontrailLoadbalancerDriver(
                 fq_name=LOADBALANCER_SERVICE_TEMPLATE)
         except NoIdError:
             msg = ('Loadbalancer service-template not found when '
-                   'attempting to create pool %s' % pool_id)
+                   'attempting to create pool')
             raise n_exc.BadRequest(resource='pool', msg=msg)
         self._lb_template = tmpl
 
@@ -56,7 +56,7 @@ class OpencontrailLoadbalancerDriver(
             return None
 
         try:
-            iip = self._api.instance_ip_read(ip_refs[0]['uuid'])
+            iip = self._api.instance_ip_read(id=ip_refs[0]['uuid'])
         except NoIdError as ex:
             LOG.error(ex)
             return None
@@ -91,7 +91,7 @@ class OpencontrailLoadbalancerDriver(
             except NoIdError as ex:
                 LOG.error(ex)
                 return None
-            props.left_virtual_network = vnet.get_fq_name().join(':')
+            props.left_virtual_network = ':'.join(vnet.get_fq_name())
 
         return props
 
@@ -152,7 +152,8 @@ class OpencontrailLoadbalancerDriver(
                 self._api.service_instance_update(si_obj)
 
         except NoIdError:
-            si_obj = ServiceInstance(fq_name=fq_name, parent_type='project',
+            proj_obj = self._api.project_read(fq_name=fq_name[:-1])
+            si_obj = ServiceInstance(name=fq_name[-1], parent_obj=proj_obj,
                                      service_instance_properties=props)
             si_obj.set_service_template(self._lb_template)
             self._api.service_instance_create(si_obj)
@@ -212,7 +213,7 @@ class OpencontrailLoadbalancerDriver(
                                   constants.ACTIVE)
         """
         self._get_template()
-        if pool['vip_id']:
+        if pool.get('vip_id'):
             self._update_loadbalancer_instance(pool['id'], pool['vip_id'])
 
     def update_pool(self, context, old_pool, pool):

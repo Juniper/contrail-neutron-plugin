@@ -13,6 +13,7 @@ from vnc_api.vnc_api import VirtualIp, VirtualIpType
 
 from resource_manager import ResourceManager
 import utils
+import uuid
 
 LOG = logging.getLogger(__name__)
 
@@ -34,12 +35,13 @@ class VirtualIpManager(ResourceManager):
     def make_properties(self, vip):
         props = VirtualIpType()
         for key, mapping in self._virtual_ip_type_mapping.iteritems():
-            if mapping in vip:
+            if mapping in vip and vip[mapping] != attributes.ATTR_NOT_SPECIFIED:
                 setattr(props, key, vip[mapping])
 
         sp = vip['session_persistence']
         if sp is not None:
-            props.persistence_type = sp['type']
+            if 'type' in sp:
+                props.persistence_type = sp['type']
             if 'cookie_name' in sp:
                 props.persistence_cookie_name = sp['cookie_name']
         return props
@@ -139,15 +141,12 @@ class VirtualIpManager(ResourceManager):
         vmi.add_security_group(sg_obj)
         self._api.virtual_machine_interface_create(vmi)
 
-        fq_name = list(project.get_fq_name())
-        fq_name.append(vip_id)
-
-        iip_obj = InstanceIp(fq_name=fq_name)
+        iip_obj = InstanceIp(name=vip_id)
         iip_obj.set_virtual_network(vnet)
         iip_obj.set_virtual_machine_interface(vmi)
         if ip_address and ip_address != attributes.ATTR_NOT_SPECIFIED:
             iip_obj.set_instance_ip_address(ip_address)
-        self._api.instance_ip_create(fq_name)
+        self._api.instance_ip_create(iip_obj)
 
         return vmi
 
@@ -185,7 +184,7 @@ class VirtualIpManager(ResourceManager):
             except NoIdError:
                 raise loadbalancer.PoolNotFound(pool_id=v['pool_id'])
             project_id = pool.parent_uuid
-            if tenant_id != project_id:
+            if str(uuid.UUID(tenant_id)) != project_id:
                 raise n_exc.NotAuthorized()
             # TODO: check that the pool has no vip configured
             # if pool.protocol != v['protocol']:
@@ -194,19 +193,19 @@ class VirtualIpManager(ResourceManager):
         else:
             pool = None
 
-        uuid = uuidutils.generate_uuid()
-        name = self._get_resource_name('virtual-ip', project, v['name'], uuid)
+        obj_uuid = uuidutils.generate_uuid()
+        name = self._get_resource_name('virtual-ip', project, v['name'], obj_uuid)
         props = self.make_properties(v)
-        id_perms = IdPermsType(uuid=uuid, enable=True,
+        id_perms = IdPermsType(enable=True,
                                description=v['description'])
         vip = VirtualIp(name, project, virtual_ip_properties=props,
                         id_perms=id_perms, display_name=v['name'])
-        vip.uuid = uuid
+        vip.uuid = obj_uuid
 
         if pool:
             vip.set_loadbalancer_pool(pool)
 
-        vmi = self._create_virtual_interface(project, uuid, v['subnet_id'],
+        vmi = self._create_virtual_interface(project, obj_uuid, v['subnet_id'],
                                              v.get('address'))
         vip.set_virtual_machine_interface(vmi)
 
