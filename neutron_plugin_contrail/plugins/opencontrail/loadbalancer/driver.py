@@ -273,3 +273,6 @@ class OpencontrailLoadbalancerDriver(
 
     def delete_pool_health_monitor(self, context, health_monitor, pool_id):
         pass
+
+    def update_health_monitor(self, context, id, health_monitor):
+        pass
