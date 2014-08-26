@@ -52,10 +52,7 @@ class QuotaDriver(object):
                     cfg.CONF.keystone_authtoken.admin_password,
                     cfg.CONF.keystone_authtoken.admin_tenant_name,
                     cfg.CONF.APISERVER.api_server_ip,
-                    cfg.CONF.APISERVER.api_server_port,
-                    auth_host=cfg.CONF.keystone_authtoken.auth_host,
-                    auth_port=cfg.CONF.keystone_authtoken.auth_port,
-                    auth_protocol=cfg.CONF.keystone_authtoken.auth_protocol)
+                    cfg.CONF.APISERVER.api_server_port)
                 return vnc_conn
             except requests.exceptions.RequestException as e:
                 time.sleep(3)
