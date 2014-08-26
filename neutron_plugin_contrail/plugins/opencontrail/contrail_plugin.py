@@ -210,7 +210,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         try:
             return response.status_code, response.json()
         except JSONDecodeError:
-            return response.status_code, response.content
+            return response.status_code, {'message': response.content}
 
     def _encode_context(self, context, operation, apitype):
         cdict = {'user_id': getattr(context, 'user_id', ''),
