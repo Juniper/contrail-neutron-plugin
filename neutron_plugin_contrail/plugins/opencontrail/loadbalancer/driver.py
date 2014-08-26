@@ -76,10 +76,10 @@ class OpencontrailLoadbalancerDriver(
         vnet_refs = vmi.get_virtual_network_refs()
         if vnet_refs is None:
             return None
-        props.right_virtual_network = ':'.join(vnet_refs[0]['to'])
+        right_virtual_network = ':'.join(vnet_refs[0]['to'])
 
-        props.right_ip_address = self._get_interface_address(vmi)
-        if props.right_ip_address is None:
+        right_ip_address = self._get_interface_address(vmi)
+        if right_ip_address is None:
             return None
 
         pool_attrs = pool.get_loadbalancer_pool_properties()
@@ -91,7 +91,14 @@ class OpencontrailLoadbalancerDriver(
             except NoIdError as ex:
                 LOG.error(ex)
                 return None
-            props.left_virtual_network = ':'.join(vnet.get_fq_name())
+            left_virtual_network = ':'.join(vnet.get_fq_name())
+
+        # add in order [left, right] same as in template
+        left_if = ServiceInstanceInterfaceType(
+            virtual_network=left_virtual_network)
+        right_if = ServiceInstanceInterfaceType(
+            virtual_network=right_virtual_network, ip_address=right_ip_address)
+        props.set_interface_list([left_if, right_if])
 
         return props
 
