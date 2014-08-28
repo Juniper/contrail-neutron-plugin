@@ -68,7 +68,7 @@ class VirtualIpManager(ResourceManager):
             ip_refs = vmi.get_instance_ip_back_refs()
             if ip_refs:
                 try:
-                    iip = self._api.instance_ip_read(ip_refs[0]['uuid'])
+                    iip = self._api.instance_ip_read(id=ip_refs[0]['uuid'])
                 except NoIdError as ex:
                     LOG.error(ex)
                     return None
