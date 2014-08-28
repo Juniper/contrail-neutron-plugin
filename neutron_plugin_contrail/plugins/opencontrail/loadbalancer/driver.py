@@ -7,7 +7,7 @@ from neutron.openstack.common import log as logging
 import neutron.services.loadbalancer.drivers.abstract_driver as abstract_driver
 
 from vnc_api.vnc_api import ServiceInstance, ServiceInstanceType
-from vnc_api.vnc_api import ServiceScaleOutType
+from vnc_api.vnc_api import ServiceScaleOutType, ServiceInstanceInterfaceType
 from vnc_api.vnc_api import NoIdError, RefsExistError
 import utils
 
