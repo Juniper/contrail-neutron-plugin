@@ -2,6 +2,7 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+from oslo.config import cfg
 from neutron.extensions import loadbalancer
 from neutron.extensions.loadbalancer import LoadBalancerPluginBase
 from vnc_api.vnc_api import VncApi
@@ -15,8 +16,13 @@ import virtual_ip
 class LoadBalancerPluginDb(LoadBalancerPluginBase):
 
     def __init__(self):
-        # TODO: parse configuration for api-server:port and auth
-        self._api = VncApi()
+        admin_user = cfg.CONF.keystone_authtoken.admin_user
+        admin_password = cfg.CONF.keystone_authtoken.admin_password
+        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+        api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
+        api_srvr_port = cfg.CONF.APISERVER.api_server_port
+        self._api = VncApi(admin_user, admin_password, admin_tenant_name,
+                           api_srvr_ip, api_srvr_port)
         self._pool_manager = \
             loadbalancer_pool.LoadbalancerPoolManager(self._api)
         self._vip_manager = virtual_ip.VirtualIpManager(self._api)
