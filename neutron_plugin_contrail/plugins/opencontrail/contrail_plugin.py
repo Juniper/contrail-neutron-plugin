@@ -20,6 +20,8 @@ import requests
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
 from neutron.db import portbindings_base
+from neutron.extensions import l3
+from neutron.extensions import securitygroups as sg
 from neutron.db import quota_db  # noqa
 from neutron.extensions import external_net
 from neutron.extensions import portbindings
@@ -251,6 +253,17 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         self._raise_contrail_error(status_code, info, obj_name)
 
     def _raise_contrail_error(self, status_code, info, obj_name):
+        exc_name = info.get('exception')
+        if exc_name:
+            if hasattr(exc, exc_name):
+                raise getattr(exc, exc_name)(**info)
+            if hasattr(l3, exc_name):
+                raise getattr(l3, exc_name)(**info)
+            if hasattr(sg, exc_name):
+                raise getattr(sg, exc_name)(**info)
+            else:
+                raise exc.NeutronException(**info)
+            return
         if status_code == requests.codes.bad_request:
             raise ContrailBadRequestError(
                 msg=info['message'], resource=obj_name)
