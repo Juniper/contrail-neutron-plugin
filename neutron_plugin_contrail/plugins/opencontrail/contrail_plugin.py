@@ -22,6 +22,7 @@ from neutron.common import exceptions as exc
 from neutron.db import portbindings_base
 from neutron.extensions import l3
 from neutron.extensions import securitygroup as sg
+from neutron.extensions import allowedaddresspairs as aap
 from neutron.db import quota_db  # noqa
 from neutron.extensions import external_net
 from neutron.extensions import portbindings
@@ -261,6 +262,8 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 raise getattr(l3, exc_name)(**info)
             if hasattr(sg, exc_name):
                 raise getattr(sg, exc_name)(**info)
+            if hasattr(aap, exc_name):
+                raise getattr(aap, exc_name)(**info)
             else:
                 raise exc.NeutronException(**info)
             return
