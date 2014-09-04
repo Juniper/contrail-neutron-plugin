@@ -93,6 +93,9 @@ class OpencontrailLoadbalancerDriver(
                 return None
             props.left_virtual_network = ':'.join(vnet.get_fq_name())
 
+        # set flag to create policy automatically
+        props.set_auto_policy(True)
+
         return props
 
     def _service_instance_update_props(self, si_obj, nprops):
