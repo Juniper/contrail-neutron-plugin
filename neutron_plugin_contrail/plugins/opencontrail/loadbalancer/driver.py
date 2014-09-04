@@ -100,6 +100,9 @@ class OpencontrailLoadbalancerDriver(
             virtual_network=right_virtual_network, ip_address=right_ip_address)
         props.set_interface_list([left_if, right_if])
 
+        # set flag to create policy automatically
+        props.set_auto_policy(True)
+
         return props
 
     def _service_instance_update_props(self, si_obj, nprops):
