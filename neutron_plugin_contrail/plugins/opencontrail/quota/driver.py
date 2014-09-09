@@ -88,6 +88,17 @@ class QuotaDriver(object):
     @classmethod
     def get_tenant_quotas(cls, context, resources, tenant_id):
         try:
+            default_project = cls._get_vnc_conn().project_read(
+                fq_name=['default-domain', 'default-project'])
+            default_quota = default_project.get_quota()
+        except vnc_exc.NoIdError:
+            default_quota = None
+        return cls._get_tenant_quotas(context, resources, tenant_id,
+                                      default_quota)
+
+    @classmethod
+    def _get_tenant_quotas(cls, context, resources, tenant_id, default_quota):
+        try:
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
             quota = proj_obj.get_quota()
@@ -100,21 +111,34 @@ class QuotaDriver(object):
         qn2c = cls.quota_neutron_to_contrail_type
         quotas = {}
         for resource in resources:
+            quota_res = None
             if quota and resource in qn2c:
                 quota_res = getattr(quota, qn2c[resource], None)
+            if quota_res is None and default_quota and resource in qn2c:
+                quota_res = getattr(default_quota, qn2c[resource], None)
                 if quota_res is None:
-                    quota_res = quota.get_defaults()
-                quotas[resource] = quota_res
-            else:
-                quotas[resource] = resources[resource].default
+                    quota_res = default_quota.get_defaults()
+            if quota_res is None:
+                quota_res = resources[resource].default
+            quotas[resource] = quota_res
         return quotas
 
     @classmethod
     def get_all_quotas(cls, context, resources):
+        try:
+            default_project = cls._get_vnc_conn().project_read(
+                fq_name=['default-domain', 'default-project'])
+            default_quota = default_project.get_quota()
+        except vnc_exc.NoIdError:
+            default_quota = None
+
         project_list = cls._get_vnc_conn().projects_list()['projects']
         ret_list = []
         for project in project_list:
-            quotas = cls.get_tenant_quotas(context, resources, project['uuid'])
+            if default_quota and (project['uuid'] == default_project.uuid):
+                continue
+            quotas = cls._get_tenant_quotas(context, resources, project['uuid'].
+                                            default_quota)
             quotas['tenant_id'] = project['uuid']
             ret_list.append(quotas)
         return ret_list
@@ -133,7 +157,7 @@ class QuotaDriver(object):
 
         for k,v in quota.__dict__.items():
             if k != 'defaults':
-                quota.__dict__[k] = quota.defaults
+                quota.__dict__[k] = None
         proj_obj.set_quota(quota)
         cls._get_vnc_conn().project_update(proj_obj)
 
