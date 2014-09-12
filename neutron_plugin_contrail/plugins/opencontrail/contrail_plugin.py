@@ -43,41 +43,8 @@ vnc_opts = [
                 help='Enable Contrail extensions(policy, ipam)'),
 ]
 
-
-# ContrailError message have translated already.
-# so there is no need to use i18n here.
-class ContrailNotFoundError(exc.NotFound):
-    message = '%(msg)s'
-
-
-class ContrailConflictError(exc.Conflict):
-    message = '%(msg)s'
-
-
-class ContrailBadRequestError(exc.BadRequest):
-    message = '%(msg)s'
-
-
-class ContrailServiceUnavailableError(exc.ServiceUnavailable):
-    message = '%(msg)s'
-
-
-class ContrailNotAuthorizedError(exc.NotAuthorized):
-    message = '%(msg)s'
-
-
 class InvalidContrailExtensionError(exc.ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
-
-
-CONTRAIL_EXCEPTION_MAP = {
-    requests.codes.not_found: ContrailNotFoundError,
-    requests.codes.conflict: ContrailConflictError,
-    requests.codes.bad_request: ContrailBadRequestError,
-    requests.codes.service_unavailable: ContrailServiceUnavailableError,
-    requests.codes.unauthorized: ContrailNotAuthorizedError,
-}
-
 
 class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                   securitygroup.SecurityGroupPluginBase,
@@ -250,11 +217,13 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 return self._prune(info, fields)
             else:
                 return [self._prune(items, fields) for items in info]
-        self._raise_contrail_error(status_code, info, obj_name)
+        self._raise_contrail_error(info, obj_name)
 
-    def _raise_contrail_error(self, status_code, info, obj_name):
+    def _raise_contrail_error(self, info, obj_name):
         exc_name = info.get('exception')
         if exc_name:
+            if exc_name == 'BadRequest' and 'resource' not in info:
+                info['resource'] = obj_name
             if hasattr(exc, exc_name):
                 raise getattr(exc, exc_name)(**info)
             if hasattr(l3, exc_name):
@@ -263,13 +232,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 raise getattr(securitygroup, exc_name)(**info)
             if hasattr(allowedaddresspairs, exc_name):
                 raise getattr(allowedaddresspairs, exc_name)(**info)
-            else:
-                raise exc.NeutronException(**info)
-        if status_code == requests.codes.bad_request:
-            raise ContrailBadRequestError(
-                msg=info['message'], resource=obj_name)
-        error_class = CONTRAIL_EXCEPTION_MAP[status_code]
-        raise error_class(msg=info['message'])
+        raise exc.NeutronException(**info)
 
     def _create_resource(self, res_type, context, res_data):
         """Create a resource in API server.
@@ -337,7 +300,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'DELETE')
         if status_code != requests.codes.ok:
-            self._raise_contrail_error(status_code, info=res_info,
+            self._raise_contrail_error(info=res_info,
                                        obj_name=res_type)
 
     def _list_resource(self, res_type, context, filters, fields):
@@ -605,7 +568,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         status_code, res_info = self._request_backend(context, res_dict,
                                                       'router', 'ADDINTERFACE')
         if status_code != requests.codes.ok:
-            self._raise_contrail_error(status_code, info=res_info,
+            self._raise_contrail_error(info=res_info,
                                        obj_name='add_router_interface')
         return res_info
 
@@ -621,7 +584,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         status_code, res_info = self._request_backend(context, res_dict,
                                                       'router', 'DELINTERFACE')
         if status_code != requests.codes.ok:
-            self._raise_contrail_error(status_code, info=res_info,
+            self._raise_contrail_error(info=res_info,
                                        obj_name='remove_router_interface')
         return res_info
 
