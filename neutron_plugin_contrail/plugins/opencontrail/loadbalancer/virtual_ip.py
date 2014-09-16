@@ -147,8 +147,10 @@ class VirtualIpManager(ResourceManager):
         if ip_address and ip_address != attributes.ATTR_NOT_SPECIFIED:
             iip_obj.set_instance_ip_address(ip_address)
         self._api.instance_ip_create(iip_obj)
+        iip = self._api.instance_ip_read(id=iip_obj.uuid)
+        vip_address = iip.get_instance_ip_address()
 
-        return vmi
+        return vmi, vip_address
 
     def _delete_virtual_interface(self, vmi_list):
         if vmi_list is None:
@@ -195,19 +197,22 @@ class VirtualIpManager(ResourceManager):
 
         obj_uuid = uuidutils.generate_uuid()
         name = self._get_resource_name('virtual-ip', project, v['name'], obj_uuid)
-        props = self.make_properties(v)
         id_perms = IdPermsType(enable=True,
                                description=v['description'])
-        vip = VirtualIp(name, project, virtual_ip_properties=props,
-                        id_perms=id_perms, display_name=v['name'])
+        vip = VirtualIp(name, project, id_perms=id_perms,
+                        display_name=v['name'])
         vip.uuid = obj_uuid
 
         if pool:
             vip.set_loadbalancer_pool(pool)
 
-        vmi = self._create_virtual_interface(project, obj_uuid, v['subnet_id'],
-                                             v.get('address'))
+        vmi, vip_address = self._create_virtual_interface(project, 
+            obj_uuid, v['subnet_id'], v.get('address'))
         vip.set_virtual_machine_interface(vmi)
+
+        props = self.make_properties(v)
+        props.set_address(vip_address)
+        vip.set_virtual_ip_properties(props)
 
         self._api.virtual_ip_create(vip)
         return self.make_dict(vip)
@@ -218,9 +223,9 @@ class VirtualIpManager(ResourceManager):
         except NoIdError:
             loadbalancer.VipNotFound(vip_id=id)
 
+        super(VirtualIpManager, self).delete(context, id)
         self._delete_virtual_interface(
             vip.get_virtual_machine_interface_refs())
-        super(VirtualIpManager, self).delete(context, id)
 
     def _update_virtual_ip_properties(self, props, id, vip):
         """

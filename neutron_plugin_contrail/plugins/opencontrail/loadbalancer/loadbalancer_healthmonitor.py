@@ -14,7 +14,7 @@ from resource_manager import ResourceManager
 class LoadbalancerHealthmonitorManager(ResourceManager):
     _loadbalancer_health_type_mapping = {
         'admin_state': 'admin_state_up',
-        'type': 'type',
+        'monitor_type': 'type',
         'delay': 'delay',
         'timeout': 'timeout',
         'max_retries': 'max_retries',
