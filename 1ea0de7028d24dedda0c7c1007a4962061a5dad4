@@ -1,0 +1,10 @@
+Code-Review+1: opencontrail-admin <ci-admin@opencontrail.org>
+Verified+2: opencontrail-admin <ci-admin@opencontrail.org>
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Rudra Rugge <rrugge@juniper.net>
+Code-Review+2: Rudra Rugge <rrugge@juniper.net>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Thu, 18 Sep 2014 17:21:12 -0700
+Reviewed-on: https://review.opencontrail.org/2921
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/R1.10
