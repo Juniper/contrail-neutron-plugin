@@ -2,6 +2,8 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import uuid
+
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import IdPermsType, NoIdError
@@ -33,7 +35,7 @@ class LoadbalancerPoolManager(ResourceManager):
     def make_dict(self, pool, fields=None):
         res = {
             'id': pool.uuid,
-            'tenant_id': pool.parent_uuid,
+            'tenant_id': pool.parent_uuid.replace('-', ''),
             'name': pool.display_name,
             'description': self._get_object_description(pool),
             'status': self._get_object_status(pool),
@@ -69,7 +71,11 @@ class LoadbalancerPoolManager(ResourceManager):
         return self._api.loadbalancer_pool_read(id=id)
 
     def resource_list(self, tenant_id=None):
-        return self._api.loadbalancer_pools_list(parent_id=tenant_id)
+        if tenant_id:
+            parent_id = str(uuid.UUID(tenant_id))
+        else:
+            parent_id = None
+        return self._api.loadbalancer_pools_list(parent_id=parent_id)
 
     def resource_update(self, obj):
         return self._api.loadbalancer_pool_update(obj)

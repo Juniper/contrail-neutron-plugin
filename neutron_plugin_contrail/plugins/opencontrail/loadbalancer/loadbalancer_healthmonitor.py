@@ -2,6 +2,8 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import uuid
+
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import IdPermsType, NoIdError
@@ -36,7 +38,7 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
 
     def make_dict(self, health_monitor, fields=None):
         res = {'id': health_monitor.uuid,
-               'tenant_id': health_monitor.parent_uuid,
+               'tenant_id': health_monitor.parent_uuid.replace('-', ''),
                'status': self._get_object_status(health_monitor)}
 
         props = health_monitor.get_loadbalancer_healthmonitor_properties()
@@ -51,7 +53,11 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
         return self._api.loadbalancer_healthmonitor_read(id=id)
 
     def resource_list(self, tenant_id=None):
-        return self._api.loadbalancer_healthmonitors_list(parent_id=tenant_id)
+        if tenant_id:
+            parent_id = str(uuid.UUID(tenant_id))
+        else:
+            parent_id = None
+        return self._api.loadbalancer_healthmonitors_list(parent_id=parent_id)
 
     def resource_update(self, obj):
         return self._api.loadbalancer_healthmonitor_update(obj)
