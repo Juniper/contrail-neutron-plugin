@@ -81,7 +81,7 @@ class VirtualIpManager(ResourceManager):
         port_id = self._get_interface_params(vip, props)
 
         res = {'id': vip.uuid,
-               'tenant_id': vip.parent_uuid,
+               'tenant_id': vip.parent_uuid.replace('-', ''),
                'name': vip.display_name,
                'description': self._get_object_description(vip),
                'subnet_id': props.subnet_id,
@@ -107,7 +107,11 @@ class VirtualIpManager(ResourceManager):
         return self._api.virtual_ip_read(id=id)
 
     def resource_list(self, tenant_id=None):
-        return self._api.virtual_ips_list(parent_id=tenant_id)
+        if tenant_id:
+            parent_id = str(uuid.UUID(tenant_id))
+        else:
+            parent_id = None
+        return self._api.virtual_ips_list(parent_id=parent_id)
 
     def resource_update(self, obj):
         return self._api.virtual_ip_update(obj)

@@ -168,7 +168,8 @@ class ResourceManager(object):
             obj = self.resource_read(id=id)
         except NoIdError:
             raise self.get_exception_notfound(id=id)
-        if not context.is_admin and context.tenant_id != obj.parent_uuid:
+        tenant_id = str(uuid.UUID(context.tenant_id))
+        if not context.is_admin and tenant_id != obj.parent_uuid:
             raise self.get_exception_notfound(id=id)
         return self.make_dict(obj, fields)
 

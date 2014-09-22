@@ -39,7 +39,7 @@ class LoadbalancerMemberManager(ResourceManager):
 
         try:
             pool = self._api.loadbalancer_pool_read(id=member.parent_uuid)
-            res['tenant_id'] = pool.parent_uuid
+            res['tenant_id'] = pool.parent_uuid.replace('-', '')
         except NoIdError:
             pass
 
@@ -66,11 +66,11 @@ class LoadbalancerMemberManager(ResourceManager):
             return {}
 
         member_list = []
-        for pool in pool_list:
+        for pool in pool_list['loadbalancer-pools']:
             pool_members = self._api.loadbalancer_members_list(
                 parent_id=pool['uuid'])
             if 'loadbalancer-members' in pool_members:
-                member_list.expand(pool_members['loadbalancer-members'])
+                member_list.extend(pool_members['loadbalancer-members'])
 
         response = {'loadbalancer-members': member_list}
         return response
@@ -87,7 +87,7 @@ class LoadbalancerMemberManager(ResourceManager):
             pool_members = self._api.loadbalancer_members_list(
                 parent_id=pool)
             if 'loadbalancer-members' in pool_members:
-                member_list.expand(pool_members['loadbalancer-members'])
+                member_list.extend(pool_members['loadbalancer-members'])
 
         response = []
         for m in member_list:

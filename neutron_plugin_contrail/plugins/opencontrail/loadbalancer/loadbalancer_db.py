@@ -2,6 +2,8 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import uuid
+
 from oslo.config import cfg
 from neutron.extensions import loadbalancer
 from neutron.extensions.loadbalancer import LoadBalancerPluginBase
@@ -116,7 +118,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             raise loadbalancer.HealthMonitorNotFound(monitor_id=m['id'])
 
         if not context.is_admin:
-            tenant_id = context.tenant_id
+            tenant_id = str(uuid.UUID(context.tenant_id))
             if tenant_id != pool.parent_uuid or \
                     tenant_id != monitor.parent_uuid:
                 raise n_exc.NotAuthorized()
@@ -133,7 +135,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
 
         res = {
             'id': monitor.uuid,
-            'tenant_id': monitor.parent_uuid
+            'tenant_id': monitor.parent_uuid.replace('-', '')
         }
         return res
 
@@ -144,7 +146,8 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             pool = self._api.loadbalancer_pool_read(id=pool_id)
         except NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=id)
-        if not context.is_admin and context.tenant_id != pool.parent_uuid:
+        tenant_id = str(uuid.UUID(context.tenant_id))
+        if not context.is_admin and tenant_id != pool.parent_uuid:
             raise loadbalancer.PoolNotFound(pool_id=id)
 
         in_list = False
@@ -161,7 +164,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             'pool_id': pool_id,
             'monitor_id': id,
             'status': self._pool_manager._get_object_status(pool),
-            'tenant_id': pool.parent_uuid
+            'tenant_id': pool.parent_uuid.replace('-', '')
         }
         return self._pool_manager._fields(res, fields)
 
@@ -170,7 +173,8 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             pool = self._api.loadbalancer_pool_read(id=pool_id)
         except NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=id)
-        if not context.is_admin and context.tenant_id != pool.parent_uuid:
+        tenant_id = str(uuid.UUID(context.tenant_id))
+        if not context.is_admin and tenant_id != pool.parent_uuid:
             raise loadbalancer.PoolNotFound(pool_id=id)
 
         try:
