@@ -216,7 +216,8 @@ class ResourceManager(object):
                 obj = self.resource_read(id=id)
             except NoIdError:
                 raise self.get_exception_notfound(id=id)
-            if context.tenant_id != obj.parent_uuid:
+            tenant_id = str(uuid.UUID(context.tenant_id))
+            if tenant_id != obj.parent_uuid:
                 raise n_exc.NotAuthorized()
 
         # TODO: possible exceptions: RefsExistError
