@@ -2,6 +2,8 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import uuid
+
 from neutron.common import exceptions as n_exc
 from neutron.openstack.common import log as logging
 import neutron.services.loadbalancer.drivers.abstract_driver as abstract_driver
@@ -168,7 +170,8 @@ class OpencontrailLoadbalancerDriver(
 
     def _clear_loadbalancer_instance(self, tenant_id, pool_id):
         try:
-            project = self._api.project_read(id=tenant_id)
+            project = self._api.project_read(
+                id=str(uuid.UUID(tenant_id)))
         except NoIdError as ex:
             LOG.error(ex)
             return
