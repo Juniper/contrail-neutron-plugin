@@ -70,7 +70,6 @@ class OpencontrailLoadbalancerDriver(
         - left network: backend, determined by the pool subnet
         """
         props = ServiceInstanceType()
-        if_list = []
 
         vmi = self._get_virtual_ip_interface(vip)
         if not vmi:
@@ -87,7 +86,6 @@ class OpencontrailLoadbalancerDriver(
         right_if = ServiceInstanceInterfaceType(
             virtual_network=right_virtual_network,
             ip_address=right_ip_address)
-        if_list.append(right_if)
 
         pool_attrs = pool.get_loadbalancer_pool_properties()
         backnet_id = utils.get_subnet_network_id(
@@ -101,10 +99,11 @@ class OpencontrailLoadbalancerDriver(
             left_virtual_network = ':'.join(vnet.get_fq_name())
             left_if = ServiceInstanceInterfaceType(
                 virtual_network=left_virtual_network)
-            if_list.append(left_if)
+        else:
+            left_if = ServiceInstanceInterfaceType()
 
         # set interfaces and ha
-        props.set_interface_list(if_list)
+        props.set_interface_list([left_if, right_if])
         props.set_ha_mode('active-standby')
 
         return props
