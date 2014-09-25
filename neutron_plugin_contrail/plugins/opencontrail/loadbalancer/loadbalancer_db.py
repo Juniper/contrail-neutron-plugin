@@ -23,8 +23,41 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
         api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
         api_srvr_port = cfg.CONF.APISERVER.api_server_port
+        try:
+            auth_host = cfg.CONF.keystone_authtoken.auth_host
+        except cfg.NoSuchOptError:
+            auth_host = "127.0.0.1"
+
+        try:
+            auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
+        except cfg.NoSuchOptError:
+            auth_protocol = "http"
+
+        try:
+            auth_port = cfg.CONF.keystone_authtoken.auth_port
+        except cfg.NoSuchOptError:
+            auth_port = "35357"
+
+        try:
+            auth_url = cfg.CONF.keystone_authtoken.auth_url
+        except cfg.NoSuchOptError:
+            auth_url = "/v2.0/tokens"
+
+        try:
+            auth_type = cfg.CONF.keystone_authtoken.auth_type
+        except cfg.NoSuchOptError:
+            auth_type = "keystone"
+
+        try:
+            api_server_url = cfg.CONF.APISERVER.api_server_url
+        except cfg.NoSuchOptError:
+            api_server_url = "/"
+
         self._api = VncApi(admin_user, admin_password, admin_tenant_name,
-                           api_srvr_ip, api_srvr_port)
+                           api_srvr_ip, api_srvr_port, api_server_url,
+                           auth_host=auth_host, auth_port=auth_port,
+                           auth_protocol=auth_protocol, auth_url=auth_url,
+                           auth_type=auth_type)
         self._pool_manager = \
             loadbalancer_pool.LoadbalancerPoolManager(self._api)
         self._vip_manager = virtual_ip.VirtualIpManager(self._api)

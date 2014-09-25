@@ -9,7 +9,7 @@ from neutron.openstack.common import log as logging
 import neutron.services.loadbalancer.drivers.abstract_driver as abstract_driver
 
 from vnc_api.vnc_api import ServiceInstance, ServiceInstanceType
-from vnc_api.vnc_api import ServiceScaleOutType
+from vnc_api.vnc_api import ServiceScaleOutType, ServiceInstanceInterfaceType
 from vnc_api.vnc_api import NoIdError, RefsExistError
 import utils
 
@@ -70,6 +70,7 @@ class OpencontrailLoadbalancerDriver(
         - left network: backend, determined by the pool subnet
         """
         props = ServiceInstanceType()
+        if_list = []
 
         vmi = self._get_virtual_ip_interface(vip)
         if not vmi:
@@ -78,11 +79,15 @@ class OpencontrailLoadbalancerDriver(
         vnet_refs = vmi.get_virtual_network_refs()
         if vnet_refs is None:
             return None
-        props.right_virtual_network = ':'.join(vnet_refs[0]['to'])
+        right_virtual_network = ':'.join(vnet_refs[0]['to'])
 
-        props.right_ip_address = self._get_interface_address(vmi)
-        if props.right_ip_address is None:
+        right_ip_address = self._get_interface_address(vmi)
+        if right_ip_address is None:
             return None
+        right_if = ServiceInstanceInterfaceType(
+            virtual_network=right_virtual_network,
+            ip_address=right_ip_address)
+        if_list.append(right_if)
 
         pool_attrs = pool.get_loadbalancer_pool_properties()
         backnet_id = utils.get_subnet_network_id(
@@ -93,10 +98,14 @@ class OpencontrailLoadbalancerDriver(
             except NoIdError as ex:
                 LOG.error(ex)
                 return None
-            props.left_virtual_network = ':'.join(vnet.get_fq_name())
+            left_virtual_network = ':'.join(vnet.get_fq_name())
+            left_if = ServiceInstanceInterfaceType(
+                virtual_network=left_virtual_network)
+            if_list.append(left_if)
 
-        # set flag to create policy automatically
-        props.set_auto_policy(True)
+        # set interfaces and ha
+        props.set_interface_list(if_list)
+        props.set_ha_mode('active-standby')
 
         return props
 
@@ -177,6 +186,19 @@ class OpencontrailLoadbalancerDriver(
             return
         fq_name = list(project.get_fq_name())
         fq_name.append(pool_id)
+
+        try:
+            si_obj = self._api.service_instance_read(fq_name=fq_name)
+        except NoIdError as ex:
+            LOG.error(ex)
+            return
+
+        pool_back_refs = si_obj.get_loadbalancer_pool_back_refs()
+        for pool_back_ref in pool_back_refs or []:
+            pool_obj = self._api.loadbalancer_pool_read(
+                id=pool_back_ref['uuid'])
+            pool_obj.del_service_instance(si_obj)
+            self._api.loadbalancer_pool_update(pool_obj)
 
         try:
             self._api.service_instance_delete(fq_name=fq_name)
