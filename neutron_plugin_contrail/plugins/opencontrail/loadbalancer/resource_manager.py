@@ -5,6 +5,7 @@
 from abc import ABCMeta, abstractmethod, abstractproperty
 from eventlet import greenthread
 from neutron.common import exceptions as n_exc
+from neutron.extensions import loadbalancer
 from neutron.plugins.common import constants
 from vnc_api.vnc_api import NoIdError, RefsExistError
 import six
@@ -161,6 +162,15 @@ class ResourceManager(object):
             return None
         return id_perms.description
 
+    def _get_object_tenant_id(self, obj):
+        proj_fq_name = obj.get_fq_name()[0:2]
+        try:
+            proj = self._api.project_read(fq_name=proj_fq_name)
+        except NoIdError:
+            return None
+
+        return proj.uuid
+
     def get_resource(self, context, id, fields=None):
         """ Implement GET by uuid.
         """
@@ -169,7 +179,8 @@ class ResourceManager(object):
         except NoIdError:
             raise self.get_exception_notfound(id=id)
         tenant_id = str(uuid.UUID(context.tenant_id))
-        if not context.is_admin and tenant_id != obj.parent_uuid:
+        project_id = self._get_object_tenant_id(obj)
+        if not context.is_admin and tenant_id != project_id:
             raise self.get_exception_notfound(id=id)
         return self.make_dict(obj, fields)
 
@@ -217,7 +228,8 @@ class ResourceManager(object):
             except NoIdError:
                 raise self.get_exception_notfound(id=id)
             tenant_id = str(uuid.UUID(context.tenant_id))
-            if tenant_id != obj.parent_uuid:
+            project_id = self._get_object_tenant_id(obj)
+            if tenant_id != project_id:
                 raise n_exc.NotAuthorized()
 
         # TODO: possible exceptions: RefsExistError
@@ -225,6 +237,8 @@ class ResourceManager(object):
             self.resource_delete(id=id)
         except NoIdError:
             raise self.get_exception_notfound(id=id)
+        except RefsExistError:
+            raise loadbalancer.PoolInUse(pool_id=id)
 
     def update_properties_subr(self, props, resource):
         """ Update the DB properties object from the neutron parameters.
