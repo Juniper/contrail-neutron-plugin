@@ -2,6 +2,8 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import requests
+import time
 import uuid
 
 from oslo.config import cfg
@@ -53,11 +55,20 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         except cfg.NoSuchOptError:
             api_server_url = "/"
 
-        self._api = VncApi(admin_user, admin_password, admin_tenant_name,
-                           api_srvr_ip, api_srvr_port, api_server_url,
-                           auth_host=auth_host, auth_port=auth_port,
-                           auth_protocol=auth_protocol, auth_url=auth_url,
-                           auth_type=auth_type)
+        # Retry till a api-server is up
+        connected = False
+        while not connected:
+            try:
+                self._api = VncApi(
+                     admin_user, admin_password, admin_tenant_name,
+                     api_srvr_ip, api_srvr_port, api_server_url,
+                     auth_host=auth_host, auth_port=auth_port,
+                     auth_protocol=auth_protocol, auth_url=auth_url,
+                     auth_type=auth_type)
+                connected = True
+            except requests.exceptions.RequestException as e:
+                time.sleep(3)
+
         self._pool_manager = \
             loadbalancer_pool.LoadbalancerPoolManager(self._api)
         self._vip_manager = virtual_ip.VirtualIpManager(self._api)
@@ -151,7 +162,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             raise loadbalancer.PoolNotFound(pool_id=id)
 
         in_list = False
-        for mref in pool.get_loadbalancer_healthmonitor_refs():
+        for mref in pool.get_loadbalancer_healthmonitor_refs() or []:
             if mref['uuid'] == id:
                 in_list = True
                 break

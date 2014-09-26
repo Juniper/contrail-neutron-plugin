@@ -6,11 +6,11 @@ import uuid
 
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
-from vnc_api.vnc_api import IdPermsType, NoIdError
+from vnc_api.vnc_api import IdPermsType, NoIdError, HttpError
 from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
 
 from resource_manager import ResourceManager
-
+from resource_manager import LoadbalancerMethodInvalid
 
 class LoadbalancerPoolManager(ResourceManager):
 
@@ -78,7 +78,14 @@ class LoadbalancerPoolManager(ResourceManager):
         return self._api.loadbalancer_pools_list(parent_id=parent_id)
 
     def resource_update(self, obj):
-        return self._api.loadbalancer_pool_update(obj)
+        try:
+            return self._api.loadbalancer_pool_update(obj)
+        except HttpError as e:
+            if 'LoadbalancerMethodType' in e.content:
+                pool_props = obj.get_loadbalancer_pool_properties()
+                lb_method = pool_props.get_loadbalancer_method()
+                raise LoadbalancerMethodInvalid(lb_method=lb_method,
+                                                pool_id=obj.uuid)
 
     def resource_delete(self, id):
         return self._api.loadbalancer_pool_delete(id=id)
