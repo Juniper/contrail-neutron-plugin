@@ -252,15 +252,13 @@ class OpencontrailLoadbalancerDriver(
         """
         if pool['vip_id']:
             self._update_loadbalancer_instance(pool['id'], pool['vip_id'])
-        else:
-            self._clear_loadbalancer_instance(pool['tenant_id'], pool['id'])
 
     def delete_pool(self, context, pool):
         """Driver can call the code below in order to delete the pool.
         self.plugin._delete_db_pool(context, pool["id"])
         or set the status to ERROR if deletion failed
         """
-        self._clear_loadbalancer_instance(pool['tenant_id'], pool['id'])
+        pass
 
     def stats(self, context, pool_id):
         pass

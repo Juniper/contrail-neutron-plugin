@@ -11,6 +11,9 @@ from vnc_api.vnc_api import NoIdError, RefsExistError
 import six
 import uuid
 
+class LoadbalancerMethodInvalid(n_exc.BadRequest):
+    message = _("Method %(lb_method)s not supported for pool %(pool_id)s")
+
 
 @six.add_metaclass(ABCMeta)
 class ResourceManager(object):
