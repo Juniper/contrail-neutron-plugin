@@ -308,3 +308,9 @@ class TestContrailL3NatTestCase(JVContrailPluginTestCase,
 
     def setUp(self):
         super(TestContrailL3NatTestCase, self).setUp()
+
+
+class TestContrailPortBindingVnicType(
+        JVContrailPluginTestCase, test_bindings.PortBindingsVnicTestCaseMixin):
+    def setUp(self):
+        super(TestContrailPortBindingVnicType, self).setUp()

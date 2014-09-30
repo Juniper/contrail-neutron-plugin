@@ -116,6 +116,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def __init__(self):
         super(NeutronPluginContrailCoreV2, self).__init__()
         portbindings_base.register_port_dict_function()
+        self.base_binding_dict = self._get_base_binding_dict()
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         self._parse_class_args()
 
@@ -123,10 +124,11 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         binding = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
             portbindings.VIF_DETAILS: {
-                # TODO(praneetb): Replace with new VIF security details
+                # TODO(praneetb): Replace with new VIF secty details
                 portbindings.CAP_PORT_FILTER:
                 'security-group' in self.supported_extension_aliases
-            }
+            },
+            portbindings.VNIC_TYPE: portbindings.VNIC_NORMAL
         }
         return binding
 
@@ -429,12 +431,19 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
             'security_groups', []) or []
         return port_res
 
-    def _make_port_dict(self, port):
+    def _make_port_dict(self, port, fields=None):
+        """filters attributes of a port based on fields."""
+        if not fields:
+            port.update(self.base_binding_dict)
+        else:
+            for key in self.base_binding_dict:
+                if key in fields:
+                    port.update(self.base_binding_dict[key])
         return port
 
     def _get_port(self, context, id, fields=None):
         port = self._get_resource('port', context, id, fields)
-        return self._make_port_dict(port)
+        return self._make_port_dict(port, fields)
 
     def _update_ips_for_port(self, context, network_id, port_id, original_ips,
                              new_ips):
@@ -505,7 +514,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         specified Virtual Network with the specfied filter.
         """
 
-        return [self._make_port_dict(p)
+        return [self._make_port_dict(p, fields)
                 for p in self._list_resource('port', context, filters, fields)]
 
     def get_ports_count(self, context, filters=None):
