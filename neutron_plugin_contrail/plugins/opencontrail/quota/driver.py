@@ -137,7 +137,7 @@ class QuotaDriver(object):
         for project in project_list:
             if default_quota and (project['uuid'] == default_project.uuid):
                 continue
-            quotas = cls._get_tenant_quotas(context, resources, project['uuid'].
+            quotas = cls._get_tenant_quotas(context, resources, project['uuid'],
                                             default_quota)
             quotas['tenant_id'] = project['uuid']
             ret_list.append(quotas)
@@ -166,7 +166,7 @@ class QuotaDriver(object):
         try:
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
-            quota = proj_obj.get_quota()
+            quota = proj_obj.get_quota() or vnc_api.QuotaType()
         except vnc_exc.NoIdError:
             return
         except Exception as e:
