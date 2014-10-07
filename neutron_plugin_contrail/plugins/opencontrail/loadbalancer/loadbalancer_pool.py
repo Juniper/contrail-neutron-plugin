@@ -93,6 +93,9 @@ class LoadbalancerPoolManager(ResourceManager):
     def get_exception_notfound(self, id=None):
         return loadbalancer.PoolNotFound(pool_id=id)
 
+    def get_exception_inuse(self, id=None):
+        return loadbalancer.PoolInUse(pool_id=id)
+
     @property
     def neutron_name(self):
         return "pool"
