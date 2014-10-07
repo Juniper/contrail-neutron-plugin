@@ -161,7 +161,6 @@ class OpencontrailLoadbalancerDriver(
         try:
             si_obj = self._api.service_instance_read(fq_name=fq_name)
             update = self._service_instance_update_props(si_obj, props)
-            # TODO: update template if necessary
             if update:
                 self._api.service_instance_update(si_obj)
 
@@ -220,11 +219,12 @@ class OpencontrailLoadbalancerDriver(
         """Driver may call the code below in order to update the status.
         self.plugin.update_status(context, Vip, id, constants.ACTIVE)
         """
-        if vip['pool_id']:
-            self._update_loadbalancer_instance(vip['pool_id'], vip['id'])
-        elif old_vip['pool_id']:
+        if old_vip['pool_id'] != vip['pool_id']:
             self._clear_loadbalancer_instance(
                 old_vip['tenant_id'], old_vip['pool_id'])
+
+        if vip['pool_id']:
+            self._update_loadbalancer_instance(vip['pool_id'], vip['id'])
 
     def delete_vip(self, context, vip):
         """A real driver would invoke a call to his backend

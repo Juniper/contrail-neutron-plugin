@@ -32,6 +32,10 @@ class LoadbalancerMemberManager(ResourceManager):
                 setattr(props, key, member[mapping])
         return props
 
+    def _get_member_pool_id(self, member):
+        pool_uuid = member.parent_uuid
+        return pool_uuid
+
     def make_dict(self, member, fields=None):
         res = {'id': member.uuid,
                'pool_id': member.parent_uuid,
@@ -106,6 +110,9 @@ class LoadbalancerMemberManager(ResourceManager):
     def get_exception_notfound(self, id=None):
         return loadbalancer.MemberNotFound(member_id=id)
 
+    def get_exception_inuse(self, id=None):
+        pass
+
     @property
     def neutron_name(self):
         return "member"
@@ -146,3 +153,38 @@ class LoadbalancerMemberManager(ResourceManager):
             member_db.set_loadbalancer_member_properties(props)
             return True
         return False
+
+    def update_object(self, member_db, id, m):
+        if 'pool_id' in m and self._get_member_pool_id(member_db) != m['pool_id']:
+            try:
+                pool = self._api.loadbalancer_pool_read(id=m['pool_id'])
+            except NoIdError:
+                raise loadbalancer.PoolNotFound(pool_id=m['pool_id'])
+
+            db_props = member_db.get_loadbalancer_member_properties()
+            members = pool.get_loadbalancer_members()
+            for member in members or []:
+                member_obj = self._api.loadbalancer_member_read(
+                    id=member['uuid'])
+                props = member_obj.get_loadbalancer_member_properties()
+                if ((props.get_address() == db_props.get_address()) and
+                    (props.get_protocol_port() == db_props.get_protocol_port())):
+                    raise loadbalancer.MemberExists(
+                        address=props.get_address(),
+                        port=props.get_protocol_port(),
+                        pool=m['pool_id'])
+
+        # delete member from old pool
+        props = member_db.get_loadbalancer_member_properties()
+        obj_uuid = member_db.uuid
+        self._api.loadbalancer_member_delete(id=member_db.uuid)
+
+        # create member for the new pool with same uuid and props
+        id_perms = IdPermsType(enable=True)
+        member_obj = LoadbalancerMember(
+            obj_uuid, pool, loadbalancer_member_properties=props,
+            id_perms=id_perms)
+        member_obj.uuid = obj_uuid
+        self._api.loadbalancer_member_create(member_obj)
+
+        return True

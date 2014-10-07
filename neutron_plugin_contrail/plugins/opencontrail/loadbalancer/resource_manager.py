@@ -72,6 +72,12 @@ class ResourceManager(object):
         pass
 
     @abstractproperty
+    def get_exception_inuse(self, id):
+        """ Returns the correct NotFound exception.
+        """
+        pass
+
+    @abstractproperty
     def neutron_name(self):
         """ Resource name in a request from neutron.
         """
@@ -235,13 +241,12 @@ class ResourceManager(object):
             if tenant_id != project_id:
                 raise n_exc.NotAuthorized()
 
-        # TODO: possible exceptions: RefsExistError
         try:
             self.resource_delete(id=id)
         except NoIdError:
             raise self.get_exception_notfound(id=id)
         except RefsExistError:
-            raise loadbalancer.PoolInUse(pool_id=id)
+            raise self.get_exception_inuse(id=id)
 
     def update_properties_subr(self, props, resource):
         """ Update the DB properties object from the neutron parameters.
