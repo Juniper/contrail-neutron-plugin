@@ -106,6 +106,8 @@ class OpencontrailLoadbalancerDriver(
         # set interfaces and ha
         props.set_interface_list(if_list)
         props.set_ha_mode('active-standby')
+        scale_out = ServiceScaleOutType(max_instances=2, auto_scale=False)
+        props.set_scale_out(scale_out)
 
         return props
 
