@@ -47,6 +47,14 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
             if value is not None:
                 res[mapping] = value
 
+        pool_ids = []
+        pool_back_refs = health_monitor.get_loadbalancer_pool_back_refs()
+        for pool_back_ref in pool_back_refs or []:
+            pool_id = {}
+            pool_id['pool_id'] = pool_back_ref['uuid']
+            pool_ids.append(pool_id)
+        res['pools'] = pool_ids
+
         return self._fields(res, fields)
 
     def resource_read(self, id):
@@ -66,7 +74,10 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
         return self._api.loadbalancer_healthmonitor_delete(id=id)
 
     def get_exception_notfound(self, id=None):
-        return loadbalancer.HealthMonitorNotFound(pool_id=id)
+        return loadbalancer.HealthMonitorNotFound(monitor_id=id)
+
+    def get_exception_inuse(self, id=None):
+        return loadbalancer.HealthMonitorInUse(monitor_id=id)
 
     @property
     def neutron_name(self):
