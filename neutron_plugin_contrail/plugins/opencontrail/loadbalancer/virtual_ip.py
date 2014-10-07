@@ -122,6 +122,9 @@ class VirtualIpManager(ResourceManager):
     def get_exception_notfound(self, id=None):
         return loadbalancer.VipNotFound(vip_id=id)
 
+    def get_exception_inuse(self, id=None):
+        pass
+
     @property
     def neutron_name(self):
         return "vip"
@@ -192,10 +195,12 @@ class VirtualIpManager(ResourceManager):
             project_id = pool.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
                 raise n_exc.NotAuthorized()
-            # TODO: check that the pool has no vip configured
-            # if pool.protocol != v['protocol']:
-            #     raise loadbalancer.ProtocolMismatch(
-            #         vip_proto=v['protocol'], pool_proto=pool.protocol)
+            protocol = pool.get_loadbalancer_pool_properties().get_protocol()
+            if protocol != v['protocol']:
+                raise loadbalancer.ProtocolMismatch(
+                    vip_proto=v['protocol'], pool_proto=protocol)
+            if pool.get_virtual_ip_back_refs():
+                raise loadbalancer.VipExists(pool_id=v['pool_id'])
         else:
             pool = None
 
@@ -210,7 +215,7 @@ class VirtualIpManager(ResourceManager):
         if pool:
             vip.set_loadbalancer_pool(pool)
 
-        vmi, vip_address = self._create_virtual_interface(project, 
+        vmi, vip_address = self._create_virtual_interface(project,
             obj_uuid, v['subnet_id'], v.get('address'))
         vip.set_virtual_machine_interface(vmi)
 
@@ -276,11 +281,21 @@ class VirtualIpManager(ResourceManager):
                 raise loadbalancer.PoolNotFound(pool_id=v['pool_id'])
             if vip_db.parent_uuid != pool.parent_uuid:
                 raise n_exc.NotAuthorized()
-            # TODO: check that the pool has no vip configured
-            # TODO: check that the protocol matches
-            # TODO: check that the pool is in valid state
-            # TODO: check that the provider is the same.
-            vip_db.set_localbalancer_pool(pool)
+
+            # check that the pool has no vip configured
+            if pool.get_virtual_ip_back_refs():
+                raise loadbalancer.VipExists(pool_id=pool_obj.uuid)
+
+            # check that the protocol matches
+            pool_props = pool.get_loadbalancer_pool_properties()
+            vip_props = vip_db.get_virtual_ip_properties()
+            if pool_props.get_protocol() != vip_props.get_protocol():
+                raise loadbalancer.ProtocolMismatch(
+                    vip_proto=vip_props.get_protocol(),
+                    pool_proto=pool_props.get_protocol())
+
+            # update vip
+            vip_db.set_loadbalancer_pool(pool)
             return True
 
         return False
