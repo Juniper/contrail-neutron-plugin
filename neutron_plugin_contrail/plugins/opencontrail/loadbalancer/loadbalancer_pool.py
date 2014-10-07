@@ -50,6 +50,7 @@ class LoadbalancerPoolManager(ResourceManager):
         res['provider'] = pool.get_loadbalancer_pool_provider()
 
         # vip_id
+        res['vip_id'] = None
         vip_refs = pool.get_virtual_ip_back_refs()
         if vip_refs is not None:
             res['vip_id'] = vip_refs[0]['uuid']
