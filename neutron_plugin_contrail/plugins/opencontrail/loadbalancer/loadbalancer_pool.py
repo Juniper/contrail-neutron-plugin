@@ -56,19 +56,19 @@ class LoadbalancerPoolManager(ResourceManager):
             res['vip_id'] = vip_refs[0]['uuid']
 
         # members
-        res['members'] = None
+        res['members'] = []
         members = pool.get_loadbalancer_members()
         if members is not None:
             res['members'] = [member['uuid'] for member in members]
 
         # health_monitors
-        res['health_monitors'] = None
+        res['health_monitors'] = []
         hm_refs = pool.get_loadbalancer_healthmonitor_refs()
         if hm_refs is not None:
             res['health_monitors'] = [hm['uuid'] for hm in hm_refs]
 
         # TODO: health_monitor_status
-        res['health_monitors_status'] = None
+        res['health_monitors_status'] = []
 
         return self._fields(res, fields)
 
