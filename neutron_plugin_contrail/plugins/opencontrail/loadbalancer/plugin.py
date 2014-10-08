@@ -6,6 +6,8 @@ from neutron.openstack.common import log as logging
 from neutron.plugins.common import constants
 from neutron.services import service_base
 
+from vnc_api.vnc_api import NoIdError
+
 LOG = logging.getLogger(__name__)
 
 
@@ -59,7 +61,10 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
             self._pool_driver[pool_id] = driver
             driver.create_pool(context, p)
         except Exception as ex:
-            self._api.loadbalancer_pool_delete(pool_id)
+            try:
+                self._api.loadbalancer_pool_delete(pool_id)
+            except NoIdError:
+                pass
             raise ex
         return p
 
@@ -92,7 +97,10 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
         try:
             driver.create_vip(context, v)
         except Exception as ex:
-            self._api.virtual_ip_delete(v['id'])
+            try:
+                self._api.virtual_ip_delete(v['id'])
+            except NoIdError:
+                pass
             raise ex
         return v
 
