@@ -176,6 +176,16 @@ class VirtualIpManager(ResourceManager):
                 for ref in ip_refs:
                     self._api.instance_ip_delete(id=ref['uuid'])
 
+            fip_refs = vmi.get_floating_ip_back_refs()
+            for ref in fip_refs or []:
+                try:
+                    fip = self._api.floating_ip_read(id=ref['uuid'])
+                except NoIdError as ex:
+                    LOG.error(ex)
+                    continue
+                fip.set_virtual_machine_interface_list([])
+                self._api.floating_ip_update(fip)
+
             self._api.virtual_machine_interface_delete(id=interface_id)
 
     def create(self, context, vip):
