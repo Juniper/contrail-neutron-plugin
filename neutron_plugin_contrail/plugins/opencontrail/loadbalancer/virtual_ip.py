@@ -266,12 +266,15 @@ class VirtualIpManager(ResourceManager):
 
         if 'session_persistence' in vip:
             sp = vip['session_persistence']
-            if props.persistence_type != sp['type']:
-                props.persistence_type = sp['type']
+
+            new_type = sp.get('type', None)
+            if props.persistence_type != new_type:
+                props.persistence_type = new_type
                 change = True
-            if 'cookie_name' in sp and \
-                    props.persistence_cookie_name != sp['cookie_name']:
-                props.persistence_cookie_name != sp['cookie_name']
+            new_cookie_name = sp.get('cookie_name', None)
+            if props.persistence_cookie_name != new_cookie_name and \
+                    props.persistence_type == 'APP_COOKIE':
+                props.persistence_cookie_name = new_cookie_name
                 change = True
 
         return change
