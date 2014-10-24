@@ -10,11 +10,14 @@ from oslo.config import cfg
 from neutron.extensions import loadbalancer
 from neutron.extensions.loadbalancer import LoadBalancerPluginBase
 from vnc_api.vnc_api import VncApi
+from cfgm_common import exceptions as vnc_exc
 
 import loadbalancer_healthmonitor
 import loadbalancer_member
 import loadbalancer_pool
 import virtual_ip
+
+LOG = logging.getLogger(__name__)
 
 
 class LoadBalancerPluginDb(LoadBalancerPluginBase):
@@ -68,6 +71,9 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
                 connected = True
             except requests.exceptions.RequestException as e:
                 time.sleep(3)
+            except vnc_exc.TimeOutError as ex:
+                LOG.warn(ex)
+                break
 
         self._pool_manager = \
             loadbalancer_pool.LoadbalancerPoolManager(self._api)
