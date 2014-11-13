@@ -71,8 +71,7 @@ test_sources += env.PythonTestSetup(source=packages)
 
 env.Alias('neutron_plugin_contrail:test',
           env.Command(None,
-                      test_sources, 'python setup.py nosetests',
-                      chdir=Dir('.')))
+                      test_sources, 'cd ' + Dir('.').path + ' && python setup.py nosetests'))
 
 # Local Variables:
 # mode: python
