@@ -40,7 +40,7 @@ vnc_opts = [
     cfg.StrOpt('api_server_port', default='8082',
                help='Port to connect to VNC controller'),
     cfg.DictOpt('contrail_extensions', default={},
-                help='Enable Contrail extensions(policy, ipam)'),
+                help='Enable Contrail extensions(policy, ipam, qos)'),
 ]
 
 class InvalidContrailExtensionError(exc.ServiceUnavailable):
@@ -65,7 +65,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _parse_class_args(self):
         """Parse the contrailplugin.ini file.
 
-        Opencontrail supports extension such as ipam, policy, these extensions
+        Opencontrail supports extension such as ipam, policy, qos these extensions
         can be configured in the plugin configuration file as shown below.
         Plugin then loads the specified extensions.
         contrail_extensions=ipam:<classpath>,policy:<classpath>
