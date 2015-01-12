@@ -118,16 +118,21 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         portbindings_base.register_port_dict_function()
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         self._parse_class_args()
+        self.base_binding_dict = self._get_base_binding_dict()
 
     def _get_base_binding_dict(self):
         binding = {
             portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
-            portbindings.VIF_DETAILS: {
+        }
+        # In havana portbindings.VIF_DETAILS is not defined by neutron
+        try:
+            binding[portbindings.VIF_DETAILS] = {
                 # TODO(praneetb): Replace with new VIF security details
                 portbindings.CAP_PORT_FILTER:
                 'security-group' in self.supported_extension_aliases
             }
-        }
+        except AttributeError:
+            pass
         return binding
 
     def get_agents(self, context, filters=None, fields=None):
@@ -429,7 +434,15 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
             'security_groups', []) or []
         return port_res
 
-    def _make_port_dict(self, port):
+    def _make_port_dict(self, port, fields=None):
+        """filters attributes of a port based on fields."""
+
+        if not fields:
+            port.update(self.base_binding_dict)
+        else:
+            for key in self.base_binding_dict:
+                if key in fields:
+                    port.update(self.base_binding_dict[key])
         return port
 
     def _get_port(self, context, id, fields=None):
