@@ -381,8 +381,6 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return self._make_subnet_dict(subnet_created)
 
     def _make_subnet_dict(self, subnet):
-        if 'gateway_ip' in subnet and subnet['gateway_ip'] == '0.0.0.0':
-            subnet['gateway_ip'] = None
         return subnet
 
     def _get_subnet(self, context, subnet_id, fields=None):
