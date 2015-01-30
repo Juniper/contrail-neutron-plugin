@@ -27,8 +27,16 @@ from neutron.extensions import l3
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
 from neutron import neutron_plugin_base_v2
-from neutron.openstack.common import importutils
-from neutron.openstack.common import jsonutils as json
+try:
+    from neutron.openstack.common import importutils
+except ImportError:
+    from oslo_utils import importutils
+
+try:
+    from neutron.openstack.common import jsonutils as json
+except ImportError:
+    from oslo_serialization import jsonutils as json
+
 from neutron.openstack.common import log as logging
 from simplejson import JSONDecodeError
 

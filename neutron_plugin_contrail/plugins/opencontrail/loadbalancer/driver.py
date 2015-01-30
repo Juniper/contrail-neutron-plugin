@@ -6,7 +6,10 @@ import uuid
 
 from neutron.common import exceptions as n_exc
 from neutron.openstack.common import log as logging
-import neutron.services.loadbalancer.drivers.abstract_driver as abstract_driver
+try:
+    from neutron.services.loadbalancer.drivers import abstract_driver
+except ImportError:
+    from neutron_lbaas.services.loadbalancer.drivers import abstract_driver
 
 from vnc_api.vnc_api import ServiceInstance, ServiceInstanceType
 from vnc_api.vnc_api import ServiceScaleOutType, ServiceInstanceInterfaceType
