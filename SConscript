@@ -41,8 +41,8 @@ sources = [
 ]
 
 packages = [
-    '%s/api-lib/dist/vnc_api-0.1dev.tar.gz' % env['TOP'],
-    '%s/config/common/dist/cfgm_common-0.1dev.tar.gz' % env['TOP'],
+    '%s/api-lib/dist/vnc_api-0.1.dev0.tar.gz' % env['TOP'],
+    '%s/config/common/dist/cfgm_common-0.1.dev0.tar.gz' % env['TOP'],
 ]
 
 import os
