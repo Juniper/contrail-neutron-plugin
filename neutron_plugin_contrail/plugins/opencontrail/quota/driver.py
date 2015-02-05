@@ -37,6 +37,10 @@ class QuotaDriver(object):
             'security_group_rule': 'security_group_rule',
             'router': 'logical_router',
             'port': 'virtual_machine_interface',
+            'pool': 'loadbalancer_pool',
+            'vip': 'virtual_ip',
+            'member': 'loadbalancer_member',
+            'health_monitor': 'loadbalancer_healthmonitor'
             };
 
     @classmethod
