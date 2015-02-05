@@ -39,6 +39,8 @@ class QuotaDriver(object):
             'port': 'virtual_machine_interface',
             'pool': 'loadbalancer_pool',
             'vip': 'virtual_ip',
+            'member': 'loadbalancer_member',
+            'health_monitor': 'loadbalancer_healthmonitor'
             };
 
     @classmethod

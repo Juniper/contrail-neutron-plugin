@@ -7,6 +7,8 @@ import time
 import uuid
 
 from oslo.config import cfg
+from cfgm_common import exceptions as vnc_exc
+from neutron.common import exceptions as n_exc
 from neutron.extensions import loadbalancer
 from neutron.extensions.loadbalancer import LoadBalancerPluginBase
 from vnc_api.vnc_api import VncApi
@@ -88,7 +90,10 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self._vip_manager.get_resource(context, id, fields)
 
     def create_vip(self, context, vip):
-        return self._vip_manager.create(context, vip)
+        try:
+            return self._vip_manager.create(context, vip)
+        except vnc_exc.PermissionDenied as ex:
+            raise n_exc.BadRequest(resource='vip', msg=str(ex))
 
     def update_vip(self, context, id, vip):
         return self._vip_manager.update(context, id, vip)
@@ -103,7 +108,10 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self._pool_manager.get_resource(context, id, fields)
 
     def create_pool(self, context, pool):
-        return self._pool_manager.create(context, pool)
+        try:
+            return self._pool_manager.create(context, pool)
+        except vnc_exc.PermissionDenied as ex:
+            raise n_exc.BadRequest(resource='pool', msg=str(ex))
 
     def update_pool(self, context, id, pool):
         return self._pool_manager.update(context, id, pool)
@@ -213,7 +221,10 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self._member_manager.get_resource(context, id, fields)
 
     def create_member(self, context, member):
-        return self._member_manager.create(context, member)
+        try:
+            return self._member_manager.create(context, member)
+        except vnc_exc.PermissionDenied as ex:
+            raise n_exc.BadRequest(resource='member', msg=str(ex))
 
     def update_member(self, context, id, member):
         return self._member_manager.update(context, id, member)
@@ -228,7 +239,10 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self._monitor_manager.get_resource(context, id, fields)
 
     def create_health_monitor(self, context, health_monitor):
-        return self._monitor_manager.create(context, health_monitor)
+        try:
+            return self._monitor_manager.create(context, health_monitor)
+        except vnc_exc.PermissionDenied as ex:
+            raise n_exc.BadRequest(resource='health_monitor', msg=str(ex))
 
     def update_health_monitor(self, context, id, health_monitor):
         return self._monitor_manager.update(context, id, health_monitor)
