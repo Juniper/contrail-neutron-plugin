@@ -16,7 +16,6 @@ sources = [
     'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_policy.py',
     'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_vpc.py',
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/driver.py',
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_db.py',
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_healthmonitor.py',
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_member.py',
