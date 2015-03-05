@@ -2,7 +2,7 @@
 # Copyright (c) 2013 Juniper Networks, Inc. All rights reserved.
 #
 
-from setuptools import setup, find_packages
+from setuptools import setup
 
 def requirements(filename):
     with open(filename) as f:
@@ -10,10 +10,8 @@ def requirements(filename):
     return lines
 
 setup(
-    name='neutron_plugin_contrail',
-    version='0.1dev',
-    packages=find_packages(),
-    package_data={'': ['*.html', '*.css', '*.xml']},
+    setup_requires=['pbr'],
+    pbr=True,
     zip_safe=False,
     long_description="Contrail neutron plugin",
 
