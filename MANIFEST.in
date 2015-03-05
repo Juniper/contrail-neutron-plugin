@@ -1,1 +1,13 @@
+include AUTHORS
+include ChangeLog
+include README.md
+include LICENSE
+include SConscript
+include *.txt
+
 recursive-include etc *.ini
+
+exclude .gitignore
+exclude .gitreview
+
+global-exclude *.pyc
