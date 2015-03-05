@@ -1,3 +1,4 @@
+pbr
 neutron
 vnc_api
 cfgm_common
