@@ -68,12 +68,17 @@ class InvalidContrailExtensionError(exc.ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
 
 
+class ContrailInternalServerError(exc.NeutronException):
+    message = '%(msg)s'
+
+
 CONTRAIL_EXCEPTION_MAP = {
     requests.codes.not_found: ContrailNotFoundError,
     requests.codes.conflict: ContrailConflictError,
     requests.codes.bad_request: ContrailBadRequestError,
     requests.codes.service_unavailable: ContrailServiceUnavailableError,
     requests.codes.unauthorized: ContrailNotAuthorizedError,
+    requests.codes.server_error: ContrailInternalServerError,
 }
 
 
