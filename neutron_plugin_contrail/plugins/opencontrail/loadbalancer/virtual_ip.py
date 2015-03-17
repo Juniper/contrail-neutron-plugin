@@ -4,7 +4,12 @@
 from neutron.api.v2 import attributes
 from neutron.common import exceptions as n_exc
 from neutron.extensions import loadbalancer
-from neutron.openstack.common import log as logging
+
+try:
+    from neutron.openstack.common import log as logging
+except ImportError:
+    from oslo_log import log as logging
+
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import IdPermsType, NoIdError
 from vnc_api.vnc_api import InstanceIp, VirtualMachineInterface

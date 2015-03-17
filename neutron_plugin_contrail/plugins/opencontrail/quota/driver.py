@@ -3,7 +3,10 @@
 import ConfigParser
 from pprint import pformat
 
-from neutron.openstack.common import log as logging
+try:
+    from neutron.openstack.common import log as logging
+except ImportError:
+    from oslo_log import log as logging
 
 from oslo.config import cfg
 from httplib2 import Http

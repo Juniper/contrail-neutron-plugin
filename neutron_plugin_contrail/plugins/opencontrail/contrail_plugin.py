@@ -37,7 +37,11 @@ try:
 except ImportError:
     from oslo_serialization import jsonutils as json
 
-from neutron.openstack.common import log as logging
+try:
+    from neutron.openstack.common import log as logging
+except ImportError:
+    from oslo_log import log as logging
+
 from simplejson import JSONDecodeError
 
 LOG = logging.getLogger(__name__)

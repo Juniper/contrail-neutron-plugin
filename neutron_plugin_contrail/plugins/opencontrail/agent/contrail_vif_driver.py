@@ -16,7 +16,12 @@ import uuid
 
 from neutron.agent.linux import interface
 from neutron.agent.linux import ip_lib
-from neutron.openstack.common import log as logging
+
+try:
+    from neutron.openstack.common import log as logging
+except ImportError:
+    from oslo_log import log as logging
+
 from neutron.openstack.common import loopingcall
 from oslo.config import cfg
 
