@@ -171,9 +171,17 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return response
 
     def _request_api_server_authn(self, url, data=None, headers=None):
+        # forward user token to API server for RBAC
+        # token saved earlier in the pipeline
+        try:
+            from eventlet.greenthread import getcurrent
+            auth_token = getcurrent().contrail_vars.token
+        except AttributeError:
+            auth_token = None
+
         authn_headers = headers or {}
-        if self._authn_token is not None:
-            authn_headers['X-AUTH-TOKEN'] = self._authn_token
+        if auth_token or self._authn_token:
+            authn_headers['X-AUTH-TOKEN'] = auth_token or self._authn_token
         response = self._request_api_server(url, data, headers=authn_headers)
         return response
 
