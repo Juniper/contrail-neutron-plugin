@@ -180,11 +180,14 @@ class LoadbalancerMemberManager(ResourceManager):
         self._api.loadbalancer_member_delete(id=member_db.uuid)
 
         # create member for the new pool with same uuid and props
-        id_perms = IdPermsType(enable=True)
-        member_obj = LoadbalancerMember(
-            obj_uuid, pool, loadbalancer_member_properties=props,
-            id_perms=id_perms)
-        member_obj.uuid = obj_uuid
-        self._api.loadbalancer_member_create(member_obj)
-
+        try:
+            pool = self._api.loadbalancer_pool_read(id=m['pool_id'])
+            id_perms = IdPermsType(enable=True)
+            member_obj = LoadbalancerMember(
+                obj_uuid, pool, loadbalancer_member_properties=props,
+                id_perms=id_perms)
+            member_obj.uuid = obj_uuid
+            self._api.loadbalancer_member_create(member_obj)
+        except NoIdError:
+            raise loadbalancer.PoolNotFound(pool_id=m['pool_id'])
         return True
