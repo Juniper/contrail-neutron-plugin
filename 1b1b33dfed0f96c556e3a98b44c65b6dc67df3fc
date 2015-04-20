@@ -1,0 +1,8 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Praneet Bachheti <praneetb@juniper.net>
+Code-Review+2: Praneet Bachheti <praneetb@juniper.net>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Mon, 20 Apr 2015 10:42:47 -0700
+Reviewed-on: https://review.opencontrail.org/9252
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/master
