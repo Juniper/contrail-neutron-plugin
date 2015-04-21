@@ -42,9 +42,13 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
                'status': self._get_object_status(health_monitor)}
 
         props = health_monitor.get_loadbalancer_healthmonitor_properties()
+        monitor_type = getattr(props, 'monitor_type')
         for key, mapping in self._loadbalancer_health_type_mapping.iteritems():
             value = getattr(props, key)
             if value is not None:
+                if monitor_type not in ('HTTP', 'HTTPS'):
+                    if mapping in ('http_method', 'url_path', 'expected_codes'):
+                        continue
                 res[mapping] = value
 
         pool_ids = []
