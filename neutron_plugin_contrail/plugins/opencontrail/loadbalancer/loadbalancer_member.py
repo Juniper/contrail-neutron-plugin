@@ -155,12 +155,12 @@ class LoadbalancerMemberManager(ResourceManager):
         return False
 
     def update_object(self, member_db, id, m):
+        try:
+            pool = self._api.loadbalancer_pool_read(id=m['pool_id'])
+        except NoIdError:
+            raise loadbalancer.PoolNotFound(pool_id=m['pool_id'])
+        
         if 'pool_id' in m and self._get_member_pool_id(member_db) != m['pool_id']:
-            try:
-                pool = self._api.loadbalancer_pool_read(id=m['pool_id'])
-            except NoIdError:
-                raise loadbalancer.PoolNotFound(pool_id=m['pool_id'])
-
             db_props = member_db.get_loadbalancer_member_properties()
             members = pool.get_loadbalancer_members()
             for member in members or []:
