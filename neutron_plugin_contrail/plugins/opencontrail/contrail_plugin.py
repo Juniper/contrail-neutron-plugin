@@ -14,7 +14,7 @@
 #
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
-from oslo.config import cfg
+from oslo_config import cfg
 import requests
 
 from neutron.api.v2 import attributes as attr
