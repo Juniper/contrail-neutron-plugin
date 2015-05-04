@@ -148,7 +148,18 @@ class OpencontrailLoadbalancerDriver(
             raise n_exc.BadRequest(resource='vip', msg=msg)
 
         fq_name = pool.get_fq_name()[:-1]
-        fq_name.append(pool_id)
+
+        si_key = pool_id
+        si_name = None
+        try:
+            si_name = self._api.kv_retrieve(si_key)
+
+            # (safchan): already set, nothing to do
+            return
+        except NoIdError:
+            si_name = pool_id + '_' + str(uuid.uuid4())
+
+        fq_name.append(si_name)
 
         props = self._calculate_instance_properties(pool, vip)
         if props is None:
@@ -178,6 +189,8 @@ class OpencontrailLoadbalancerDriver(
             pool.set_service_instance(si_obj)
             self._api.loadbalancer_pool_update(pool)
 
+        self._api.kv_store(si_key, si_name)
+
     def _clear_loadbalancer_instance(self, tenant_id, pool_id):
         try:
             project = self._api.project_read(
@@ -186,7 +199,17 @@ class OpencontrailLoadbalancerDriver(
             LOG.error(ex)
             return
         fq_name = list(project.get_fq_name())
-        fq_name.append(pool_id)
+
+        si_key = pool_id
+        si_name = None
+        try:
+            si_name = self._api.kv_retrieve(key=si_key)
+            self._api.kv_delete(si_key)
+        except NoIdError:
+            # fallback to the previous fq_name used
+            si_name = pool_id
+
+        fq_name.append(si_name)
 
         try:
             si_obj = self._api.service_instance_read(fq_name=fq_name)
