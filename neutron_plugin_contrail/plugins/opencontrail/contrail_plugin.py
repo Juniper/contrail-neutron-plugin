@@ -13,8 +13,10 @@
 #    under the License.
 #
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
-
-from oslo.config import cfg
+try:
+    from oslo_config import cfg
+except ImportError:
+    from oslo.config import cfg
 import requests
 
 from neutron.api.v2 import attributes as attr
