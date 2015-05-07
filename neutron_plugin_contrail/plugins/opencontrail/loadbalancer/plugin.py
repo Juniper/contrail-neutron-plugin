@@ -13,7 +13,7 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
         return "OpenContrail LoadBalancer Service Plugin"
 
     def _pool_update_provider(self, context, pool):
-        if 'provider' not in pool or pool['provider'].__class__ is object:
+        if 'provider' not in pool or not pool['provider'] or pool['provider'].__class__ is object:
             pool['provider'] = "opencontrail"
 
     def create_pool(self, context, pool):
