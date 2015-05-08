@@ -7,6 +7,7 @@ import time
 import uuid
 
 from oslo.config import cfg
+from cfgm_common import analytics_client
 from cfgm_common import exceptions as vnc_exc
 from neutron.common import exceptions as n_exc
 from neutron.extensions import loadbalancer
@@ -120,7 +121,29 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self._pool_manager.delete(context, id)
 
     def stats(self, context, pool_id):
-        pass
+        stats = {
+            'bytes_in': '0',
+            'bytes_out': '0',
+            'active_connections': '0',
+            'total_connections': '0',
+        }
+
+        endpoint = "http://%s:%s" % (cfg.CONF.COLLECTOR.analytics_api_ip,
+                                     cfg.CONF.COLLECTOR.analytics_api_port)
+        analytics = analytics_client.Client(endpoint)
+        path = "/analytics/uves/service-instance/"
+        fqdn_uuid = "%s?cfilt=UveLoadbalancer" % pool_id
+        try:
+            lb_stats = analytics.request(path, fqdn_uuid)
+        except analytics_client.OpenContrailAPIFailed:
+            return {'stats': stats}
+
+        pool_stats = lb_stats['UveLoadbalancer']['pool_stats'][0]
+        stats['bytes_in'] = pool_stats['bytes_in']
+        stats['bytes_out'] = pool_stats['bytes_out']
+        stats['active_connections'] = pool_stats['current_sessions']
+        stats['total_connections'] = pool_stats['total_sessions']
+        return {'stats': stats}
 
     def create_pool_health_monitor(self, context, health_monitor, pool_id):
         """ Associate an health monitor with a pool.
