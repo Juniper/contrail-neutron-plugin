@@ -55,6 +55,13 @@ vnc_opts = [
                 help='Enable Contrail extensions(policy, ipam)'),
 ]
 
+analytics_opts = [
+    cfg.StrOpt('analytics_api_ip', default='127.0.0.1',
+               help='IP address to connect to VNC collector'),
+    cfg.StrOpt('analytics_api_port', default='8081',
+               help='Port to connect to VNC collector'),
+]
+
 class InvalidContrailExtensionError(exc.ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
 
@@ -129,6 +136,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         super(NeutronPluginContrailCoreV2, self).__init__()
         portbindings_base.register_port_dict_function()
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
+        cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
         self._parse_class_args()
         self.base_binding_dict = self._get_base_binding_dict()
 
