@@ -6,7 +6,10 @@ import uuid
 
 from oslo.config import cfg
 from cfgm_common import analytics_client
-from neutron.extensions import loadbalancer
+try:
+    from neutron.extensions import loadbalancer
+except ImportError:
+    from neutron_lbaas.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
 from neutron.plugins.common import constants
 from vnc_api.vnc_api import IdPermsType, NoIdError

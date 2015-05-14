@@ -3,7 +3,11 @@
 #
 from neutron.api.v2 import attributes
 from neutron.common import exceptions as n_exc
-from neutron.extensions import loadbalancer
+
+try:
+    from neutron.extensions import loadbalancer
+except ImportError:
+    from neutron_lbaas.extensions import loadbalancer
 
 try:
     from neutron.openstack.common import log as logging
