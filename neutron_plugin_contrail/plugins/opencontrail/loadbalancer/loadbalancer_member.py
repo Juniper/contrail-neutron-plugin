@@ -4,8 +4,11 @@
 
 import uuid
 
+from oslo.config import cfg
+from cfgm_common import analytics_client
 from neutron.extensions import loadbalancer
 from neutron.openstack.common import uuidutils
+from neutron.plugins.common import constants
 from vnc_api.vnc_api import IdPermsType, NoIdError
 from vnc_api.vnc_api import LoadbalancerMember, LoadbalancerMemberType
 
@@ -35,6 +38,23 @@ class LoadbalancerMemberManager(ResourceManager):
     def _get_member_pool_id(self, member):
         pool_uuid = member.parent_uuid
         return pool_uuid
+
+    def _get_object_status(self, member):
+        endpoint = "http://%s:%s" % (cfg.CONF.COLLECTOR.analytics_api_ip,
+                                     cfg.CONF.COLLECTOR.analytics_api_port)
+        analytics = analytics_client.Client(endpoint)
+        path = "/analytics/uves/service-instance/"
+        fqdn_uuid = "%s?cfilt=UveLoadbalancer" % member.parent_uuid
+        try:
+            lb_stats = analytics.request(path, fqdn_uuid)
+            member_stats = lb_stats['UveLoadbalancer']['member_stats']
+        except Exception:
+            member_stats = []
+
+        for member_stat in member_stats:
+            if member_stat['uuid'] == member.uuid:
+                return member_stat['status']
+        return constants.ACTIVE
 
     def make_dict(self, member, fields=None):
         res = {'id': member.uuid,
