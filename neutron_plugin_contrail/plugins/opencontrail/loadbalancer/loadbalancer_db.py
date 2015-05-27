@@ -147,6 +147,8 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         except analytics_client.OpenContrailAPIFailed:
             return {'stats': stats}
 
+        if not 'UveLoadbalancer' in lb_stats:
+            return {'stats': stats}
         pool_stats = lb_stats['UveLoadbalancer']['pool_stats'][0]
         stats['bytes_in'] = pool_stats['bytes_in']
         stats['bytes_out'] = pool_stats['bytes_out']
