@@ -144,16 +144,15 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         fqdn_uuid = "%s?cfilt=UveLoadbalancer" % pool_id
         try:
             lb_stats = analytics.request(path, fqdn_uuid)
-        except analytics_client.OpenContrailAPIFailed:
-            return {'stats': stats}
+            pool_stats = lb_stats['UveLoadbalancer']['pool_stats']
+        except Exception:
+            pool_stats = []
 
-        if not 'UveLoadbalancer' in lb_stats:
-            return {'stats': stats}
-        pool_stats = lb_stats['UveLoadbalancer']['pool_stats'][0]
-        stats['bytes_in'] = pool_stats['bytes_in']
-        stats['bytes_out'] = pool_stats['bytes_out']
-        stats['active_connections'] = pool_stats['current_sessions']
-        stats['total_connections'] = pool_stats['total_sessions']
+        for pool_stat in pool_stats:
+            stats['bytes_in'] = str(int(stats['bytes_in']) + int(pool_stat['bytes_in']))
+            stats['bytes_out'] = str(int(stats['bytes_out']) + int(pool_stat['bytes_out']))
+            stats['active_connections'] = str(int(stats['active_connections']) + int(pool_stat['current_sessions']))
+            stats['total_connections'] = str(int(stats['total_connections']) + int(pool_stat['total_sessions']))
         return {'stats': stats}
 
     def create_pool_health_monitor(self, context, health_monitor, pool_id):
