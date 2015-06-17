@@ -37,6 +37,10 @@ vnc_opts = [
                help='IP address to connect to VNC controller'),
     cfg.StrOpt('api_server_port', default='8082',
                help='Port to connect to VNC controller'),
+    cfg.StrOpt('vnc_os_server_ip',
+               help='IP address to connect to VNC controller'),
+    cfg.StrOpt('vnc_os_server_port',
+               help='Port to connect to VNC controller'),
     cfg.DictOpt('contrail_extensions', default={},
                 help='Enable Contrail extensions(policy, ipam)'),
 ]
@@ -194,9 +198,15 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _relay_request(self, url_path, data=None):
         """Send received request to api server."""
 
-        url = "http://%s:%s%s" % (cfg.CONF.APISERVER.api_server_ip,
-                                  cfg.CONF.APISERVER.api_server_port,
-                                  url_path)
+        api_server_ip = cfg.CONF.APISERVER.vnc_os_server_ip
+        if not api_server_ip:
+            api_server_ip = cfg.CONF.APISERVER.api_server_ip
+
+        api_server_port = cfg.CONF.APISERVER.vnc_os_server_port
+        if not api_server_port:
+            api_server_port = cfg.CONF.APISERVER.api_server_port
+
+        url = "http://%s:%s%s" % (api_server_ip, api_server_port, url_path)
 
         return self._request_api_server_authn(
             url, data=data, headers={'Content-type': 'application/json'})
