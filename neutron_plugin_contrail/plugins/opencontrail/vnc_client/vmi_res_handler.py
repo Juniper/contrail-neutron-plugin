@@ -206,7 +206,6 @@ class VMInterfaceMixin(object):
             vm_ref = vmi_obj.get_virtual_machine_refs()[0]
             if vm_ref['to'][-1] == vm_ref['uuid']:
                 device_id = vm_ref['to'][-1]
-                device_owner = ''
             else:
                 # this is a router gw port. Get the router id
                 rtr_uuid = self.get_port_gw_id(vm_ref, port_req_memo)
