@@ -163,6 +163,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             }
         except AttributeError:
             pass
+        try:
+            binding[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+        except AttributeError:
+            pass
         return binding
 
     def get_agents(self, context, filters=None, fields=None):
@@ -520,5 +524,3 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         return self._list_resource('security_group_rule', context,
                                    filters, fields)
-
-
