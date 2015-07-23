@@ -163,6 +163,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             }
         except AttributeError:
             pass
+        try:
+            binding[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
+        except AttributeError:
+            pass
         return binding
 
     def get_agents(self, context, filters=None, fields=None):
@@ -298,12 +302,12 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         else:
             for key in self.base_binding_dict:
                 if key in fields:
-                    port.update(self.base_binding_dict[key])
+                    port[key] = self.base_binding_dict[key]
         return port
 
     def _get_port(self, context, id, fields=None):
         port = self._get_resource('port', context, id, fields)
-        return self._make_port_dict(port)
+        return self._make_port_dict(port, fields)
 
     def _update_ips_for_port(self, context, network_id, port_id, original_ips,
                              new_ips):
@@ -374,7 +378,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         specified Virtual Network with the specfied filter.
         """
 
-        return [self._make_port_dict(p)
+        return [self._make_port_dict(p, fields)
                 for p in self._list_resource('port', context, filters, fields)]
 
     def get_ports_count(self, context, filters=None):
@@ -520,5 +524,3 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         return self._list_resource('security_group_rule', context,
                                    filters, fields)
-
-
