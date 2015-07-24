@@ -3,6 +3,7 @@
 #
 from loadbalancer_db import LoadBalancerPluginDb
 
+
 class LoadBalancerPlugin(LoadBalancerPluginDb):
     supported_extension_aliases = ["lbaas"]
 
@@ -18,7 +19,4 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
 
     def create_pool(self, context, pool):
         self._pool_update_provider(context, pool['pool'])
-        p = super(LoadBalancerPlugin, self).create_pool(context, pool)
-	return p
-
-
+        return super(LoadBalancerPlugin, self).create_pool(context, pool)

@@ -306,7 +306,7 @@ class VirtualIpManager(ResourceManager):
 
             # check that the pool has no vip configured
             if pool.get_virtual_ip_back_refs():
-                raise loadbalancer.VipExists(pool_id=pool_obj.uuid)
+                raise loadbalancer.VipExists(pool_id=pool.uuid)
 
             # check that the protocol matches
             pool_props = pool.get_loadbalancer_pool_properties()

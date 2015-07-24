@@ -19,6 +19,7 @@ from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
 from resource_manager import ResourceManager
 from resource_manager import LoadbalancerMethodInvalid
 
+
 class LoadbalancerPoolManager(ResourceManager):
 
     _loadbalancer_pool_type_mapping = {

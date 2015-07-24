@@ -71,14 +71,13 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         connected = False
         while not connected:
             try:
-                self._api = VncApi(
-                     admin_user, admin_password, admin_tenant_name,
-                     api_srvr_ip, api_srvr_port, api_server_url,
-                     auth_host=auth_host, auth_port=auth_port,
-                     auth_protocol=auth_protocol, auth_url=auth_url,
-                     auth_type=auth_type, wait_for_connect=True)
+                self._api = VncApi(admin_user, admin_password, admin_tenant_name,
+                                   api_srvr_ip, api_srvr_port, api_server_url,
+                                   auth_host=auth_host, auth_port=auth_port,
+                                   auth_protocol=auth_protocol, auth_url=auth_url,
+                                   auth_type=auth_type, wait_for_connect=True)
                 connected = True
-            except requests.exceptions.RequestException as e:
+            except requests.exceptions.RequestException:
                 time.sleep(3)
 
         self._pool_manager = \
@@ -161,12 +160,12 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         m = health_monitor['health_monitor']
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
-        except NoIdError:
+        except vnc_exc.NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=pool_id)
 
         try:
             monitor = self._api.loadbalancer_healthmonitor_read(id=m['id'])
-        except NoIdError:
+        except vnc_exc.NoIdError:
             raise loadbalancer.HealthMonitorNotFound(monitor_id=m['id'])
 
         if not context.is_admin:
@@ -196,7 +195,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         """
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
-        except NoIdError:
+        except vnc_exc.NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=id)
         tenant_id = str(uuid.UUID(context.tenant_id))
         if not context.is_admin and tenant_id != pool.parent_uuid:
@@ -223,7 +222,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
     def delete_pool_health_monitor(self, context, id, pool_id):
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
-        except NoIdError:
+        except vnc_exc.NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=id)
         tenant_id = str(uuid.UUID(context.tenant_id))
         if not context.is_admin and tenant_id != pool.parent_uuid:
@@ -231,7 +230,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
 
         try:
             monitor = self._api.loadbalancer_healthmonitor_read(id=id)
-        except NoIdError:
+        except vnc_exc.NoIdError:
             raise loadbalancer.HealthMonitorNotFound(monitor_id=id)
 
         in_list = False
