@@ -3,6 +3,7 @@
 #
 from neutron.api.v2 import attributes
 from neutron.common import exceptions as n_exc
+from neutron.common import constants as n_constants
 
 try:
     from neutron.extensions import loadbalancer
@@ -152,6 +153,7 @@ class VirtualIpManager(ResourceManager):
 
         vmi = VirtualMachineInterface(vip_id, project)
         vmi.set_virtual_network(vnet)
+        vmi.set_virtual_machine_interface_device_owner(n_constants.DEVICE_OWNER_LOADBALANCER)
 
         sg_obj = SecurityGroup("default", project)
         vmi.add_security_group(sg_obj)
