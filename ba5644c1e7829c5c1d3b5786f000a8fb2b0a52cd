@@ -1,0 +1,8 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Sachin Bansal <sachin@contrailsystems.com>
+Code-Review+2: Sachin Bansal <sachin@contrailsystems.com>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Tue, 28 Jul 2015 10:00:52 -0700
+Reviewed-on: https://review.opencontrail.org/12641
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/master
