@@ -28,7 +28,11 @@ class FloatingIpMixin(object):
     def _neutron_dict_to_fip_obj(self, fip_q, is_admin=False,
                                  tenant_id=None, fip_obj=None):
         if not fip_obj:
-            fip_obj = self._resource_get(id=fip_q['id'])
+            try:
+                fip_obj = self._resource_get(id=fip_q['id'])
+            except vnc_exc.NoIdError:
+                self._raise_contrail_exception('FloatingIPNotFound',
+                                               floatingip_id=fip_q['id'])
 
         vmi_get_handler = vmi_handler.VMInterfaceGetHandler(
             self._vnc_lib)
@@ -163,7 +167,11 @@ class FloatingIpDeleteHandler(res_handler.ResourceDeleteHandler):
     resource_delete_method = 'floating_ip_delete'
 
     def resource_delete(self, context, fip_id):
-        self._resource_delete(id=fip_id)
+        try:
+            self._resource_delete(id=fip_id)
+        except vnc_exc.NoIdError:
+            self._raise_contrail_exception('FloatingIPNotFound',
+                                           floatingip_id=fip_id)
 
 
 class FloatingIpUpdateHandler(res_handler.ResourceUpdateHandler,
