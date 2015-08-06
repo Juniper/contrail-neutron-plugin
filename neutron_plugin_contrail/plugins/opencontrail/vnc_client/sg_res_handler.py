@@ -118,7 +118,8 @@ class SecurityGroupMixin(object):
             return
 
         proj_id = self._project_id_neutron_to_vnc(proj_id)
-        proj_obj = self._vnc_lib.project_read(id=proj_id)
+        proj_obj = self._vnc_lib.project_read(id=proj_id,
+                                              fields=['security_groups'])
         sg_groups = proj_obj.get_security_groups()
         for sg_group in sg_groups or []:
             if sg_group['to'][-1] == 'default':
