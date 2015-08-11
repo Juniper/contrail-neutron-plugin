@@ -6,12 +6,12 @@ import uuid
 
 from neutron.extensions import loadbalancer
 
+from neutron.api.v2 import attributes as attr
 from neutron.plugins.common import constants
 from neutron.services import provider_configuration as pconf
 
 from neutron.openstack.common import uuidutils
-from vnc_api.vnc_api import IdPermsType, NoIdError, HttpError
-from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
+from vnc_api.vnc_api import *
 
 from resource_manager import ResourceManager
 from resource_manager import LoadbalancerMethodInvalid
@@ -36,6 +36,16 @@ class LoadbalancerPoolManager(ResourceManager):
                 setattr(props, key, pool[mapping])
         return props
 
+    def create_update_custom_attributes(self, custom_attributes, kvps):
+        kvp_array = []
+        for custom_attribute in custom_attributes or []:
+            for key,value in custom_attribute.iteritems():
+                kvp = KeyValuePair(key, value)
+                kvp_array.append(kvp)
+
+        kvps.set_key_value_pair(kvp_array)
+        return True
+
     def make_dict(self, pool, fields=None):
         res = {
             'id': pool.uuid,
@@ -50,6 +60,13 @@ class LoadbalancerPoolManager(ResourceManager):
             value = getattr(props, key, None)
             if value is not None:
                 res[mapping] = value
+
+        custom_attributes = []
+        kvps = pool.get_loadbalancer_pool_custom_attributes()
+        if kvps:
+            custom_attributes = [{kvp.get_key(): kvp.get_value()} for kvp in kvps.get_key_value_pair() or []]
+
+        res['custom_attributes'] = [custom_attributes]
 
         res['provider'] = pool.get_loadbalancer_pool_provider()
 
@@ -151,12 +168,30 @@ class LoadbalancerPoolManager(ResourceManager):
 
         pool.set_service_appliance_set(sas_obj)
 
+         # Custom attributes
+        if p['custom_attributes'] != attr.ATTR_NOT_SPECIFIED:
+            custom_attributes = KeyValuePairs()
+            self.create_update_custom_attributes(p['custom_attributes'], custom_attributes)
+            pool.set_loadbalancer_pool_custom_attributes(custom_attributes)
+
         self._api.loadbalancer_pool_create(pool)
         return self.make_dict(pool)
 
     def update_properties(self, pool_db, id, p):
         props = pool_db.get_loadbalancer_pool_properties()
+        change = False
         if self.update_properties_subr(props, p):
             pool_db.set_loadbalancer_pool_properties(props)
-            return True
-        return False
+            change = True
+
+        if 'custom_attributes' in p:
+            custom_attributes = pool_db.get_loadbalancer_pool_custom_attributes()
+            # Make sure to initialize custom_attributes
+            if not custom_attributes:
+                custom_attributes = KeyValuePairs()
+
+            if self.create_update_custom_attributes(p['custom_attributes'], custom_attributes):
+                pool_db.set_loadbalancer_pool_custom_attributes(custom_attributes)
+                change = True
+
+        return change
