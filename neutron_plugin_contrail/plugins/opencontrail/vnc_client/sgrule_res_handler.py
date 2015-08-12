@@ -309,7 +309,7 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
                                                resource='security_group_rule')
 
             if sgr_q.get('tenant_id') and (
-                    sg_obj.parent_uuid != sgr_q['tenant_id']):
+                    sg_obj.parent_uuid != self._project_id_neutron_to_vnc(sgr_q['tenant_id'])):
                 self._raise_contrail_exception("NotFound")
 
             endpt = [vnc_api.AddressType(
@@ -352,7 +352,7 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
             self._raise_contrail_exception('SecurityGroupNotFound', id=sg_id,
                                            resource='security_group')
 
-        if project_id and sg_vnc.parent_uuid != project_id:
+        if project_id and sg_vnc.parent_uuid != self._project_id_neutron_to_vnc(project_id):
             self._raise_contrail_exception('NotFound')
         rules = sg_vnc.get_security_group_entries()
         if rules is None:
