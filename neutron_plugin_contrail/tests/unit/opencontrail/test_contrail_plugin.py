@@ -95,8 +95,23 @@ class JVContrailPluginTestCase(test_plugin.NeutronDbPluginV2TestCase):
         from neutron_plugin_contrail import extensions
         cfg.CONF.api_extensions_path = "extensions:" + extensions.__path__[0]
         res_handler = contrail_res_handler.ContrailResourceHandler
-        res_handler._project_id_vnc_to_neutron = lambda x, y: y
-        res_handler._project_id_neutron_to_vnc = lambda x, y: y
+
+        # mimic the project id format change
+        @staticmethod
+        def mock_proj_id_vnc_to_neutron(y):
+            if y is not None:
+                return y.lower()
+            return y
+
+        @staticmethod
+        def mock_proj_id_neutron_to_vnc(y):
+            if y is not None:
+                return y.upper()
+            return y
+
+        res_handler._project_id_vnc_to_neutron = mock_proj_id_vnc_to_neutron
+        res_handler._project_id_neutron_to_vnc = mock_proj_id_neutron_to_vnc
+
         vnc_api.VncApi = MockVnc
         self.domain_obj = vnc_api.Domain()
         MockVnc().domain_create(self.domain_obj)
