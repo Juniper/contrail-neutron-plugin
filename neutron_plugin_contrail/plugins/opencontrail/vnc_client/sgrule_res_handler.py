@@ -356,6 +356,17 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
             self._raise_contrail_exception('SecurityGroupNotFound', id=sg_id,
                                            resource='security_group')
 
+        # Check if the same rule already exists
+        sg_entries = sg_vnc.get_security_group_entries()
+        if sg_entries:
+            sg_rule_data = sg_rule.exportDict()
+            del sg_rule_data['PolicyRuleType']['rule_uuid']
+            for rule in sg_entries.get_policy_rule():
+                rule_data = rule.exportDict()
+                del rule_data['PolicyRuleType']['rule_uuid']
+                if rule_data == sg_rule_data:
+                    self._raise_contrail_exception('Conflict', resource='security_group_rule')
+
         if project_id and sg_vnc.parent_uuid != self._project_id_neutron_to_vnc(project_id):
             self._raise_contrail_exception('NotFound')
         rules = sg_vnc.get_security_group_entries()
