@@ -82,7 +82,11 @@ class SecurityGroupRuleMixin(object):
         proto = sg_rule.get_protocol()
         sgr_q_dict['protocol'] = None if proto == 'any' else proto
         port_min = sg_rule.get_dst_ports()[0].get_start_port()
-        sgr_q_dict['port_range_min'] = None if port_min == 0 else port_min
+        if sgr_q_dict['protocol'] in (constants.PROTO_NAME_ICMP,
+                                      str(constants.PROTO_NUM_ICMP)):
+            sgr_q_dict['port_range_min'] = port_min
+        else:
+            sgr_q_dict['port_range_min'] = None if port_min == 0 else port_min
         port_max = (sg_rule.get_dst_ports()[0].get_end_port())
         sgr_q_dict['port_range_max'] = None if port_max == 65535 else port_max
         if remote_cidr == '0.0.0.0/0' or remote_cidr == '::/0':
