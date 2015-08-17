@@ -733,11 +733,11 @@ class VMInterfaceUpdateHandler(res_handler.ResourceUpdateHandler,
 
         vmi_obj = self._neutron_port_to_vmi(port_q, vmi_obj=vmi_obj,
                                             update=True)
-        self._resource_update(vmi_obj)
         if 'fixed_ips' in port_q:
-            self._create_instance_ips(vn_obj, vmi_obj,
-                                      port_q.get('fixed_ips'))
-        vn_obj = self._resource_get(id=port_id)
+            self._create_instance_ips(vn_obj, vmi_obj, port_q['fixed_ips'])
+
+        self._resource_update(vmi_obj)
+        vmi_obj = self._resource_get(id=port_id)
         ret_port_q = self._vmi_to_neutron_port(
             vmi_obj, extensions_enabled=contrail_extensions_enabled)
 
