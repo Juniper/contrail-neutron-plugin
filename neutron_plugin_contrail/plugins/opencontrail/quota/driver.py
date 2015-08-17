@@ -8,7 +8,7 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
-from oslo.config import cfg
+from neutron.common.config import cfg
 from httplib2 import Http
 import re
 import string
@@ -146,7 +146,7 @@ class QuotaDriver(object):
                 continue
             quotas = cls._get_tenant_quotas(context, resources, project['uuid'],
                                             default_quota)
-            quotas['tenant_id'] = project['uuid']
+            quotas['tenant_id'] = project['uuid'].replace('-', '')
             ret_list.append(quotas)
         return ret_list
 
