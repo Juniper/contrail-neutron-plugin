@@ -296,6 +296,11 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
         if sgr_q['port_range_max'] is not None:
             port_max = sgr_q['port_range_max']
 
+        if sgr_q['remote_ip_prefix'] and sgr_q['remote_group_id']:
+            self._raise_contrail_exception("BadRequest",
+                                           msg="Can't set remote_ip_prefix with remote_group_id",
+                                           resource="security_group_rule")
+
         endpt = [vnc_api.AddressType(security_group='any')]
         if sgr_q['remote_ip_prefix']:
             cidr = sgr_q['remote_ip_prefix'].split('/')
