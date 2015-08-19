@@ -3,9 +3,17 @@
 #
 from loadbalancer_db import LoadBalancerPluginDb
 
+try:
+    from neutron.extensions import loadbalancer
+except ImportError:
+    from neutron_lbaas.extensions import loadbalancer
+
 
 class LoadBalancerPlugin(LoadBalancerPluginDb):
     supported_extension_aliases = ["lbaas", "extra_lbaas_opts"]
+
+    if hasattr(loadbalancer, 'LOADBALANCER_PREFIX'):
+        path_prefix = loadbalancer.LOADBALANCER_PREFIX
 
     def __init__(self):
         super(LoadBalancerPlugin, self).__init__()
