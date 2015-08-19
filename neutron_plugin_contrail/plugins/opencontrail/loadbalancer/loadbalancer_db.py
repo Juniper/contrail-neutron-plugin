@@ -6,7 +6,8 @@ import requests
 import time
 import uuid
 
-from oslo.config import cfg
+from neutron.common.config import cfg
+
 from cfgm_common import analytics_client
 from cfgm_common import exceptions as vnc_exc
 from neutron.common import exceptions as n_exc

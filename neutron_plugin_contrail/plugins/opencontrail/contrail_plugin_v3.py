@@ -14,12 +14,9 @@
 
 import time
 
-try:
-    from oslo_config import cfg
-except ImportError:
-    from oslo.config import cfg
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
+from neutron.common.config import cfg
 import requests
 
 try:
