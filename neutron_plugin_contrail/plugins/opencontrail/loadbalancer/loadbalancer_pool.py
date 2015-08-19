@@ -173,7 +173,7 @@ class LoadbalancerPoolManager(ResourceManager):
         pool.set_service_appliance_set(sas_obj)
 
          # Custom attributes
-        if p['custom_attributes']:
+        if p['custom_attributes'] != attr.ATTR_NOT_SPECIFIED:
             custom_attributes = KeyValuePairs()
             self.create_update_custom_attributes(p['custom_attributes'], custom_attributes)
             pool.set_loadbalancer_pool_custom_attributes(custom_attributes)
