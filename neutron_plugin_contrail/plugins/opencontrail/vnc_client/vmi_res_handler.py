@@ -39,8 +39,12 @@ class VMInterfaceMixin(object):
         # against = [{'subnet_id': 'uuid', 'ip_address': u'20.0.0.5'}]
 
         for item in against:
-            if item['ip_address'] in check['ip_address'] and (
-                    item['subnet_id'] in check['subnet_id']):
+            result = True
+            for k in item.keys():
+                if k in check and item[k] not in check[k]:
+                    result = False
+
+            if result:
                 return True
 
         return False
