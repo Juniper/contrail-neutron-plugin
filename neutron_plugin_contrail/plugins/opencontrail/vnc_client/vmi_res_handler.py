@@ -552,6 +552,11 @@ class VMInterfaceMixin(object):
                     self._raise_contrail_exception(
                         'IpAddressGenerationFailure',
                         net_id=vn_obj.get_uuid(), resource='port')
+            except vnc_exc.PermissionDenied:
+                   self._raise_contrail_exception(
+                           'IpAddressInUse', net_id=vn_obj.get_uuid(),
+                           ip_address=fixed_ip.get('ip_address'), resource='port')
+
 
         iips_total = list(created_iip_ids)
         for stale_ip, stale_id in stale_ip_ids.items():
@@ -692,10 +697,10 @@ class VMInterfaceCreateHandler(res_handler.ResourceCreateHandler,
             elif vn_obj.get_network_ipam_refs():
                 self._create_instance_ips(vn_obj, vmi_obj, fixed_ips)
         except Exception as e:
-            self._resource_delete(id=port_id)
-            self._raise_contrail_exception(
-                'BadRequest', resource='port', msg=str(e))
             # failure in creating the instance ip. Roll back
+            self._resource_delete(id=port_id)
+            raise e
+
         # TODO() below reads back default parent name, fix it
         vmi_obj = self._resource_get(id=port_id,
                                      fields=['instance_ip_back_refs'])
