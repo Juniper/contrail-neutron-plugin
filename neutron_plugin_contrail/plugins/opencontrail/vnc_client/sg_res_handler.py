@@ -150,7 +150,7 @@ class SecurityGroupGetHandler(SecurityGroupBaseGet, SecurityGroupMixin):
         return self._security_group_vnc_to_neutron(
             sg_obj, contrail_extensions_enabled, fields=fields)
 
-    def resource_list_by_project(self, project_id):
+    def resource_list_by_project(self, project_id, filters=None):
         if project_id:
             try:
                 project_uuid = self._project_id_neutron_to_vnc(project_id)
@@ -161,8 +161,12 @@ class SecurityGroupGetHandler(SecurityGroupBaseGet, SecurityGroupMixin):
         else:
             project_uuid = None
 
+        obj_uuids=None
+        if filters and 'id' in filters:
+            obj_uuids = filters['id']
+
         sg_objs = self._resource_list(parent_id=project_uuid,
-                                      detail=True)
+                                      detail=True, obj_uuids=obj_uuids)
         return sg_objs
 
     def resource_list(self, context, filters=None, fields=None):
@@ -176,17 +180,20 @@ class SecurityGroupGetHandler(SecurityGroupBaseGet, SecurityGroupMixin):
         all_sgs = []  # all sgs in all projects
         if context and not context['is_admin']:
             project_sgs = self.resource_list_by_project(
-                self._project_id_neutron_to_vnc(context['tenant']))
+                self._project_id_neutron_to_vnc(context['tenant']),
+                filters=filters)
             all_sgs.append(project_sgs)
         else:  # admin context
             if filters and 'tenant_id' in filters:
                 project_ids = self._validate_project_ids(
                     context, filters['tenant_id'])
                 for p_id in project_ids:
-                    project_sgs = self.resource_list_by_project(p_id)
+                    project_sgs = self.resource_list_by_project(p_id,
+                                                                filters=filters)
                     all_sgs.append(project_sgs)
-            else:  # no filters
-                all_sgs.append(self.resource_list_by_project(None))
+            else:  # no tenant id filter
+                all_sgs.append(self.resource_list_by_project(None,
+                                                             filters=filters))
 
         # prune phase
         no_rule = res_handler.SGHandler(
@@ -194,9 +201,6 @@ class SecurityGroupGetHandler(SecurityGroupBaseGet, SecurityGroupMixin):
         for project_sgs in all_sgs:
             for sg_obj in project_sgs:
                 if no_rule and sg_obj.uuid == no_rule.uuid:
-                    continue
-                if not self._filters_is_present(
-                        filters, 'id', sg_obj.uuid):
                     continue
                 if not self._filters_is_present(
                         filters, 'name',

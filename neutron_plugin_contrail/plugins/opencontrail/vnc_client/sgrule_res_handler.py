@@ -140,13 +140,20 @@ class SecurityGroupRuleGetHandler(res_handler.ResourceGetHandler,
         self._raise_contrail_exception('SecurityGroupRuleNotFound', id=sgr_id,
                                        resource='security_group_rule')
 
-    def security_group_rules_read(self, sg_obj, fields=None):
+    def security_group_rules_read(self, sg_obj, fields=None, filters=None):
         sgr_entries = sg_obj.get_security_group_entries()
         sg_rules = []
         if sgr_entries is None:
             return
 
+        if filters:
+            filter_ids  = [id for id in filters.get('id', []) if filters]
+        else:
+            filter_ids = None
         for sg_rule in sgr_entries.get_policy_rule():
+            if filter_ids and sg_rule.get_rule_uuid() not in filter_ids:
+                continue
+
             sg_info = self._security_group_rule_vnc_to_neutron(sg_obj.uuid,
                                                                sg_rule,
                                                                sg_obj,
@@ -182,10 +189,9 @@ class SecurityGroupRuleGetHandler(res_handler.ResourceGetHandler,
         for project_sgs in all_sgs:
             for sg_obj in project_sgs:
                 # TODO() implement same for name specified in filter
-                if not self._filters_is_present(filters, 'id', sg_obj.uuid):
-                    continue
                 sgr_info = self.security_group_rules_read(sg_obj,
-                                                          fields=fields)
+                                                          fields=fields,
+                                                          filters=filters)
                 if sgr_info:
                     ret_list.extend(sgr_info)
 
