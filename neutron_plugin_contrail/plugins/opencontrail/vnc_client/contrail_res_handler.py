@@ -99,7 +99,7 @@ class ResourceCreateHandler(ContrailResourceHandler):
         create_method = getattr(self._vnc_lib, self.resource_create_method)
         try:
             obj_uuid = create_method(obj)
-        except (vnc_exc.PermissionDenied, vnc_exc.BadRequest) as e:
+        except vnc_exc.BadRequest as e:
             self._raise_contrail_exception(
                 'BadRequest', msg=str(e))
         return obj_uuid
