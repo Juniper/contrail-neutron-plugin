@@ -511,6 +511,10 @@ class VNetworkDeleteHandler(res_handler.ResourceDeleteHandler):
         try:
             fip_pools = vn_obj.get_floating_ip_pools()
             for fip_pool in fip_pools or []:
+                fips = self._vnc_lib.floating_ips_list(parent_id=fip_pool['uuid'])['floating-ips']
+                for fip in fips or []:
+                    self._vnc_lib.floating_ip_delete(id=fip['uuid'])
+
                 self._vnc_lib.floating_ip_pool_delete(id=fip_pool['uuid'])
 
             self._resource_delete(id=net_id)
