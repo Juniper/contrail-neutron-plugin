@@ -15,12 +15,11 @@
 import uuid
 
 from cfgm_common import exceptions as vnc_exc
-import netaddr
-from vnc_api import vnc_api
-
 import contrail_res_handler as res_handler
 from contrail_res_handler import ContrailResourceHandler
+import netaddr
 import vn_res_handler as vn_handler
+from vnc_api import vnc_api
 
 import logging
 
@@ -50,54 +49,21 @@ class SubnetMixin(object):
         cidr2 = cidr(subnet2)
         return cidr1.first <= cidr2.last and cidr2.first <= cidr1.last
 
-    def _subnet_vnc_create_mapping(self, subnet_id, subnet_key):
-        self._vnc_lib.kv_store(subnet_id, subnet_key)
-        self._vnc_lib.kv_store(subnet_key, subnet_id)
-
-    def _subnet_vnc_delete_mapping(self, subnet_id, subnet_key):
-        self._vnc_lib.kv_delete(subnet_id)
-        self._vnc_lib.kv_delete(subnet_key)
-
     def _subnet_vnc_read_mapping(self, id=None, key=None):
-        def _subnet_id_to_key():
-            all_net_objs = self._resource_list(detail=True)
-            for net_obj in all_net_objs:
-                ipam_refs = net_obj.get_network_ipam_refs()
-                net_uuid = net_obj.uuid
-                for ipam_ref in ipam_refs or []:
-                    subnet_vncs = ipam_ref['attr'].get_ipam_subnets()
-                    for subnet_vnc in subnet_vncs:
-                        if subnet_vnc.subnet_uuid == id:
-                            return self._subnet_vnc_get_key(subnet_vnc,
-                                                            net_uuid)
-            return None
-        # _subnet_id_to_key
-
         if id:
             try:
                 subnet_key = self._vnc_lib.kv_retrieve(id)
             except vnc_exc.NoIdError:
-                # contrail UI/api might have been used to create the subnet,
-                # create id to key mapping now/here.
-                subnet_key = _subnet_id_to_key()
-                if not subnet_key:
-                    self._raise_contrail_exception('SubnetNotFound',
-                                                   subnet_id=id,
-                                                   resource='subnet')
-                # persist to avoid this calculation later
-                self._subnet_vnc_create_mapping(id, subnet_key)
+                self._raise_contrail_exception('SubnetNotFound',
+                                               subnet_id=id,
+                                               resource='subnet')
             return subnet_key
 
         if key:
             try:
                 subnet_id = self._vnc_lib.kv_retrieve(key)
             except vnc_exc.NoIdError:
-                # contrail UI/api might have been used to create the subnet,
-                # create key to id mapping now/here.
-                subnet_vnc = self._subnet_read(key)
-                subnet_id = subnet_vnc.subnet.subnet_uuid
-                # persist to avoid this calculation later
-                self._subnet_vnc_create_mapping(subnet_id, key)
+                subnet_id = None
             return subnet_id
 
     def get_vn_obj_for_subnet_id(self, subnet_id):
@@ -124,15 +90,6 @@ class SubnetMixin(object):
                 if self._subnet_vnc_get_key(subnet_vnc,
                                             net_uuid) == subnet_key:
                     return subnet_vnc
-
-    def _subnet_vnc_read_or_create_mapping(self, id, key):
-        # if subnet was created outside of neutron handle it and create
-        # neutron representation now (lazily)
-        try:
-            return self._subnet_vnc_read_mapping(key=key)
-        except vnc_exc.NoIdError:
-            self._subnet_vnc_create_mapping(id, key)
-            return self._subnet_vnc_read_mapping(key=key)
 
     def _get_allocation_pools_dict(self, alloc_objs, gateway_ip, cidr):
         allocation_pools = []
@@ -350,7 +307,7 @@ class SubnetMixin(object):
         sn_id = subnet_vnc.subnet_uuid
         if not sn_id:
             subnet_key = self._subnet_vnc_get_key(subnet_vnc, vn_obj.uuid)
-            sn_id = self._subnet_vnc_read_or_create_mapping(
+            sn_id = self._subnet_vnc_read_mapping(
                 id=subnet_vnc.subnet_uuid, key=subnet_key)
 
         sn_q_dict['id'] = sn_id
@@ -455,11 +412,6 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
             vn_obj._pending_field_updates.add('network_ipam_refs')
         self._resource_update(vn_obj)
 
-        # allocate an id to the subnet and store mapping with
-        # api-server
-        subnet_id = subnet_vnc.subnet_uuid
-        self._subnet_vnc_create_mapping(subnet_id, subnet_key)
-
         # Read in subnet from server to get updated values for gw etc.
         subnet_vnc = self._subnet_read(subnet_key)
         subnet_info = self._subnet_vnc_to_neutron(subnet_vnc, vn_obj,
@@ -491,7 +443,6 @@ class SubnetDeleteHandler(res_handler.ResourceDeleteHandler, SubnetMixin):
                     self._raise_contrail_exception(
                         'SubnetInUse', subnet_id=subnet_id,
                         resource='subnet')
-                self._subnet_vnc_delete_mapping(subnet_id, subnet_key)
 
 
 class SubnetGetHandler(res_handler.ResourceGetHandler, SubnetMixin):
