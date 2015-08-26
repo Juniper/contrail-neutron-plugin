@@ -88,6 +88,15 @@ class FloatingIpMixin(object):
         for vmi_ref in vmi_refs or []:
             try:
                 vmi_obj = vmi_get_handler.get_vmi_obj(vmi_ref['uuid'])
+
+                # In case of floating ip on the Virtual-ip, svc-monitor will
+                # link floating ip to "right" interface of service VMs
+                # launched by ha-proxy service instance. Skip them
+                props = vmi_obj.get_virtual_machine_interface_properties()
+                if props:
+                    interface_type = props.get_service_interface_type()
+                    if interface_type == "right":
+                        continue
                 port_id = vmi_ref['uuid']
                 break
             except vnc_exc.NoIdError:
