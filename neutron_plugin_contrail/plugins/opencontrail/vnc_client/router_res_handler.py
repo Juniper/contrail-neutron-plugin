@@ -324,11 +324,16 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
             if subnet['id'] == subnet_id:
                 return subnet['cidr']
 
-    def _check_for_dup_router_subnet(self, router_id, subnet_id,
+    def _check_for_dup_router_subnet(self, router_obj, subnet_id,
                                      subnet_cidr):
         try:
-            router_vmi_objs = self._vmi_handler.get_vmi_list(
-                back_ref_id=[router_id])
+            router_vmi_objs = []
+            if getattr(router_obj, "virtual_machine_interface_refs", None):
+                vmis = [x['uuid']
+                        for x in router_obj.virtual_machine_interface_refs]
+                router_vmi_objs = self._vnc_lib.virtual_machine_interfaces_list(
+                    obj_uuids=vmis, detail=True,
+                    fields=['instance_ip_back_refs'])
             # It's possible router ports are on the same network, but
             # different subnets.
             new_ipnet = netaddr.IPNetwork(subnet_cidr)
@@ -342,12 +347,12 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
                 fixed_ips = self._vmi_handler.get_vmi_ip_dict(vmi_obj, vn_obj,
                                                               port_req_memo)
                 vn_subnets = (
-                    subnet_handler.ContrailSubnetHandler.get_vn_subnets(
+                    subnet_handler.SubnetHandler.get_vn_subnets(
                         vn_obj))
                 for ip in fixed_ips:
                     if ip['subnet_id'] == subnet_id:
                         msg = ("Router %s already has a port on subnet %s"
-                               % (router_id, subnet_id))
+                               % (router_obj.uuid, subnet_id))
                         self._raise_contrail_exception(
                             'BadRequest', resource='router', msg=msg)
                     sub_id = ip['subnet_id']
@@ -368,7 +373,7 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
         except vnc_exc.NoIdError:
             pass
 
-    def _get_router_iface_vnc_info(self, context, router_id, port_id=None,
+    def _get_router_iface_vnc_info(self, context, router_obj, port_id=None,
                                    subnet_id=None):
         if port_id:
             vmi_obj, vn_obj, rtr_uuid, fixed_ips = self._get_vmi_info(port_id)
@@ -393,7 +398,7 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
         subnet_cidr = '%s/%s' % (subnet_vnc.subnet.get_ip_prefix(),
                                  subnet_vnc.subnet.get_ip_prefix_len())
 
-        self._check_for_dup_router_subnet(router_id, subnet_id, subnet_cidr)
+        self._check_for_dup_router_subnet(router_obj, subnet_id, subnet_cidr)
 
         if not port_id:
             vn_obj = self._subnet_handler.get_vn_obj_for_subnet_id(subnet_id)
@@ -405,7 +410,7 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
                 'network_id': vn_obj.uuid,
                 'fixed_ips': [fixed_ip],
                 'admin_state_up': True,
-                'device_id': router_id,
+                'device_id': router_obj.uuid,
                 'device_owner': n_constants.DEVICE_OWNER_ROUTER_INTF,
                 'name': ''}
             port = self._vmi_handler.resource_create(context=context,
@@ -448,7 +453,7 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
                 msg='Either port or subnet must be specified')
 
         vmi_obj, vn_obj, subnet_id = self._get_router_iface_vnc_info(
-            context, router_id, port_id=port_id, subnet_id=subnet_id)
+            context, router_obj, port_id=port_id, subnet_id=subnet_id)
 
         vmi_obj.set_virtual_machine_interface_device_owner(
             n_constants.DEVICE_OWNER_ROUTER_INTF)
