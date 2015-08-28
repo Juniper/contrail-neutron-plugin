@@ -16,6 +16,7 @@ import uuid
 
 from cfgm_common import exceptions as vnc_exc
 from neutron.common import constants as n_constants
+from neutron.common.exceptions import NeutronException
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler
@@ -24,21 +25,70 @@ import vmi_res_handler as vmi_handler
 
 
 class FloatingIpMixin(object):
+    def _get_instance_ips_at_subnet(self, vn_obj, subnet_uuid):
+        iiph = res_handler.InstanceIpHandler(self._vnc_lib)
+        res = iiph._resource_list(back_ref_id=[vn_obj.uuid], detail=True)
+        return [x for x in res if subnet_uuid == x.subnet_uuid]
+
+    def _check_ext_net_reachable(self, floating_network_id, vmi_obj, fixed_ip_address=None):
+        vmih = vmi_handler.VMInterfaceHandler(self._vnc_lib)
+        vn_obj = self._vnc_lib.virtual_network_read(id=vmih.get_vmi_net_id(vmi_obj))
+        ip_dicts = vmih.get_vmi_ip_dict(vmi_obj, vn_obj, {'subnets': {}})
+
+        if len(ip_dicts) > 1 and not fixed_ip_address:
+            msg = "Port %s has multiple fixed IPv4 addresses." \
+                  "Must provide a specific IPv4 address when " \
+                  "assigning a floating IP" % vmi_obj.uuid
+            self._raise_contrail_exception('BadRequest', resource='floatingip',
+                                           msg=msg)
+
+        if fixed_ip_address:
+            for ip_dict in ip_dicts:
+                if ip_dict['ip_address'] == fixed_ip_address:
+                    subnet_uuid = ip_dict['subnet_id']
+
+            if not subnet_uuid:
+                msg = "Port %s does not have a fixed-ip %s" % (
+                    vmi_obj.uuid, fixed_ip_address)
+                self._raise_contrail_exception('BadRequest', resource='floatingip',
+                                               msg=msg)
+        else:
+            subnet_uuid = ip_dicts[0]['subnet_id']
+
+        # get the VMIs ips at subnet
+        iips = self._get_instance_ips_at_subnet(vn_obj, subnet_uuid)
+        subnet_vmis = [x.get_virtual_machine_interface_refs()[0]['uuid'] for x in iips]
+
+        lrh = router_handler.LogicalRouterHandler(self._vnc_lib)
+        routers = lrh._resource_list(back_ref_id=subnet_vmis, detail=True)
+        for router in routers:
+            ext_net = lrh._get_external_gateway_info(router)
+            if ext_net == floating_network_id:
+                return True
+
+        self._raise_contrail_exception(
+             'ExternalGatewayForFloatingIPNotFound',
+             external_network_id=floating_network_id,
+             subnet_id=subnet_uuid,
+             port_id=vmi_obj.uuid)
 
     def _neutron_dict_to_fip_obj(self, fip_q, is_admin=False,
                                  tenant_id=None, fip_obj=None):
+        floating_network_id = fip_q.get('floating_network_id', None)
         if not fip_obj:
             try:
                 fip_obj = self._resource_get(id=fip_q['id'])
             except vnc_exc.NoIdError:
                 self._raise_contrail_exception('FloatingIPNotFound',
                                                floatingip_id=fip_q['id'])
+            floating_network_id = self._vnc_lib.fq_name_to_id(
+                'virtual-network', fip_obj.get_fq_name()[:-2])
 
         vmi_get_handler = vmi_handler.VMInterfaceGetHandler(
             self._vnc_lib)
         port_id = fip_q.get('port_id')
         if port_id:
-            vmi_obj = vmi_get_handler.get_vmi_obj(port_id)
+            vmi_obj = vmi_get_handler.get_vmi_obj(port_id, fields=['instance_ip_back_refs'])
 
             if not is_admin:
                 vmi_tenant_id = vmi_get_handler.get_vmi_tenant_id(vmi_obj)
@@ -46,6 +96,8 @@ class FloatingIpMixin(object):
                     self._raise_contrail_exception('PortNotFound',
                                                    resource='floatingip',
                                                    port_id=port_id)
+            self._check_ext_net_reachable(
+                floating_network_id, vmi_obj, fip_q.get('fixed_ip_address', None))
             fip_obj.set_virtual_machine_interface(vmi_obj)
         else:
             fip_obj.set_virtual_machine_interface_list([])
@@ -147,6 +199,8 @@ class FloatingIpCreateHandler(res_handler.ResourceCreateHandler,
             fip_obj = self._neutron_dict_to_fip_obj(fip_q, context['is_admin'],
                                                     context['tenant'],
                                                     fip_obj=fip_obj)
+        except NeutronException as e:
+            raise e
         except Exception:
             msg = ('Internal error when trying to create floating ip. '
                    'Please be sure the network %s is an external '
