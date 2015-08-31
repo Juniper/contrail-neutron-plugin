@@ -22,7 +22,7 @@ EXTENDED_ATTRIBUTES_2_0 = {
     }
 }
 
-class Loadbalancer(object):
+class Loadbalancercustomattributes(object):
 
     @classmethod
     def get_name(cls):
@@ -53,4 +53,4 @@ class Loadbalancer(object):
         else:
             return {}
 
-#end class Loadbalancer
+#end class Loadbalancercustomattributes
