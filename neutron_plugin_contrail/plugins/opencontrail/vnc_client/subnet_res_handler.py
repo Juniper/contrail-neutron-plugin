@@ -18,6 +18,7 @@ from cfgm_common import exceptions as vnc_exc
 import contrail_res_handler as res_handler
 from contrail_res_handler import ContrailResourceHandler
 import netaddr
+import subnetpool_res_handler as sp_res_handler
 import vn_res_handler as vn_handler
 from vnc_api import vnc_api
 
@@ -372,6 +373,22 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
                 netipam_obj = vnc_api.NetworkIpam()
             return netipam_obj
 
+    def _allocate_cidr_from_subnetpool(self, subnet_q, sp_obj, vn_obj):
+        sp_vn_back_refs = sp_obj.get_virtual_network_back_refs()
+        if sp_vn_back_refs:
+            vn_ids = [vn_ref['uuid'] for vn_ref in sp_vn_back_refs]
+            vn_objs = self._resource_list(obj_uuids=vn_ids)
+        else:
+            vn_objs = []
+        sp_allocator = sp_res_handler.SubnetPoolAllocator()
+        prefix_len = subnet_q.get(
+            'prefix_len',
+            sp_obj.get_subnet_pool_data().get_default_prefix_len())
+        allocated_cidr = sp_allocator.allocate_cidr_from_subnetpool(
+            sp_obj, prefix_len, vn_objs, requested_cidr=subnet_q.get('cidr'))
+
+        return allocated_cidr
+
     def resource_create(self, context, subnet_q):
         net_id = subnet_q['network_id']
         vn_obj = self._resource_get(id=net_id)
@@ -380,6 +397,20 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
                                             vn_obj)
         if not ipam_fq_name:
             ipam_fq_name = netipam_obj.get_fq_name()
+
+        subnetpool_id = subnet_q.get('subnetpool_id')
+        if subnetpool_id:
+            sp_handler = sp_res_handler.SubnetPoolHandler(self._vnc_lib)
+            try:
+                sp_obj = sp_handler.get_sp_obj(
+                    subnetpool_id, fields=['virtual_network_back_refs'])
+            except vnc_exc.NoIdError:
+                self._raise_contrail_exception(
+                    'SubnetPoolNotFound', subnetpool_id=subnetpool_id)
+
+            allocated_cidr = self._allocate_cidr_from_subnetpool(
+                subnet_q, sp_obj, vn_obj)
+            subnet_q['cidr'] = allocated_cidr
 
         subnet_vnc = self._subnet_neutron_to_vnc(subnet_q)
         subnet_key = self._subnet_vnc_get_key(subnet_vnc, net_id)
@@ -410,6 +441,10 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
             vnsn_data.ipam_subnets.append(subnet_vnc)
             # TODO(): Add 'ref_update' API that will set this field
             vn_obj._pending_field_updates.add('network_ipam_refs')
+
+        if subnetpool_id:
+            vn_obj.set_subnet_pool(sp_obj)
+
         self._resource_update(vn_obj)
 
         # Read in subnet from server to get updated values for gw etc.
@@ -428,6 +463,7 @@ class SubnetDeleteHandler(res_handler.ResourceDeleteHandler, SubnetMixin):
 
         vn_obj = self._resource_get(id=net_id)
         ipam_refs = vn_obj.get_network_ipam_refs()
+        new_subnets = []
         for ipam_ref in ipam_refs or []:
             orig_subnets = ipam_ref['attr'].get_ipam_subnets()
             new_subnets = [subnet_vnc for subnet_vnc in orig_subnets
@@ -437,6 +473,8 @@ class SubnetDeleteHandler(res_handler.ResourceDeleteHandler, SubnetMixin):
                 # matched subnet to be deleted
                 ipam_ref['attr'].set_ipam_subnets(new_subnets)
                 vn_obj._pending_field_updates.add('network_ipam_refs')
+                if not new_subnets:
+                    vn_obj.set_subnet_pool_list([])
                 try:
                     self._resource_update(vn_obj)
                 except vnc_exc.RefsExistError:
