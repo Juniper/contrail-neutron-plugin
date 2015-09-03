@@ -524,3 +524,22 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         return self._list_resource('security_group_rule', context,
                                    filters, fields)
+
+    def create_subnetpool(self, context, subnetpool):
+        return self._create_resource('subnetpool', context,
+                                     subnetpool)
+
+    def update_subnetpool(self, context, subnetpool_id, subnetpool):
+        return self._update_resource('subnetpool', context, subnetpool_id,
+                                     subnetpool)
+
+    def get_subnetpool(self, context, subnetpool_id, fields=None):
+        return self._get_resource('subnetpool', context, subnetpool_id, fields)
+
+    def get_subnetpools(self, context, filters=None, fields=None,
+                        sorts=None, limit=None, marker=None,
+                        page_reverse=False):
+        return self._list_resource('subnetpool', context, filters, fields)
+
+    def delete_subnetpool(self, context, subnetpool_id):
+        self._delete_resource('subnetpool', context, subnetpool_id)

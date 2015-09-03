@@ -447,3 +447,9 @@ class TestContrailL3NatTestCase(JVContrailPluginTestCase,
     def test_create_non_router_port_device_id_of_other_teants_router_update(
             self):
         self.skipTest("Contrail doesn't support this test case")
+
+
+class TestContrailSubnetPoolsV2(test_plugin.TestSubnetPoolsV2,
+                                JVContrailPluginTestCase):
+    def setUp(self):
+        super(TestContrailSubnetPoolsV2, self).setUp()
