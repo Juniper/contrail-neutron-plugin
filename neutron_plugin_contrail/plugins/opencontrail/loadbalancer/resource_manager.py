@@ -201,9 +201,9 @@ class ResourceManager(object):
     def _get_resource_dict(self, uuid, filters, fields):
         try:
             obj = self.resource_read(id=uuid)
+            res = self.make_dict(obj, None)
         except NoIdError:
             return None
-        res = self.make_dict(obj, None)
         if not self._apply_filter(res, filters):
             return None
         return self._fields(res, fields)
