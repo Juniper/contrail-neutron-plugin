@@ -382,6 +382,14 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
             self._raise_contrail_exception(
                 'BadRequest',
                 resource='security_group_rule', msg=str(e))
+        except vnc_exc.RefsExistError as e:
+            try:
+                rule_uuid = str(e).split(':')[1].strip()
+            except IndexError:
+                rule_uuid = None
+            self._raise_contrail_exception('SecurityGroupRuleExists',
+                                           resource='security_group_rule',
+                                           id=rule_uuid)
         return
     # end _security_group_rule_create
 
