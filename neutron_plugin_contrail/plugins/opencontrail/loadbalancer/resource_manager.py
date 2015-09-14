@@ -188,22 +188,23 @@ class ResourceManager(object):
     def get_resource(self, context, id, fields=None):
         """ Implement GET by uuid.
         """
+        tenant_id = str(uuid.UUID(context.tenant_id))
         try:
             obj = self.resource_read(id=id)
+            project_id = self._get_object_tenant_id(obj)
+            if not context.is_admin and tenant_id != project_id:
+                raise NoIdError(id)
+            res = self.make_dict(obj, fields)
         except NoIdError:
             raise self.get_exception_notfound(id=id)
-        tenant_id = str(uuid.UUID(context.tenant_id))
-        project_id = self._get_object_tenant_id(obj)
-        if not context.is_admin and tenant_id != project_id:
-            raise self.get_exception_notfound(id=id)
-        return self.make_dict(obj, fields)
+        return res
 
     def _get_resource_dict(self, uuid, filters, fields):
         try:
             obj = self.resource_read(id=uuid)
+            res = self.make_dict(obj, None)
         except NoIdError:
             return None
-        res = self.make_dict(obj, None)
         if not self._apply_filter(res, filters):
             return None
         return self._fields(res, fields)
