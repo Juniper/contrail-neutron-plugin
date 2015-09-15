@@ -2,7 +2,7 @@ from neutron.api.v2 import attributes as attr
 from neutron.api import extensions
 
 def _validate_custom_attributes(data, valid_values=None):
-    if not isinstance(data, list):
+    if not isinstance(data, dict):
         msg = _("Invalid data format for custom_attributes: '%s'") % data
         return msg
 

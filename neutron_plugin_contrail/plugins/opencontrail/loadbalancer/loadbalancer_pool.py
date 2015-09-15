@@ -42,10 +42,9 @@ class LoadbalancerPoolManager(ResourceManager):
 
     def create_update_custom_attributes(self, custom_attributes, kvps):
         kvp_array = []
-        for custom_attribute in custom_attributes or []:
-            for key,value in custom_attribute.iteritems():
-                kvp = KeyValuePair(key, value)
-                kvp_array.append(kvp)
+        for key,value in custom_attributes.iteritems():
+            kvp = KeyValuePair(key, value)
+            kvp_array.append(kvp)
 
         kvps.set_key_value_pair(kvp_array)
         return True
