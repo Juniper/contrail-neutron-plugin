@@ -16,6 +16,7 @@
 
 from oslo.config import cfg
 import requests
+import subprocess
 
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
@@ -43,6 +44,7 @@ except ImportError:
     from oslo_log import log as logging
 
 from simplejson import JSONDecodeError
+from cfgm_common import utils as cfgmutils
 
 LOG = logging.getLogger(__name__)
 
@@ -131,6 +133,19 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 cfg.CONF.keystone_authtoken.auth_host,
                 cfg.CONF.keystone_authtoken.auth_port,
                 "/v2.0/tokens")
+            # SSL Support
+            self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
+            self._certfile=cfg.CONF.keystone_authtoken.certfile
+            self._keyfile=cfg.CONF.keystone_authtoken.keyfile
+            self._cafile=cfg.CONF.keystone_authtoken.cafile
+
+            self._kscertbundle=''
+            self._certok='NOK'
+            if self._certfile and self._keyfile and self._cafile:
+               certs=[self._certfile,self._keyfile,self._cafile]
+               self._kscertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_KS_CERT_BUNDLE,certs)
+               cmd='openssl verify %s | grep OK' % self._kscertbundle
+               self._certok=subprocess.check_output(cmd, shell=True)
 
     def __init__(self):
         super(NeutronPluginContrailCoreV2, self).__init__()
@@ -164,9 +179,18 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         response = requests.post(url, data=data, headers=headers)
         if (response.status_code == requests.codes.unauthorized):
             # Get token from keystone and save it for next request
-            response = requests.post(self._keystone_url,
-                data=self._authn_body,
-                headers={'Content-type': 'application/json'})
+            if self._ksinsecure:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=False)
+            elif not self._ksinsecure and self._certok == 'OK':
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=self._kscertbundle)
+            else:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'})
             if (response.status_code == requests.codes.ok):
                 # plan is to re-issue original request with new token
                 auth_headers = headers or {}
