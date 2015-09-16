@@ -131,6 +131,15 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 cfg.CONF.keystone_authtoken.auth_host,
                 cfg.CONF.keystone_authtoken.auth_port,
                 "/v2.0/tokens")
+            # SSL Support
+            self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
+            self._certfile=cfg.CONF.keystone_authtoken.certfile
+            self._keyfile=cfg.CONF.keystone_authtoken.keyfile
+            self._cafile=cfg.CONF.keystone_authtoken.cafile
+
+            self._use_certs=False
+            if self._certfile and self._keyfile and self._cafile:
+               self._use_certs=True
 
     def __init__(self):
         super(NeutronPluginContrailCoreV2, self).__init__()
@@ -164,9 +173,18 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         response = requests.post(url, data=data, headers=headers)
         if (response.status_code == requests.codes.unauthorized):
             # Get token from keystone and save it for next request
-            response = requests.post(self._keystone_url,
-                data=self._authn_body,
-                headers={'Content-type': 'application/json'})
+            if self._ksinsecure:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=False)
+            elif not self._ksinsecure and self._use_certs:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=self._cafile,cert=[self._certfile,self._keyfile])
+            else:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'})
             if (response.status_code == requests.codes.ok):
                 # plan is to re-issue original request with new token
                 auth_headers = headers or {}
