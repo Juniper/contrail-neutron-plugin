@@ -48,6 +48,10 @@ from simplejson import JSONDecodeError
 from eventlet.greenthread import getcurrent
 
 import contrail_plugin_base as plugin_base
+from cfgm_common import utils as cfgmutils
+
+_DEFAULT_KS_CERT_BUNDLE="/tmp/keystonecertbundle.pem"
+_DEFAULT_API_CERT_BUNDLE="/tmp/apiservercertbundle.pem"
 
 LOG = logging.getLogger(__name__)
 
@@ -58,6 +62,16 @@ vnc_opts = [
                help='Port to connect to VNC controller'),
     cfg.DictOpt('contrail_extensions', default={},
                 help='Enable Contrail extensions(policy, ipam)'),
+    cfg.BoolOpt('use_ssl', default=False,
+               help='Use SSL to connect with VNC controller'),
+    cfg.BoolOpt('insecure', default=False,
+               help='Insecurely connect to VNC controller'),
+    cfg.StrOpt('certfile', default='',
+               help='certfile to connect securely to VNC controller'),
+    cfg.StrOpt('keyfile', default='',
+               help='keyfile to connect securely to  VNC controller'),
+    cfg.StrOpt('cafile', default='',
+               help='cafile to connect securely to VNC controller'),
 ]
 
 analytics_opts = [
@@ -93,15 +107,60 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                 cfg.CONF.keystone_authtoken.auth_port,
                 "/v2.0/tokens")
 
+            #Keystone SSL Support
+            self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
+            kscertfile=cfg.CONF.keystone_authtoken.certfile
+            kskeyfile=cfg.CONF.keystone_authtoken.keyfile
+            kscafile=cfg.CONF.keystone_authtoken.cafile
+
+            self._use_ks_certs=False
+            if kscertfile and kskeyfile and kscafile \
+               and cfg.CONF.keystone_authtoken.auth_protocol == 'https':
+                   certs=[kscertfile, kskeyfile, kscafile]
+                   self._kscertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_KS_CERT_BUNDLE,certs)
+                   self._use_ks_certs=True
+
+        #API Server SSL support
+        self._apiusessl=cfg.CONF.APISERVER.use_ssl
+        self._apiinsecure=cfg.CONF.APISERVER.insecure
+        apicertfile=cfg.CONF.APISERVER.certfile
+        apikeyfile=cfg.CONF.APISERVER.keyfile
+        apicafile=cfg.CONF.APISERVER.cafile
+
+        if self._apiusessl:
+            self._apiserverconnect="https"
+        else:
+            self._apiserverconnect="http"
+
+        self._use_api_certs=False
+        if apicertfile and apikeyfile and apicafile and self._apiusessl:
+               certs=[apicertfile, apikeyfile, apicafile]
+               self._apicertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_API_CERT_BUNDLE,certs)
+               self._use_api_certs=True
+
 
     def _request_api_server(self, url, data=None, headers=None):
         # Attempt to post to Api-Server
-        response = requests.post(url, data=data, headers=headers)
+        if self._apiinsecure:
+             response = requests.post(url, data=data, headers=headers,verify=False)
+        elif not self._apiinsecure and self._use_api_certs:
+             response = requests.post(url, data=data, headers=headers,verify=self._apicertbundle)
+        else:
+             response = requests.post(url, data=data, headers=headers)
         if (response.status_code == requests.codes.unauthorized):
             # Get token from keystone and save it for next request
-            response = requests.post(self._keystone_url,
-                data=self._authn_body,
-                headers={'Content-type': 'application/json'})
+            if self._ksinsecure:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=False)
+            elif not self._ksinsecure and self._use_certs:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=self._kscertbundle))
+            else:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'})
             if (response.status_code == requests.codes.ok):
                 # plan is to re-issue original request with new token
                 auth_headers = headers or {}
@@ -130,9 +189,10 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
     def _relay_request(self, url_path, data=None):
         """Send received request to api server."""
 
-        url = "http://%s:%s%s" % (cfg.CONF.APISERVER.api_server_ip,
-                                  cfg.CONF.APISERVER.api_server_port,
-                                  url_path)
+        url = "%s://%s:%s%s" % (self._apiserverconnect,
+                                cfg.CONF.APISERVER.api_server_ip,
+                                cfg.CONF.APISERVER.api_server_port,
+                                url_path)
 
         return self._request_api_server_authn(
             url, data=data, headers={'Content-type': 'application/json'})
