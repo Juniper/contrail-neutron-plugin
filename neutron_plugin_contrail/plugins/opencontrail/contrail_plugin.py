@@ -53,6 +53,16 @@ vnc_opts = [
                help='Port to connect to VNC controller'),
     cfg.DictOpt('contrail_extensions', default={},
                 help='Enable Contrail extensions(policy, ipam)'),
+    cfg.StrOpt('use_ssl', default=False,
+               help='Use SSL to connect with VNC controller'),
+    cfg.StrOpt('certfile', default='',
+               help='certfile to connect securely to VNC controller'),
+    cfg.StrOpt('keyfile', default='',
+               help='keyfile to connect securely to  VNC controller'),
+    cfg.StrOpt('cafile', default='',
+               help='cafile to connect securely to VNC controller'),
+    cfg.DictOpt('contrail_extensions', default={},
+                help='Enable Contrail extensions(policy, ipam)'),
 ]
 
 analytics_opts = [
@@ -131,6 +141,31 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 cfg.CONF.keystone_authtoken.auth_host,
                 cfg.CONF.keystone_authtoken.auth_port,
                 "/v2.0/tokens")
+            # SSL Support
+            self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
+            self._kscertfile=cfg.CONF.keystone_authtoken.certfile
+            self._kskeyfile=cfg.CONF.keystone_authtoken.keyfile
+            self._kscafile=cfg.CONF.keystone_authtoken.cafile
+
+            self._use_ks_certs=False
+            if self._kscertfile and self._kskeyfile and self._kscafile:
+               self._use_ks_certs=True
+
+        #API Server SSL support
+        self._apiusessl=cfg.CONF.APISERVER.use_ssl
+        self._apiinsecure=cfg.CONF.APISERVER.insecure
+        self._apicertfile=cfg.CONF.APISERVER.certfile
+        self._apikeyfile=cfg.CONF.APISERVER.keyfile
+        self._apicafile=cfg.CONF.APISERVER.cafile
+
+        if self._apiusessl:
+            self._apiserverconnect="https"
+        else:
+            self._apiserverconnect="http"
+
+        self._use_api_certs=False
+        if self._apicertfile and self._apikeyfile and self._apicafile:
+               self._use_api_certs=True
 
     def __init__(self):
         super(NeutronPluginContrailCoreV2, self).__init__()
@@ -161,12 +196,28 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
     def _request_api_server(self, url, data=None, headers=None):
         # Attempt to post to Api-Server
-        response = requests.post(url, data=data, headers=headers)
+        if self._apiinsecure:
+             response = requests.post(url, data=data, headers=headers,verify=False)
+        elif not self._apiinsecure and self._use_api_certs:
+             response = requests.post(url, data=data, headers=headers,verify=self._apicafile,
+                                      cert=[self._apicertfile,self._apikeyfile])
+        else:
+             response = requests.post(url, data=data, headers=headers)
         if (response.status_code == requests.codes.unauthorized):
             # Get token from keystone and save it for next request
-            response = requests.post(self._keystone_url,
-                data=self._authn_body,
-                headers={'Content-type': 'application/json'})
+            if self._ksinsecure:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=False)
+            elif not self._ksinsecure and self._use_ks_certs:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'},verify=self._kscafile,
+                                        cert=[self._kscertfile,self._kskeyfile])
+            else:
+               response = requests.post(self._keystone_url,
+                                        data=self._authn_body,
+                                        headers={'Content-type': 'application/json'})
             if (response.status_code == requests.codes.ok):
                 # plan is to re-issue original request with new token
                 auth_headers = headers or {}
@@ -188,9 +239,10 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _relay_request(self, url_path, data=None):
         """Send received request to api server."""
 
-        url = "http://%s:%s%s" % (cfg.CONF.APISERVER.api_server_ip,
-                                  cfg.CONF.APISERVER.api_server_port,
-                                  url_path)
+        url = "%s://%s:%s%s" % (self._apiserverconnect,
+                                cfg.CONF.APISERVER.api_server_ip,
+                                cfg.CONF.APISERVER.api_server_port,
+                                url_path)
 
         return self._request_api_server_authn(
             url, data=data, headers={'Content-type': 'application/json'})
