@@ -58,6 +58,17 @@ vnc_opts = [
                help='Port to connect to VNC controller'),
     cfg.DictOpt('contrail_extensions', default={},
                 help='Enable Contrail extensions(policy, ipam)'),
+    cfg.BoolOpt('use_ssl', default=False,
+               help='Use SSL to connect with VNC controller'),
+    cfg.BoolOpt('insecure', default=False,
+               help='Insecurely connect to VNC controller'),
+    cfg.StrOpt('certfile', default='',
+               help='certfile to connect securely to VNC controller'),
+    cfg.StrOpt('keyfile', default='',
+               help='keyfile to connect securely to  VNC controller'),
+    cfg.StrOpt('cafile', default='',
+               help='cafile to connect securely to VNC controller'),
+
 ]
 
 analytics_opts = [
