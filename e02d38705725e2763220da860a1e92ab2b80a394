@@ -1,0 +1,9 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Code-Review+2: Édouard Thuleau <edouard.thuleau@cloudwatt.com>
+Approved+1: Sylvain Afchain <safchain@redhat.com>
+Code-Review+2: Sylvain Afchain <safchain@redhat.com>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Fri, 25 Sep 2015 03:01:38 -0700
+Reviewed-on: https://review.opencontrail.org/13179
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/master
