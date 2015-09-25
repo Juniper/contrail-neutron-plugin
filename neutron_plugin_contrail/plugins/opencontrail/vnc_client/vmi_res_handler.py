@@ -18,11 +18,8 @@ from cfgm_common import exceptions as vnc_exc
 import eventlet
 import netaddr
 from neutron.common import constants as n_constants
+from neutron.common.config import cfg
 from vnc_api import vnc_api
-try:
-    from oslo.config import cfg
-except ImportError:
-    from oslo_config import cfg
 
 import contrail_res_handler as res_handler
 import fip_res_handler

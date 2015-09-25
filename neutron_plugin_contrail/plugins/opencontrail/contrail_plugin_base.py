@@ -15,14 +15,11 @@
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
 
-try:
-    from oslo_config import cfg
-except ImportError:
-    from oslo.config import cfg
 import requests
 
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
+from neutron.common.config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
