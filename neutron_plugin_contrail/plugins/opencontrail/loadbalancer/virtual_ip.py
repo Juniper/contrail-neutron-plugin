@@ -153,7 +153,11 @@ class VirtualIpManager(ResourceManager):
 
         vmi = VirtualMachineInterface(vip_id, project)
         vmi.set_virtual_network(vnet)
-        vmi.set_virtual_machine_interface_device_owner(n_constants.DEVICE_OWNER_LOADBALANCER)
+        try:
+            vmi.set_virtual_machine_interface_device_owner(n_constants.DEVICE_OWNER_LOADBALANCER)
+        except AttributeError:
+            # DEVICE_OWNER_LOADBALANCER is only supported from JUNO onwards
+            pass
 
         sg_obj = SecurityGroup("default", project)
         vmi.add_security_group(sg_obj)
