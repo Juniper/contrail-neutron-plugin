@@ -163,11 +163,12 @@ class QuotaDriver(object):
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        for k,v in quota.__dict__.items():
-            if k != 'defaults':
-                quota.__dict__[k] = None
-        proj_obj.set_quota(quota)
-        cls._get_vnc_conn().project_update(proj_obj)
+        if quota is not None:
+            for k,v in quota.__dict__.items():
+                if k != 'defaults':
+                    quota.__dict__[k] = None
+            proj_obj.set_quota(quota)
+            cls._get_vnc_conn().project_update(proj_obj)
 
     @classmethod
     def update_quota_limit(cls, context, tenant_id, resource, limit):
