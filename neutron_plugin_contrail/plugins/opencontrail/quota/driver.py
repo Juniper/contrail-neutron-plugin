@@ -94,6 +94,18 @@ class QuotaDriver(object):
         """
 
     @classmethod
+    def _get_default_quotas(cls, resource, default_quota):
+        quota_res = None
+        qn2c = cls.quota_neutron_to_contrail_type
+        if default_quota and resource.name in qn2c:
+            quota_res = getattr(default_quota, qn2c[resource.name], None)
+            if quota_res is None:
+                quota_res = default_quota.get_defaults()
+        if quota_res is None:
+            quota_res = resource.default
+        return quota_res
+
+    @classmethod
     def get_tenant_quotas(cls, context, resources, tenant_id):
         try:
             default_project = cls._get_vnc_conn().project_read(
@@ -122,12 +134,9 @@ class QuotaDriver(object):
             quota_res = None
             if quota and resource in qn2c:
                 quota_res = getattr(quota, qn2c[resource], None)
-            if quota_res is None and default_quota and resource in qn2c:
-                quota_res = getattr(default_quota, qn2c[resource], None)
-                if quota_res is None:
-                    quota_res = default_quota.get_defaults()
             if quota_res is None:
-                quota_res = resources[resource].default
+                quota_res = cls._get_default_quotas(resources[resource],
+                                                    default_quota)
             quotas[resource] = quota_res
         return quotas
 
@@ -148,7 +157,14 @@ class QuotaDriver(object):
             quotas = cls._get_tenant_quotas(context, resources, project['uuid'],
                                             default_quota)
             quotas['tenant_id'] = project['uuid'].replace('-', '')
-            ret_list.append(quotas)
+
+            # Tenants with default quotas are not listed
+            for resource in resources:
+                default_value = cls._get_default_quotas(resources[resource],
+                                                        default_quota)
+                if quotas[resource] != default_value:
+                    ret_list.append(quotas)
+                    break
         return ret_list
 
     @classmethod
