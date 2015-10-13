@@ -99,6 +99,12 @@ class ResourceCreateHandler(ContrailResourceHandler):
         create_method = getattr(self._vnc_lib, self.resource_create_method)
         try:
             obj_uuid = create_method(obj)
+        # To allow several resources with an identical name
+        except vnc_exc.RefsExistError:
+            obj.uuid = str(uuid.uuid4())
+            obj.name += '-' + obj.uuid
+            obj.fq_name[-1] += '-' + obj.uuid
+            obj_uuid = create_method(obj)
         except vnc_exc.BadRequest as e:
             self._raise_contrail_exception(
                 'BadRequest', msg=str(e))
