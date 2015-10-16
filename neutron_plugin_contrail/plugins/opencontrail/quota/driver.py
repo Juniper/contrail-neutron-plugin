@@ -9,6 +9,7 @@ except ImportError:
     from oslo_log import log as logging
 
 from neutron.common.config import cfg
+from neutron.common import exceptions
 from httplib2 import Http
 import re
 import string
@@ -69,8 +70,7 @@ class QuotaDriver(object):
                 time.sleep(3)
     # end _get_vnc_conn
 
-    def limit_check(self, context, tenant_id,
-                    resources, values):
+    def limit_check(self, context, tenant_id, resources, values):
         """Check simple quota limits.
 
         For limits--those quotas for which there is no usage
@@ -92,6 +92,21 @@ class QuotaDriver(object):
         :param values: A dictionary of the values to check against the
                        quota.
         """
+        # Ensure no value is less than zero
+        unders = [key for key, val in values.items() if val < 0]
+        if unders:
+            raise exceptions.InvalidQuotaValue(unders=sorted(unders))
+
+        # Get the applicable quotas
+        quotas = self.__class__.get_tenant_quotas(
+            context, resources, tenant_id)
+
+        # Check the quotas and construct a list of the resources that
+        # would be put over limit by the desired values
+        overs = [key for key, val in values.items()
+                 if quotas[key] >= 0 and quotas[key] < val]
+        if overs:
+            raise exceptions.OverQuota(overs=sorted(overs))
 
     @classmethod
     def get_tenant_quotas(cls, context, resources, tenant_id):
