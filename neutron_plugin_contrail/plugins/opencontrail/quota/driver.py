@@ -105,7 +105,13 @@ class QuotaDriver(object):
                                       default_quota)
 
     @classmethod
-    def _get_tenant_quotas(cls, context, resources, tenant_id, default_quota):
+    def _get_tenant_quotas(cls, context, resources, tenant_id,
+                           default_quota, get_default=True):
+        """Get quotas of a tenant.
+
+        :param get_default: if False, does not return quotas if they
+        only contain default values.
+        """
         try:
             proj_id = str(uuid.UUID(tenant_id))
             proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
@@ -118,10 +124,13 @@ class QuotaDriver(object):
 
         qn2c = cls.quota_neutron_to_contrail_type
         quotas = {}
+        has_non_default = False
         for resource in resources:
             quota_res = None
             if quota and resource in qn2c:
                 quota_res = getattr(quota, qn2c[resource], None)
+                if quota_res is not None:
+                    has_non_default = True
             if quota_res is None and default_quota and resource in qn2c:
                 quota_res = getattr(default_quota, qn2c[resource], None)
                 if quota_res is None:
@@ -129,6 +138,9 @@ class QuotaDriver(object):
             if quota_res is None:
                 quota_res = resources[resource].default
             quotas[resource] = quota_res
+
+        if not get_default and not has_non_default:
+            return {}
         return quotas
 
     @classmethod
@@ -146,9 +158,10 @@ class QuotaDriver(object):
             if default_quota and (project['uuid'] == default_project.uuid):
                 continue
             quotas = cls._get_tenant_quotas(context, resources, project['uuid'],
-                                            default_quota)
-            quotas['tenant_id'] = project['uuid'].replace('-', '')
-            ret_list.append(quotas)
+                                            default_quota, get_default=False)
+            if quotas != {}:
+                quotas['tenant_id'] = project['uuid'].replace('-', '')
+                ret_list.append(quotas)
         return ret_list
 
     @classmethod
