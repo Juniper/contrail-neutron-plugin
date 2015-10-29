@@ -175,18 +175,12 @@ class LoadbalancerMemberManager(ResourceManager):
         return False
 
     def update_object(self, member_db, id, m):
-        old_pool_id = self._get_member_pool_id(member_db)
-        if 'pool_id' in m and m['pool_id'] != old_pool_id:
-            pool_id = m['pool_id']
-        else:
-            pool_id = old_pool_id
+        if 'pool_id' in m and self._get_member_pool_id(member_db) != m['pool_id']:
+            try:
+                pool = self._api.loadbalancer_pool_read(id=m['pool_id'])
+            except NoIdError:
+                raise loadbalancer.PoolNotFound(pool_id=m['pool_id'])
 
-        try:
-            pool = self._api.loadbalancer_pool_read(id=pool_id)
-        except NoIdError:
-            raise loadbalancer.PoolNotFound(pool_id=pool_id)
-
-        if pool_id != old_pool_id:
             db_props = member_db.get_loadbalancer_member_properties()
             members = pool.get_loadbalancer_members()
             for member in members or []:
@@ -200,17 +194,19 @@ class LoadbalancerMemberManager(ResourceManager):
                         port=props.get_protocol_port(),
                         pool=m['pool_id'])
 
-        # delete member from old pool
-        props = member_db.get_loadbalancer_member_properties()
-        obj_uuid = member_db.uuid
-        self._api.loadbalancer_member_delete(id=member_db.uuid)
+            # delete member from old pool
+            props = member_db.get_loadbalancer_member_properties()
+            obj_uuid = member_db.uuid
+            self._api.loadbalancer_member_delete(id=member_db.uuid)
 
-        # create member for the new pool with same uuid and props
-        id_perms = IdPermsType(enable=True)
-        member_obj = LoadbalancerMember(
-            obj_uuid, pool, loadbalancer_member_properties=props,
-            id_perms=id_perms)
-        member_obj.uuid = obj_uuid
-        self._api.loadbalancer_member_create(member_obj)
+            # create member for the new pool with same uuid and props
+            id_perms = IdPermsType(enable=True)
+            member_obj = LoadbalancerMember(
+                obj_uuid, pool, loadbalancer_member_properties=props,
+                id_perms=id_perms)
+            member_obj.uuid = obj_uuid
+            self._api.loadbalancer_member_create(member_obj)
 
-        return True
+            return True
+
+        return False
