@@ -6,7 +6,13 @@ import requests
 import time
 import uuid
 
-from neutron.common.config import cfg
+try:
+    from neutron.common.config import cfg
+except ImportError:
+    try:
+        from oslo.config import cfg
+    except ImportError:
+        from oslo_config import cfg
 
 from cfgm_common import analytics_client
 from cfgm_common import exceptions as vnc_exc

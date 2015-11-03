@@ -8,7 +8,14 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
-from neutron.common.config import cfg
+try:
+    from neutron.common.config import cfg
+except ImportError:
+    try:
+        from oslo.config import cfg
+    except ImportError:
+        from oslo_config import cfg
+
 from httplib2 import Http
 import re
 import string
@@ -19,6 +26,11 @@ import requests
 
 from cfgm_common import exceptions as vnc_exc
 from vnc_api import vnc_api
+
+try:
+    from neutron.db.quota import api as quota_api
+except ImportError:
+    pass
 
 LOG = logging.getLogger(__name__)
 
@@ -202,3 +214,19 @@ class QuotaDriver(object):
             set_quota(limit)
             proj_obj.set_quota(quota)
             cls._get_vnc_conn().project_update(proj_obj)
+
+    def make_reservation(self, context, tenant_id, resources, deltas, plugin):
+        """This driver does not support reservations.
+
+        This routine is provided for backward compatibility purposes with
+        the API controllers which have now been adapted to make reservations
+        rather than counting resources and checking limits - as this
+        routine ultimately does.
+        """
+        return quota_api.ReservationInfo('fake', None, None, None)
+
+    def commit_reservation(self, context, reservation_id):
+        """Tnis is a noop as this driver does not support reservations."""
+
+    def cancel_reservation(self, context, reservation_id):
+        """Tnis is a noop as this driver does not support reservations."""
