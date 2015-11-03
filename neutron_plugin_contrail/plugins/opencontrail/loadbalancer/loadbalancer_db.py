@@ -6,12 +6,25 @@ import requests
 import time
 import uuid
 
-from oslo.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
+
 from cfgm_common import analytics_client
 from cfgm_common import exceptions as vnc_exc
 from neutron.common import exceptions as n_exc
-from neutron.extensions import loadbalancer
-from neutron.extensions.loadbalancer import LoadBalancerPluginBase
+
+try:
+    from neutron.extensions import loadbalancer
+except ImportError:
+    from neutron_lbaas.extensions import loadbalancer
+
+try:
+    from neutron.extensions.loadbalancer import LoadBalancerPluginBase
+except ImportError:
+    from neutron_lbaas.extensions.loadbalancer import LoadBalancerPluginBase
+
 from vnc_api.vnc_api import VncApi
 
 import loadbalancer_healthmonitor

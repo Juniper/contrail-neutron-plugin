@@ -4,12 +4,19 @@
 
 import uuid
 
-from neutron.extensions import loadbalancer
+try:
+    from neutron.extensions import loadbalancer
+except ImportError:
+    from neutron_lbaas.extensions import loadbalancer
 
 from neutron.plugins.common import constants
 from neutron.services import provider_configuration as pconf
 
-from neutron.openstack.common import uuidutils
+try:
+    from neutron.openstack.common import uuidutils
+except ImportError:
+    from oslo_utils import uuidutils
+
 from vnc_api.vnc_api import IdPermsType, NoIdError, HttpError
 from vnc_api.vnc_api import LoadbalancerPool, LoadbalancerPoolType
 

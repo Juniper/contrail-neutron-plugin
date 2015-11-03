@@ -18,14 +18,22 @@
 from abc import ABCMeta
 from abc import abstractmethod
 
-from oslo.config import cfg
+try:
+    from oslo_config import cfg
+except ImportError:
+    from oslo.config import cfg
 
 from neutron.api import extensions
 from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
 from neutron.common import exceptions as qexception
 from neutron import manager
-from neutron.openstack.common import uuidutils
+
+try:
+    from neutron.openstack.common import uuidutils
+except ImportError:
+    from oslo_utils import uuidutils
+
 from neutron import quota
 
 

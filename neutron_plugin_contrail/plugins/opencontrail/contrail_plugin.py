@@ -14,7 +14,11 @@
 #
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
-from oslo.config import cfg
+try:
+    from oslo_config import cfg
+except ImportError:
+    from oslo.config import cfg
+
 import requests
 
 from neutron.api.v2 import attributes as attr
@@ -95,7 +99,6 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
     # patch VIF_TYPES
     portbindings.__dict__['VIF_TYPE_VROUTER'] = 'vrouter'
-    portbindings.VIF_TYPES.append(portbindings.VIF_TYPE_VROUTER)
 
     def _parse_class_args(self):
         """Parse the contrailplugin.ini file.
