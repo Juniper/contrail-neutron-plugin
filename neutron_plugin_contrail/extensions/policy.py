@@ -5,8 +5,11 @@ from neutron.api.v2 import base
 from neutron.common import exceptions as qexception
 from neutron.api import extensions
 from neutron import manager
-from oslo.config import cfg
 
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 
 # Policy Exceptions
 class PolicyNotFound(qexception.NotFound):
