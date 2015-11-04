@@ -43,7 +43,7 @@ class LoadbalancerPoolManager(ResourceManager):
 
     def _get_listeners(self, pool):
         ll_list = []
-        ll_back_refs = pool.get_loadbalancer_listener_back_refs()
+        ll_back_refs = pool.get_loadbalancer_listener_refs()
         if ll_back_refs:
             for ll_back_ref in ll_back_refs:
                 ll_list.append({'id': ll_back_ref['uuid']})
@@ -158,12 +158,11 @@ class LoadbalancerPoolManager(ResourceManager):
 
         pool.set_service_appliance_set(sas_obj)
 
-        self._api.loadbalancer_pool_create(pool)
 
         if ll:
-            ll.set_loadbalancer_pool(pool)
-            self._api.loadbalancer_listener_update(ll)
+            pool.set_loadbalancer_listener(ll)
 
+        self._api.loadbalancer_pool_create(pool)
         return self.make_dict(pool)
 
     def update_properties(self, pool_db, id, p):
