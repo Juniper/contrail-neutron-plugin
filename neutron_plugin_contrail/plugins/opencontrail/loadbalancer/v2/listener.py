@@ -18,7 +18,7 @@ from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import LoadbalancerListener, LoadbalancerListenerType
 
 from resource_manager import ResourceManager
-import utils
+from .. import utils
 import uuid
 
 
