@@ -19,7 +19,7 @@ from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import Loadbalancer, LoadbalancerType
 
 from resource_manager import ResourceManager
-import utils
+from .. import utils
 import uuid
 
 LOG = logging.getLogger(__name__)
