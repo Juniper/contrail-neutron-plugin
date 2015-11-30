@@ -38,7 +38,12 @@ class FloatingIpMixin(object):
             self._vnc_lib)
         port_id = fip_q.get('port_id')
         if port_id:
-            vmi_obj = vmi_get_handler.get_vmi_obj(port_id)
+            try:
+                vmi_obj = vmi_get_handler.get_vmi_obj(port_id)
+            except vnc_exc.NoIdError:
+                self._raise_contrail_exception('PortNotFound',
+                                               resource='floatingip',
+                                               port_id=port_id)
 
             if not is_admin:
                 vmi_tenant_id = vmi_get_handler.get_vmi_tenant_id(vmi_obj)
