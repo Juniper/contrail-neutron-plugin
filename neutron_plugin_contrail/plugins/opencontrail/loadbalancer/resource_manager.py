@@ -2,18 +2,20 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+import six
+import uuid
 from abc import ABCMeta, abstractmethod, abstractproperty
 from eventlet import greenthread
+
 from neutron.common import exceptions as n_exc
 try:
     from neutron.extensions import loadbalancer
 except ImportError:
     from neutron_lbaas.extensions import loadbalancer
-
 from neutron.plugins.common import constants
+from neutron.services import provider_configuration as pconf
+
 from vnc_api.vnc_api import NoIdError, RefsExistError
-import six
-import uuid
 
 
 class LoadbalancerMethodInvalid(n_exc.BadRequest):
@@ -110,6 +112,19 @@ class ResourceManager(object):
         """ Update object metadata other than properties
         """
         return False
+
+    def check_provider_exists(self, provider_name):
+        """
+        Check if service-appliance-set for provider exists in the API
+        """
+        try:
+            sas_fq_name = ["default-global-system-config"]
+            sas_fq_name.append(provider_name)
+            sas_obj = self._api.service_appliance_set_read(fq_name=sas_fq_name)
+        except NoIdError:
+            raise pconf.ServiceProviderNotFound(
+                provider=provider_name, service_type=constants.LOADBALANCER)
+        return sas_obj
 
     def _get_tenant_id_for_create(self, context, resource):
         if context.is_admin and 'tenant_id' in resource:
