@@ -1,0 +1,9 @@
+Verified+2: Zuul <zuul@lists.opencontrail.org>
+Approved+1: Édouard Thuleau <edouard.thuleau@cloudwatt.com>
+Code-Review+2: Édouard Thuleau <edouard.thuleau@cloudwatt.com>
+Code-Review+1: Jean-Philippe Braun <jean-philippe.braun@cloudwatt.com>
+Submitted-by: Zuul <zuul@lists.opencontrail.org>
+Submitted-at: Wed, 02 Dec 2015 09:22:32 -0800
+Reviewed-on: https://review.opencontrail.org/15495
+Project: Juniper/contrail-neutron-plugin
+Branch: refs/heads/master
