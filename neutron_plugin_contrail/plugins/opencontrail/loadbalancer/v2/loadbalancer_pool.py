@@ -16,8 +16,8 @@ from neutron.services import provider_configuration as pconf
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import *
 
-from resource_manager import ResourceManager
-from resource_manager import LoadbalancerMethodInvalid
+from .. resource_manager import ResourceManager
+from .. resource_manager import LoadbalancerMethodInvalid
 
 import uuid
 

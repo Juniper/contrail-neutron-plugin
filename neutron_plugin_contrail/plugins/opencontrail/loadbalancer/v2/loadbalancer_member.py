@@ -15,7 +15,7 @@ from neutron.common import exceptions as n_exc
 from vnc_api.vnc_api import IdPermsType, NoIdError
 from vnc_api.vnc_api import LoadbalancerMember, LoadbalancerMemberType
 
-from resource_manager import ResourceManager
+from .. resource_manager import ResourceManager
 
 
 class LoadbalancerMemberManager(ResourceManager):

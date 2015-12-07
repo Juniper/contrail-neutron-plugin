@@ -14,7 +14,7 @@ from vnc_api.vnc_api import IdPermsType
 from vnc_api.vnc_api import LoadbalancerHealthmonitor
 from vnc_api.vnc_api import LoadbalancerHealthmonitorType
 
-from resource_manager import ResourceManager
+from .. resource_manager import ResourceManager
 
 
 class LoadbalancerHealthmonitorManager(ResourceManager):
