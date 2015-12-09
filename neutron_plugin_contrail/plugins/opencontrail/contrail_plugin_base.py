@@ -104,12 +104,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
                                    "quotas", "external-net", "contrail",
-                                   "allowed-address-pairs", "extra_dhcp_opt"]
+                                   "allowed-address-pairs",
+                                   "extra_dhcp_opt", 'provider']
 
     __native_bulk_support = False
-
-    # patch VIF_TYPES
-    portbindings.__dict__['VIF_TYPE_VROUTER'] = 'vrouter'
 
     def _parse_class_args(self):
         """Parse the contrailplugin.ini file.
@@ -155,26 +153,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
         self._parse_class_args()
-        self.base_binding_dict = self._get_base_binding_dict()
-
-    def _get_base_binding_dict(self):
-        binding = {
-            portbindings.VIF_TYPE: portbindings.VIF_TYPE_VROUTER,
-        }
-        # In havana portbindings.VIF_DETAILS is not defined by neutron
-        try:
-            binding[portbindings.VIF_DETAILS] = {
-                # TODO(praneetb): Replace with new VIF security details
-                portbindings.CAP_PORT_FILTER:
-                'security-group' in self.supported_extension_aliases
-            }
-        except AttributeError:
-            pass
-        try:
-            binding[portbindings.VNIC_TYPE] = portbindings.VNIC_NORMAL
-        except AttributeError:
-            pass
-        return binding
 
     def get_agents(self, context, filters=None, fields=None):
         # This method is implemented so that horizon is happy
@@ -301,20 +279,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             'security_groups', []) or []
         return port_res
 
-    def _make_port_dict(self, port, fields=None):
-        """filters attributes of a port based on fields."""
-
-        if not fields:
-            port.update(self.base_binding_dict)
-        else:
-            for key in self.base_binding_dict:
-                if key in fields:
-                    port[key] = self.base_binding_dict[key]
-        return port
-
     def _get_port(self, context, id, fields=None):
-        port = self._get_resource('port', context, id, fields)
-        return self._make_port_dict(port, fields)
+        return self._get_resource('port', context, id, fields)
 
     def _update_ips_for_port(self, context, network_id, port_id, original_ips,
                              new_ips):
@@ -342,8 +308,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
 
-        port = self._create_resource('port', context, port)
-        return self._make_port_dict(port)
+        return self._create_resource('port', context, port)
 
     def get_port(self, context, port_id, fields=None):
         """Get the attributes of a particular port."""
@@ -364,8 +329,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
-        port = self._update_resource('port', context, port_id, port)
-        return self._make_port_dict(port)
+        return self._update_resource('port', context, port_id, port)
 
     def delete_port(self, context, port_id):
         """Deletes a port.
@@ -385,7 +349,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         specified Virtual Network with the specfied filter.
         """
 
-        return [self._make_port_dict(p, fields)
+        return [self._get_port(context, p['id'], fields)
                 for p in self._list_resource('port', context, filters, fields)]
 
     def get_ports_count(self, context, filters=None):
