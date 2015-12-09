@@ -104,7 +104,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
                                    "quotas", "external-net", "contrail",
-                                   "allowed-address-pairs", "extra_dhcp_opt"]
+                                   "allowed-address-pairs",
+                                   "extra_dhcp_opt", 'provider']
 
     __native_bulk_support = False
 
@@ -304,12 +305,9 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _make_port_dict(self, port, fields=None):
         """filters attributes of a port based on fields."""
 
-        if not fields:
-            port.update(self.base_binding_dict)
-        else:
-            for key in self.base_binding_dict:
-                if key in fields:
-                    port[key] = self.base_binding_dict[key]
+        for key in self.base_binding_dict:
+            if not port.has_key(key):
+                port[key] = self.base_binding_dict[key]
         return port
 
     def _get_port(self, context, id, fields=None):
