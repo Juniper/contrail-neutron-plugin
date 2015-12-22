@@ -19,6 +19,7 @@ import eventlet
 import netaddr
 from neutron.common import constants as n_constants
 from neutron.common.config import cfg
+from neutron.extensions import portbindings
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler
@@ -462,6 +463,21 @@ class VMInterfaceMixin(object):
                 self._raise_contrail_exception(
                     'IpAddressInUse', net_id=net_id,
                     ip_address=ip_addr, resource='port')
+
+    @staticmethod
+    def _neutron_to_vmi_bindings(port, vmi_obj):
+        bindings_pairs = []
+
+        # TODO(md): Only VIF_TYPE supported right now
+        if portbindings.VIF_TYPE in port:
+            vif_type = vnc_api.KeyValuePair(portbindings.VIF_TYPE,
+                port[portbindings.VIF_TYPE])
+            bindings_pairs.append(vif_type)
+
+        # Save bindings in vmi_obj
+        if bindings_pairs:
+            vmi_obj.set_virtual_machine_interface_bindings(
+                vnc_api.KeyValuePairs(bindings_pairs))
 
     def _neutron_port_to_vmi(self, port_q, vmi_obj=None, update=False):
         if 'name' in port_q and port_q['name']:
