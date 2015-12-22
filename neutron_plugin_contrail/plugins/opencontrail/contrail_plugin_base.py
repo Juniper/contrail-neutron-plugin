@@ -15,6 +15,7 @@
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
 
+import os.path as path
 import requests
 
 from neutron.api.v2 import attributes as attr
@@ -47,6 +48,11 @@ except ImportError:
 from simplejson import JSONDecodeError
 from eventlet.greenthread import getcurrent
 
+# Constant for max length of network interface names
+# eg 'bridge' in the Network class or 'devname' in
+# the VIF class
+NIC_NAME_LEN = 14
+
 LOG = logging.getLogger(__name__)
 
 vnc_opts = [
@@ -66,7 +72,6 @@ vnc_opts = [
                help='keyfile to connect securely to  VNC controller'),
     cfg.StrOpt('cafile', default='',
                help='cafile to connect securely to VNC controller'),
-
 ]
 
 analytics_opts = [
@@ -74,6 +79,11 @@ analytics_opts = [
                help='IP address to connect to VNC collector'),
     cfg.StrOpt('analytics_api_port', default='8081',
                help='Port to connect to VNC collector'),
+]
+
+vrouter_opts = [
+    cfg.StrOpt('vhostuser_sockets_dir', default='/var/run/vrouter',
+               help='Path to dir where vhostuser socket are placed'),
 ]
 
 
@@ -111,6 +121,16 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                    "service-interface"]
 
     __native_bulk_support = False
+
+    # TODO(md): This should be added in upstream (neutron portbindings
+    # extension) instead of patching it here. This constants are in newer
+    # versions of neutron, but not in the Kilo verion.
+    portbindings.__dict__['VIF_TYPE_VHOST_USER'] = 'vhostuser'
+    portbindings.__dict__['VHOST_USER_MODE'] = 'vhostuser_mode'
+    portbindings.__dict__['VHOST_USER_MODE_SERVER'] = 'server'
+    portbindings.__dict__['VHOST_USER_MODE_CLIENT'] = 'client'
+    portbindings.__dict__['VHOST_USER_SOCKET'] = 'vhostuser_socket'
+    portbindings.__dict__['VHOST_USER_VROUTER_PLUG'] = 'vhostuser_vrouter_plug'
 
     def _parse_class_args(self):
         """Parse the contrailplugin.ini file.
@@ -155,6 +175,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         portbindings_base.register_port_dict_function()
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
+        cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
         self._parse_class_args()
 
     def get_agents(self, context, filters=None, fields=None):
@@ -282,6 +303,28 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             'security_groups', []) or []
         return port_res
 
+    def _make_port_dict(self, port, fields=None):
+        """filters attributes of a port based on fields."""
+
+        if portbindings.VIF_TYPE in port and \
+            port[portbindings.VIF_TYPE] == portbindings.VIF_TYPE_VHOST_USER:
+            vhostuser = True
+        else:
+            vhostuser = False
+
+        if not fields:
+            port.update(self.base_binding_dict)
+        else:
+            for key in self.base_binding_dict:
+                if key in fields:
+                    port[key] = self.base_binding_dict[key]
+
+        # Update bindings for vhostuser vif support
+        if vhostuser:
+            self._update_vhostuser_cfg_for_port(port)
+
+        return port
+
     def _get_port(self, context, id, fields=None):
         return self._get_resource('port', context, id, fields)
 
@@ -308,10 +351,58 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         return new_ips, prev_ips
 
+    def _get_vrouter_config(self, context, id, fields=None):
+        return self._get_resource('virtual_router', context, id, fields)
+
+    def _list_vrouters(self, context, filters=None, fields=None):
+        return self._list_resource('virtual_router', context, filters, fields)
+
+    @staticmethod
+    def _get_port_vhostuser_socket_name(port):
+        name = 'tap' + port['id']
+        name = name[:NIC_NAME_LEN]
+        return path.join(cfg.CONF.VROUTER.vhostuser_sockets_dir,
+                         'uvh_vif_' + name)
+
+    def _update_vhostuser_vif_details_for_port(self, port):
+        vif_details = {
+            portbindings.VHOST_USER_MODE: \
+                portbindings.VHOST_USER_MODE_CLIENT,
+            portbindings.VHOST_USER_SOCKET: \
+                self._get_port_vhostuser_socket_name(port),
+            portbindings.VHOST_USER_VROUTER_PLUG: True
+        }
+
+        if portbindings.VIF_DETAILS not in port:
+            port[portbindings.VIF_DETAILS] = vif_details
+        else:
+            port[portbindings.VIF_DETAILS].update(vif_details)
+
+        return port
+
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
 
-        return self._create_resource('port', context, port)
+        vrouter = self._get_vrouter_config(context,
+                                           ['default-global-system-config',
+                                           port['port']['binding:host_id']])
+
+        if vrouter['dpdk_enabled']:
+            port['port'][portbindings.VIF_TYPE] = \
+                portbindings.VIF_TYPE_VHOST_USER
+
+        port = self._create_resource('port', context, port)
+
+        # For vhosuser we have to update the binding vif_details fields. We
+        # have to do this through update and not while creating the port above
+        # as we need the 'id' of the port that is not available prior to
+        # creation of the port.
+        if vrouter['dpdk_enabled']:
+            self._update_vhostuser_vif_details_for_port(port)
+            port = self._update_resource('port', context, port['id'],
+                                         {'port': port})
+
+        return port
 
     def get_port(self, context, port_id, fields=None):
         """Get the attributes of a particular port."""
