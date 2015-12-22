@@ -217,7 +217,12 @@ class VMInterfaceMixin(object):
         return device_id, device_owner
 
     def _get_port_bindings(self, vmi_obj):
-        vmi_bindings = vmi_obj.get_virtual_machine_interface_bindings() or {}
+        vmi_bindings_kvps = vmi_obj.get_virtual_machine_interface_bindings()
+        if vmi_bindings_kvps:
+            vmi_bindings = vmi_bindings_kvps.exportDict(name_=None) or {}
+        else:
+            vmi_bindings = {}
+
         ret_bindings = {}
         for k,v in vmi_bindings.items():
             ret_bindings['binding:%s'%(k)] = v
@@ -511,7 +516,7 @@ class VMInterfaceMixin(object):
             for k,v in port_q.items() if k.startswith('binding:'))
         for k,v in vmi_binding_kvps.items():
             vmi_obj.add_virtual_machine_interface_bindings(
-                KeyValuePair(key=k, value=v), elem_position=k)
+                vnc_api.KeyValuePair(key=k, value=v), elem_position=k)
 
         return vmi_obj
 
