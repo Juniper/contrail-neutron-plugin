@@ -19,6 +19,7 @@ import eventlet
 import netaddr
 from neutron.common import constants as n_constants
 from neutron.common.config import cfg
+from neutron.extensions import portbindings
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler
@@ -216,6 +217,16 @@ class VMInterfaceMixin(object):
 
         return device_id, device_owner
 
+    @staticmethod
+    def _vmi_to_neutron_bindings(vmi_obj, port):
+        bindings = vmi_obj.get_virtual_machine_interface_bindings()
+        if bindings:
+            for elem in bindings.get_key_value_pair():
+                key = elem.get_key().encode('ascii', 'ignore')
+                value = elem.get_value().encode('ascii', 'ignore')
+                port[key] = value
+
+
     def _vmi_to_neutron_port(self, vmi_obj, port_req_memo=None,
                              extensions_enabled=False, fields=None):
         port_q_dict = {}
@@ -311,6 +322,8 @@ class VMInterfaceMixin(object):
         if extensions_enabled:
             extra_dict = {'contrail:fq_name': vmi_obj.get_fq_name()}
             port_q_dict.update(extra_dict)
+
+        self._vmi_to_neutron_bindings(vmi_obj, port_q_dict)
 
         if fields:
             port_q_dict = self._filter_res_dict(port_q_dict, fields)
@@ -435,6 +448,21 @@ class VMInterfaceMixin(object):
                     'IpAddressInUse', net_id=net_id,
                     ip_address=ip_addr, resource='port')
 
+    @staticmethod
+    def _neutron_to_vmi_bindings(port, vmi_obj):
+        bindings_pairs = []
+
+        # TODO(md): Only VIF_TYPE supported right now
+        if portbindings.VIF_TYPE in port:
+            vif_type = vnc_api.KeyValuePair(portbindings.VIF_TYPE,
+                port[portbindings.VIF_TYPE])
+            bindings_pairs.append(vif_type)
+
+        # Save bindings in vmi_obj
+        if bindings_pairs:
+            vmi_obj.set_virtual_machine_interface_bindings(
+                vnc_api.KeyValuePairs(bindings_pairs))
+
     def _neutron_port_to_vmi(self, port_q, vmi_obj=None, update=False):
         if 'name' in port_q and port_q['name']:
             vmi_obj.display_name = port_q['name']
@@ -476,6 +504,8 @@ class VMInterfaceMixin(object):
             net_id = (port_q.get('network_id') or
                       vmi_obj.get_virtual_network_refs()[0]['uuid'])
             self._check_vmi_fixed_ips(vmi_obj, port_q.get('fixed_ips'), net_id)
+
+        self._neutron_to_vmi_bindings(port_q, vmi_obj)
 
         return vmi_obj
 

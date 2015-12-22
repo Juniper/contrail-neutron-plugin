@@ -39,6 +39,7 @@ from vnc_client import sg_res_handler as sg_handler
 from vnc_client import sgrule_res_handler as sgrule_handler
 from vnc_client import subnet_res_handler as subnet_handler
 from vnc_client import svc_instance_res_handler as svc_instance_handler
+from vnc_client import virtual_router_res_handler as vrouter_handler
 from vnc_client import vmi_res_handler as vmi_handler
 from vnc_client import vn_res_handler as vn_handler
 
@@ -156,6 +157,8 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
             route_table_handler.RouteTableHandler(self._vnc_lib, **kwargs))
         self._res_handlers['svc'] = svc_instance_handler.SvcInstanceHandler(
             self._vnc_lib, **kwargs)
+        self._res_handlers['virtual_router'] = \
+            vrouter_handler.VirtualRouterHandler(self._vnc_lib, **kwargs)
 
     def _get_context_dict(self, context):
         return dict(context.__dict__)
