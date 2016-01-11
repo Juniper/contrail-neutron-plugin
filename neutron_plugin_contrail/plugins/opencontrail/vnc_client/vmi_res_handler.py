@@ -216,6 +216,30 @@ class VMInterfaceMixin(object):
 
         return device_id, device_owner
 
+    def _get_port_bindings(self, vmi_obj):
+        vmi_bindings = vmi_obj.get_virtual_machine_interface_bindings() or {}
+        ret_bindings = {}
+        for k,v in vmi_bindings.items():
+            ret_bindings['binding:%s'%(k)] = v
+
+        # 1. upgrade case, port created before bindings prop was
+        #    defined on vmi OR
+        # 2. defaults for keys needed by neutron
+        try:
+            ret_bindings['binding:vif_details'] = vmi_bindings['vif_details']
+        except KeyError:
+            ret_bindings['binding:vif_details'] = {'port_filter': True}
+        try:
+            ret_bindings['binding:vif_type'] = vmi_bindings['vif_type']
+        except KeyError:
+            ret_bindings['binding:vif_type'] = 'vrouter'
+        try:
+            ret_bindings['binding:vnic_type'] = vmi_bindings['vnic_type']
+        except KeyError:
+            ret_bindings['binding:vnic_type'] = 'normal'
+
+        return ret_bindings
+
     def _vmi_to_neutron_port(self, vmi_obj, port_req_memo=None,
                              extensions_enabled=False, fields=None):
         port_q_dict = {}
@@ -311,6 +335,10 @@ class VMInterfaceMixin(object):
         if extensions_enabled:
             extra_dict = {'contrail:fq_name': vmi_obj.get_fq_name()}
             port_q_dict.update(extra_dict)
+
+        bindings_dict = self._get_port_bindings(vmi_obj)
+        for k,v in bindings_dict.items():
+            port_q_dict[k] = v
 
         if fields:
             port_q_dict = self._filter_res_dict(port_q_dict, fields)
@@ -476,6 +504,14 @@ class VMInterfaceMixin(object):
             net_id = (port_q.get('network_id') or
                       vmi_obj.get_virtual_network_refs()[0]['uuid'])
             self._check_vmi_fixed_ips(vmi_obj, port_q.get('fixed_ips'), net_id)
+
+        # pick binding keys from neutron repr and persist as kvp elements.
+        # it is assumed allowing/denying oper*key is done at neutron-server.
+        vmi_binding_kvps = dict((k.replace('binding:',''), v)
+            for k,v in port_q.items() if k.startswith('binding:'))
+        for k,v in vmi_binding_kvps.items():
+            vmi_obj.add_virtual_machine_interface_bindings(
+                KeyValuePair(key=k, value=v), elem_position=k)
 
         return vmi_obj
 
