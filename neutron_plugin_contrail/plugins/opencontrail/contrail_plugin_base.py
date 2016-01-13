@@ -27,6 +27,7 @@ from neutron.extensions import external_net
 from neutron.extensions import l3
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
+from neutron_plugin_contrail.extensions import serviceinterface
 from neutron import neutron_plugin_base_v2
 try:
     from neutron.openstack.common import importutils
@@ -99,13 +100,15 @@ class InvalidContrailExtensionError(exc.ServiceUnavailable):
 class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     securitygroup.SecurityGroupPluginBase,
                                     portbindings_base.PortBindingBaseMixin,
-                                    external_net.External_net):
+                                    external_net.External_net,
+                                    serviceinterface.Serviceinterface):
 
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
                                    "quotas", "external-net", "contrail",
                                    "allowed-address-pairs",
-                                   "extra_dhcp_opt", 'provider']
+                                   "extra_dhcp_opt", 'provider',
+                                   "service-interface"]
 
     __native_bulk_support = False
 
