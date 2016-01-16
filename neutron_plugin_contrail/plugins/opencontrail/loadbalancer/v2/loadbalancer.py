@@ -77,6 +77,9 @@ class LoadbalancerManager(ResourceManager):
 
     def make_dict(self, lb, fields=None):
         props = lb.get_loadbalancer_properties()
+        if props is None:
+            return None
+
         port_id = self._get_interface_params(lb, props)
         res = {'id': lb.uuid,
                'tenant_id': lb.parent_uuid.replace('-', ''),

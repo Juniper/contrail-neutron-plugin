@@ -205,7 +205,7 @@ class ResourceManager(object):
             res = self.make_dict(obj, None)
         except NoIdError:
             return None
-        if not self._apply_filter(res, filters):
+        if res is None or not self._apply_filter(res, filters):
             return None
         return self._fields(res, fields)
 
