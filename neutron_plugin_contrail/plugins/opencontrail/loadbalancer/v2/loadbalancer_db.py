@@ -171,14 +171,14 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
     def get_healthmonitor(self, context, id, fields=None):
         return self._monitor_manager.get_resource(context, id, fields)
 
-    def create_healthmonitor(self, context, health_monitor):
+    def create_healthmonitor(self, context, healthmonitor):
         try:
-            return self._monitor_manager.create(context, health_monitor)
+            return self._monitor_manager.create(context, healthmonitor)
         except vnc_exc.PermissionDenied as ex:
-            raise n_exc.BadRequest(resource='health_monitor', msg=str(ex))
+            raise n_exc.BadRequest(resource='healthmonitor', msg=str(ex))
 
-    def update_healthmonitor(self, context, id, health_monitor):
-        return self._monitor_manager.update(context, id, health_monitor)
+    def update_healthmonitor(self, context, id, healthmonitor):
+        return self._monitor_manager.update(context, id, healthmonitor)
 
     def delete_healthmonitor(self, context, id):
         return self._monitor_manager.delete(context, id)

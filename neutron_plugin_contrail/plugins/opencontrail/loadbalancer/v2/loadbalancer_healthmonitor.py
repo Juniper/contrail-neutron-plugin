@@ -4,11 +4,7 @@
 
 import uuid
 
-try:
-    from neutron.extensions import loadbalancer
-except ImportError:
-    from neutron_lbaas.extensions import loadbalancer
-
+from neutron_lbaas.extensions import loadbalancerv2
 from neutron.openstack.common import uuidutils
 from vnc_api.vnc_api import IdPermsType
 from vnc_api.vnc_api import LoadbalancerHealthmonitor
@@ -33,19 +29,19 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
     def property_type_mapping(self):
         return self._loadbalancer_health_type_mapping
 
-    def make_properties(self, health_monitor):
+    def make_properties(self, healthmonitor):
         props = LoadbalancerHealthmonitorType()
         for key, mapping in self._loadbalancer_health_type_mapping.iteritems():
-            if mapping in health_monitor:
-                setattr(props, key, health_monitor[mapping])
+            if mapping in healthmonitor:
+                setattr(props, key, healthmonitor[mapping])
         return props
 
-    def make_dict(self, health_monitor, fields=None):
-        res = {'id': health_monitor.uuid,
-               'tenant_id': health_monitor.parent_uuid.replace('-', ''),
-               'status': self._get_object_status(health_monitor)}
+    def make_dict(self, healthmonitor, fields=None):
+        res = {'id': healthmonitor.uuid,
+               'tenant_id': healthmonitor.parent_uuid.replace('-', ''),
+               'status': self._get_object_status(healthmonitor)}
 
-        props = health_monitor.get_loadbalancer_healthmonitor_properties()
+        props = healthmonitor.get_loadbalancer_healthmonitor_properties()
         monitor_type = getattr(props, 'monitor_type')
         for key, mapping in self._loadbalancer_health_type_mapping.iteritems():
             value = getattr(props, key)
@@ -56,7 +52,7 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
                 res[mapping] = value
 
         pool_ids = []
-        pool_back_refs = health_monitor.get_loadbalancer_pool_back_refs()
+        pool_back_refs = healthmonitor.get_loadbalancer_pool_back_refs()
         for pool_back_ref in pool_back_refs or []:
             pool_id = {}
             pool_id['pool_id'] = pool_back_ref['uuid']
@@ -89,17 +85,17 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
 
     @property
     def neutron_name(self):
-        return "health_monitor"
+        return "healthmonitor"
 
     @property
     def resource_name_plural(self):
         return "loadbalancer-healthmonitors"
 
-    def create(self, context, health_monitor):
+    def create(self, context, healthmonitor):
         """
         Create a loadbalancer_healtmonitor object.
         """
-        m = health_monitor['health_monitor']
+        m = healthmonitor['healthmonitor']
         tenant_id = self._get_tenant_id_for_create(context, m)
         project = self._project_read(project_id=tenant_id)
 
@@ -112,7 +108,16 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
         monitor_db.uuid = uuid
 
         self._api.loadbalancer_healthmonitor_create(monitor_db)
+        self._api.ref_update('loadbalancer-pool', m['pool_id'],
+            'loadbalancer-health-monitor', uuid, None, 'ADD')
         return self.make_dict(monitor_db)
+
+    def delete(self, context, id):
+        hm_obj = self._api.loadbalancer_healthmonitor_read(id=id)
+        for pool_back_refs in hm_obj.get_loadbalancer_pool_back_refs() or []:
+            self._api.ref_update('loadbalancer-pool', pool_back_refs['uuid'],
+                'loadbalancer-health-monitor', id, None, 'DELETE')
+        super(LoadbalancerHealthmonitorManager, self).delete(context, id)
 
     def update_properties(self, monitor_db, id, m):
         props = monitor_db.get_loadbalancer_healthmonitor_properties()

@@ -1,7 +1,7 @@
 #
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
-from neutron_lbaas.extensions import loadbalancer
+from neutron_lbaas.extensions import loadbalancerv2
 from loadbalancer_db import LoadBalancerPluginDbV2
 
 
