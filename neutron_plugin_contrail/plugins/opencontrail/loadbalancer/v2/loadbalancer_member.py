@@ -4,11 +4,7 @@
 
 import uuid
 
-try:
-    from neutron.extensions import loadbalancer
-except ImportError:
-    from neutron_lbaas.extensions import loadbalancer
-
+from neutron_lbaas.extensions import loadbalancerv2
 from neutron.openstack.common import uuidutils
 from neutron.common import exceptions as n_exc
 
