@@ -3,8 +3,7 @@
 #
 from neutron.api.v2 import attributes
 from neutron.common import exceptions as n_exc
-
-from neutron_lbaas.extensions import loadbalancer
+from neutron_lbaas.extensions import loadbalancerv2
 
 try:
     from neutron.openstack.common import log as logging
@@ -98,7 +97,7 @@ class ListenerManager(ResourceManager):
             try:
                 lb = self._api.loadbalancer_read(id=l['loadbalancer_id'])
             except NoIdError:
-                raise loadbalancer.EntityNotFound(id=v['loadbalancer_id'])
+                raise loadbalancerv2.EntityNotFound(id=v['loadbalancer_id'])
             project_id = lb.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
                 raise n_exc.NotAuthorized()

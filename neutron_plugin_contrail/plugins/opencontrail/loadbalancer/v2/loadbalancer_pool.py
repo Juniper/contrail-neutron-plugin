@@ -4,11 +4,7 @@
 
 import uuid
 
-try:
-    from neutron.extensions import loadbalancer
-except ImportError:
-    from neutron_lbaas.extensions import loadbalancer
-
+from neutron_lbaas.extensions import loadbalancerv2
 from neutron.api.v2 import attributes as attr
 from neutron.plugins.common import constants
 from neutron.services import provider_configuration as pconf
