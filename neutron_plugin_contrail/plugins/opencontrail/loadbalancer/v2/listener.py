@@ -44,7 +44,7 @@ class ListenerManager(ResourceManager):
         lb_refs = ll.get_loadbalancer_refs()
         if lb_refs is None:
             return None
-        return [{'id': lb_refs[0]['uuid']}]
+        return [lb_refs[0]['uuid']]
 
     def make_dict(self, ll, fields=None):
         props = ll.get_loadbalancer_listener_properties()
