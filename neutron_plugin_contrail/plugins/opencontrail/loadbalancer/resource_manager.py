@@ -160,7 +160,8 @@ class ResourceManager(object):
         if filters is None:
             return True
         for key, value in filters.iteritems():
-            if key in resource and not resource[key] in value:
+            if key in resource and not (resource[key] in value or
+               resource[key] == value):
                 return False
         return True
 
