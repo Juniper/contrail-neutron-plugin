@@ -15,8 +15,8 @@
 import uuid
 
 from cfgm_common import exceptions as vnc_exc
+from cfgm_common import SG_NO_RULE_NAME, SG_NO_RULE_FQ_NAME
 from neutron_plugin_contrail.plugins.opencontrail import contrail_plugin_base
-from vnc_api import common as vnc_api_common
 from vnc_api import vnc_api
 
 
@@ -212,8 +212,8 @@ class SGHandler(ResourceGetHandler, ResourceCreateHandler,
     _no_rule_sg_obj = None
 
     def _create_no_rule_sg(self):
-        domain_obj = vnc_api.Domain(vnc_api_common.SG_NO_RULE_FQ_NAME[0])
-        proj_obj = vnc_api.Project(vnc_api_common.SG_NO_RULE_FQ_NAME[1],
+        domain_obj = vnc_api.Domain(SG_NO_RULE_FQ_NAME[0])
+        proj_obj = vnc_api.Project(SG_NO_RULE_FQ_NAME[1],
                                    domain_obj)
         sg_rules = vnc_api.PolicyEntriesType()
         id_perms = vnc_api.IdPermsType(
@@ -221,7 +221,7 @@ class SGHandler(ResourceGetHandler, ResourceCreateHandler,
             description="Security group with no rules",
             user_visible=False)
         sg_obj = vnc_api.SecurityGroup(
-            name=vnc_api_common.SG_NO_RULE_NAME,
+            name=SG_NO_RULE_NAME,
             parent_obj=proj_obj,
             security_group_entries=sg_rules,
             id_perms=id_perms)
@@ -234,7 +234,7 @@ class SGHandler(ResourceGetHandler, ResourceCreateHandler,
             return SGHandler._no_rule_sg_obj
         try:
             sg_obj = self._resource_get(
-                fq_name=vnc_api_common.SG_NO_RULE_FQ_NAME)
+                fq_name=SG_NO_RULE_FQ_NAME)
         except vnc_api.NoIdError:
             if create:
                 sg_obj = self._create_no_rule_sg()
