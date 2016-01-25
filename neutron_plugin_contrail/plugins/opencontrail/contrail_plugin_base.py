@@ -358,18 +358,18 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return self._list_resource('virtual_router', context, filters, fields)
 
     @staticmethod
-    def _get_port_vhostuser_socket_name(port):
-        name = 'tap' + port['id']
+    def _get_port_vhostuser_socket_name(port, port_id=None):
+        name = 'tap' + (port_id if port_id else port['id'])
         name = name[:NIC_NAME_LEN]
         return path.join(cfg.CONF.VROUTER.vhostuser_sockets_dir,
                          'uvh_vif_' + name)
 
-    def _update_vhostuser_vif_details_for_port(self, port):
+    def _update_vhostuser_vif_details_for_port(self, port, port_id=None):
         vif_details = {
             portbindings.VHOST_USER_MODE: \
                 portbindings.VHOST_USER_MODE_CLIENT,
             portbindings.VHOST_USER_SOCKET: \
-                self._get_port_vhostuser_socket_name(port),
+                self._get_port_vhostuser_socket_name(port, port_id),
             portbindings.VHOST_USER_VROUTER_PLUG: True
         }
 
@@ -380,16 +380,26 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         return port
 
-    def create_port(self, context, port):
-        """Creates a port on the specified Virtual Network."""
-        vrouter = None
-        if 'binding:host_id' in port['port'] and \
-            port['port']['binding:host_id'] != attr.ATTR_NOT_SPECIFIED:
+    def _is_dpdk_enabled(self, context, port):
+        vrouter = {'dpdk_enabled': False}
+
+        # There may be cases when 'binding:host_id' of a port is not specified.
+        # For example when port is created by hand using neutron port-create
+        # command, which does not bind the port to any given host.
+        if port['binding:host_id'] and \
+            port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
             vrouter = self._get_vrouter_config(context,
                                                ['default-global-system-config',
-                                               port['port']['binding:host_id']])
+                                               port['binding:host_id']])
 
-        if vrouter and vrouter['dpdk_enabled']:
+        return vrouter['dpdk_enabled']
+
+
+    def create_port(self, context, port):
+        """Creates a port on the specified Virtual Network."""
+
+        dpdk_enabled = self._is_dpdk_enabled(context, port['port'])
+        if dpdk_enabled:
             port['port'][portbindings.VIF_TYPE] = \
                 portbindings.VIF_TYPE_VHOST_USER
 
@@ -399,7 +409,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # have to do this through update and not while creating the port above
         # as we need the 'id' of the port that is not available prior to
         # creation of the port.
-        if vrouter and vrouter['dpdk_enabled']:
+        if dpdk_enabled:
             self._update_vhostuser_vif_details_for_port(port)
             port = self._update_resource('port', context, port['id'],
                                          {'port': port})
@@ -424,6 +434,11 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 context, original['network_id'], port_id,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
+
+        if self._is_dpdk_enabled(context, port['port']):
+            port['port'][portbindings.VIF_TYPE] = \
+                portbindings.VIF_TYPE_VHOST_USER
+            self._update_vhostuser_vif_details_for_port(port['port'], port_id)
 
         return self._update_resource('port', context, port_id, port)
 
