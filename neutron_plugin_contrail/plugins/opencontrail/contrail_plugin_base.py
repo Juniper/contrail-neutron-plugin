@@ -386,7 +386,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # There may be cases when 'binding:host_id' of a port is not specified.
         # For example when port is created by hand using neutron port-create
         # command, which does not bind the port to any given host.
-        if port['binding:host_id'] and \
+        if 'binding:host_id' in port and port['binding:host_id'] and \
             port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
             vrouter = self._get_vrouter_config(context,
                                                ['default-global-system-config',
