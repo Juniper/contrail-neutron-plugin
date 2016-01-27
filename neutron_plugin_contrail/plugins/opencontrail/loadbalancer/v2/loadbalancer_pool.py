@@ -22,7 +22,7 @@ class LoadbalancerPoolManager(ResourceManager):
     _loadbalancer_pool_type_mapping = {
         'admin_state': 'admin_state_up',
         'protocol': 'protocol',
-        'loadbalancer_method': 'lb_method',
+        'loadbalancer_method': 'lb_algorithm',
         'subnet_id': 'subnet_id'
     }
 
@@ -42,7 +42,7 @@ class LoadbalancerPoolManager(ResourceManager):
         ll_back_refs = pool.get_loadbalancer_listener_refs()
         if ll_back_refs:
             for ll_back_ref in ll_back_refs:
-                ll_list.append({'id': ll_back_ref['uuid']})
+                ll_list.append(ll_back_ref['uuid'])
         return ll_list
 
     def make_dict(self, pool, fields=None):
@@ -67,7 +67,7 @@ class LoadbalancerPoolManager(ResourceManager):
         res['members'] = []
         members = pool.get_loadbalancer_members()
         if members is not None:
-            res['members'] = [member['uuid'] for member in members]
+            res['members'] = [{'id': member['uuid']} for member in members]
 
         # health_monitor
         hm_refs = pool.get_loadbalancer_healthmonitor_refs()

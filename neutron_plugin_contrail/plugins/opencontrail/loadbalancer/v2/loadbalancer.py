@@ -48,7 +48,7 @@ class LoadbalancerManager(ResourceManager):
         ll_back_refs = lb.get_loadbalancer_listener_back_refs()
         if ll_back_refs:
             for ll_back_ref in ll_back_refs:
-                ll_list.append({'id': ll_back_ref['uuid']})
+                ll_list.append(ll_back_ref['uuid'])
         return ll_list
 
     def _get_interface_params(self, lb, props):
@@ -82,6 +82,7 @@ class LoadbalancerManager(ResourceManager):
                'tenant_id': lb.parent_uuid.replace('-', ''),
                'name': lb.display_name,
                'description': self._get_object_description(lb),
+               'vip_port_id': port_id,
                'vip_subnet_id': props.vip_subnet_id,
                'vip_address': props.vip_address,
                'admin_state_up': props.admin_state,
