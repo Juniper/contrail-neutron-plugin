@@ -107,6 +107,10 @@ class InvalidContrailExtensionError(exc.ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
 
 
+class HttpResponseError(Exception):
+      def __init__(self, resp_info):
+          self.response_info = resp_info
+
 class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     securitygroup.SecurityGroupPluginBase,
                                     portbindings_base.PortBindingBaseMixin,
@@ -352,7 +356,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return new_ips, prev_ips
 
     def _get_vrouter_config(self, context, id, fields=None):
-        return self._get_resource('virtual_router', context, id, fields)
+        return self._get_resource('virtual_router', context, id, fields,
+                                  propagate_exc=True)
 
     def _list_vrouters(self, context, filters=None, fields=None):
         return self._list_resource('virtual_router', context, filters, fields)
@@ -388,9 +393,13 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # command, which does not bind the port to any given host.
         if 'binding:host_id' in port and port['binding:host_id'] and \
             port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
-            vrouter = self._get_vrouter_config(context,
+            try:
+                vrouter = self._get_vrouter_config(context,
                                                ['default-global-system-config',
                                                port['binding:host_id']])
+            except HttpResponseError as e:
+              if e.response_info['exception'] == 'VirtualRouterNotFound':
+                  return False
 
         return vrouter['dpdk_enabled']
 
