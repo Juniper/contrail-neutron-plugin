@@ -16,7 +16,6 @@
 
 
 import os.path as path
-import requests
 
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
@@ -36,17 +35,10 @@ except ImportError:
     from oslo_utils import importutils
 
 try:
-    from neutron.openstack.common import jsonutils as json
-except ImportError:
-    from oslo_serialization import jsonutils as json
-
-try:
     from neutron.openstack.common import log as logging
 except ImportError:
     from oslo_log import log as logging
 
-from simplejson import JSONDecodeError
-from eventlet.greenthread import getcurrent
 
 # Constant for max length of network interface names
 # eg 'bridge' in the Network class or 'devname' in
@@ -248,7 +240,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         """Creates a new subnet, and assigns it a symbolic name."""
 
         if subnet['subnet']['gateway_ip'] is None:
-            subnet['subnet']['gateway_ip'] = '0.0.0.0'
+            gateway = '0.0.0.0'
+            if subnet['subnet']['ip_version'] == 6:
+                gateway = '::'
+            subnet['subnet']['gateway_ip'] = gateway
 
         if subnet['subnet']['host_routes'] != attr.ATTR_NOT_SPECIFIED:
             if (len(subnet['subnet']['host_routes']) >
