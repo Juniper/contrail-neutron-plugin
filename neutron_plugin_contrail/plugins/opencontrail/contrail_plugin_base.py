@@ -464,8 +464,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         specified Virtual Network with the specfied filter.
         """
 
-        return [self._get_port(context, p['id'], fields)
-                for p in self._list_resource('port', context, filters, fields)]
+        return self._list_resource('port', context, filters, fields)
 
     def get_ports_count(self, context, filters=None):
         """Get the count of ports."""
