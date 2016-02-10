@@ -1,3 +1,5 @@
+from neutron.api import extensions
+
 
 EXTENDED_ATTRIBUTES_2_0 = {
     'networks': {
@@ -38,7 +40,7 @@ EXTENDED_ATTRIBUTES_2_0 = {
 }
 
 
-class Contrail(object):
+class Contrail(extensions.ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):

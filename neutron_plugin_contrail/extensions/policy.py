@@ -11,6 +11,7 @@ try:
 except ImportError:
     from oslo_config import cfg
 
+
 # Policy Exceptions
 class PolicyNotFound(qexception.NotFound):
     message = _("Policy %(id)s could not be found")
@@ -36,7 +37,7 @@ RESOURCE_ATTRIBUTE_MAP = {
 }
 
 
-class Policy(object):
+class Policy(extensions.ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):
