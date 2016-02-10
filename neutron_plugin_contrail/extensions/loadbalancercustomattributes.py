@@ -22,7 +22,8 @@ EXTENDED_ATTRIBUTES_2_0 = {
     }
 }
 
-class Loadbalancercustomattributes(object):
+
+class Loadbalancercustomattributes(extensions.ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):

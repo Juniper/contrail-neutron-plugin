@@ -11,6 +11,7 @@ try:
 except ImportError:
     from oslo_config import cfg
 
+
 # Ipam Exceptions
 class IpamNotFound(qexception.NotFound):
     message = _("IPAM %(id)s could not be found")
@@ -36,7 +37,7 @@ RESOURCE_ATTRIBUTE_MAP = {
 }
 
 
-class Ipam(object):
+class Ipam(extensions.ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):
