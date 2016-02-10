@@ -52,7 +52,9 @@ vnc_opts = [
                help='IP address to connect to VNC controller'),
     cfg.StrOpt('api_server_port', default='8082',
                help='Port to connect to VNC controller'),
-    cfg.DictOpt('contrail_extensions', default={},
+    cfg.DictOpt('contrail_extensions',
+                default={'contrail': None,
+                         'service-interface': None},
                 help='Enable Contrail extensions(policy, ipam)'),
     cfg.BoolOpt('use_ssl', default=False,
                help='Use SSL to connect with VNC controller'),
@@ -109,12 +111,18 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     external_net.External_net,
                                     serviceinterface.Serviceinterface):
 
-    supported_extension_aliases = ["security-group", "router",
-                                   "port-security", "binding", "agent",
-                                   "quotas", "external-net", "contrail",
-                                   "allowed-address-pairs",
-                                   "extra_dhcp_opt", 'provider',
-                                   "service-interface"]
+    supported_extension_aliases = [
+        "security-group",
+        "router",
+        "port-security",
+        "binding",
+        "agent",
+        "quotas",
+        "external-net",
+        "allowed-address-pairs",
+        "extra_dhcp_opt",
+        "provider",
+    ]
 
     __native_bulk_support = False
 
@@ -142,11 +150,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # according to DictOpt behavior
         for ext_name, ext_class in contrail_extensions.items():
             try:
-                if not ext_class:
-                    LOG.error(_('Malformed contrail extension...'))
-                    continue
-                self.supported_extension_aliases.append(ext_name)
-                if ext_class == 'None':
+                if not ext_class or ext_class == 'None':
+                    self.supported_extension_aliases.append(ext_name)
                     continue
                 ext_class = importutils.import_class(ext_class)
                 ext_instance = ext_class()
@@ -156,6 +161,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                         if method.startswith('%s_' % prefix):
                             setattr(self, method,
                                     ext_instance.__getattribute__(method))
+                self.supported_extension_aliases.append(ext_name)
             except Exception:
                 LOG.exception(_("Contrail Backend Error"))
                 # Converting contrail backend error to Neutron Exception
