@@ -217,7 +217,10 @@ class VMInterfaceMixin(object):
         return device_id, device_owner
 
     def _get_port_bindings(self, vmi_obj):
-        vmi_bindings_kvps = vmi_obj.get_virtual_machine_interface_bindings()
+        vmi_bindings_kvps = None
+        if hasattr(vmi_obj, 'get_virtual_machine_interface_bindings'):
+            vmi_bindings_kvps = vmi_obj.get_virtual_machine_interface_bindings()
+
         if vmi_bindings_kvps:
             vmi_bindings = vmi_bindings_kvps.exportDict(name_=None) or {}
         else:
@@ -510,13 +513,14 @@ class VMInterfaceMixin(object):
                       vmi_obj.get_virtual_network_refs()[0]['uuid'])
             self._check_vmi_fixed_ips(vmi_obj, port_q.get('fixed_ips'), net_id)
 
-        # pick binding keys from neutron repr and persist as kvp elements.
-        # it is assumed allowing/denying oper*key is done at neutron-server.
-        vmi_binding_kvps = dict((k.replace('binding:',''), v)
-            for k,v in port_q.items() if k.startswith('binding:'))
-        for k,v in vmi_binding_kvps.items():
-            vmi_obj.add_virtual_machine_interface_bindings(
-                vnc_api.KeyValuePair(key=k, value=v), elem_position=k)
+        if hasattr(vmi_obj, 'add_virtual_machine_interface_bindings'):
+            # pick binding keys from neutron repr and persist as kvp elements.
+            # it is assumed allowing/denying oper*key is done at neutron-server.
+            vmi_binding_kvps = dict((k.replace('binding:',''), v)
+                for k,v in port_q.items() if k.startswith('binding:'))
+            for k,v in vmi_binding_kvps.items():
+                vmi_obj.add_virtual_machine_interface_bindings(
+                    vnc_api.KeyValuePair(key=k, value=v), elem_position=k)
 
         return vmi_obj
 
