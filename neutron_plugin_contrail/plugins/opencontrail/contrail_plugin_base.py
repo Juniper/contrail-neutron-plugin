@@ -84,6 +84,8 @@ def _raise_contrail_error(info, obj_name):
         if exc_name:
             if exc_name == 'BadRequest' and 'resource' not in info:
                 info['resource'] = obj_name
+            if exc_name == 'VirtualRouterNotFound':
+                raise HttpResponseError(info)
             if hasattr(exc, exc_name):
                 raise getattr(exc, exc_name)(**info)
             if hasattr(l3, exc_name):
@@ -351,8 +353,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return new_ips, prev_ips
 
     def _get_vrouter_config(self, context, id, fields=None):
-        return self._get_resource('virtual_router', context, id, fields,
-                                  propagate_exc=True)
+        return self._get_resource('virtual_router', context, id, fields)
 
     def _list_vrouters(self, context, filters=None, fields=None):
         return self._list_resource('virtual_router', context, filters, fields)
@@ -395,6 +396,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             except HttpResponseError as e:
               if e.response_info['exception'] == 'VirtualRouterNotFound':
                   return False
+              else:
+                  raise e
 
         return vrouter['dpdk_enabled']
 

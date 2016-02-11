@@ -29,7 +29,10 @@ class VirtualRouterMixin(object):
     @staticmethod
     def _virtual_router_to_neutron(router_obj):
         # TODO(md): Only dpdk enabled flag supported currently. Add more.
-        dpdk_enabled = router_obj.get_virtual_router_dpdk_enabled()
+        if hasattr(router_obj, 'get_virtual_router_dpdk_enabled'):
+            dpdk_enabled = router_obj.get_virtual_router_dpdk_enabled()
+        else:
+            dpdk_enabled = False
 
         # The .get_<resource>() method of VirtualRouter object seems to return
         # None in case a boolean is not set. Therefore the 'or False'
