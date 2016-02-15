@@ -381,13 +381,18 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return port
 
     def _is_dpdk_enabled(self, context, port):
+        # Do not consider a host being DPDK enabled when the port is for SR-IOV
+        if portbindings.VNIC_TYPE in port and \
+                port[portbindings.VNIC_TYPE] != portbindings.VNIC_NORMAL:
+            return False
+
         vrouter = {'dpdk_enabled': False}
 
         # There may be cases when 'binding:host_id' of a port is not specified.
         # For example when port is created by hand using neutron port-create
         # command, which does not bind the port to any given host.
         if 'binding:host_id' in port and port['binding:host_id'] and \
-            port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
+                port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
             try:
                 vrouter = self._get_vrouter_config(context,
                                                ['default-global-system-config',
@@ -432,14 +437,14 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         Network.
         """
 
+        original = self._get_port(context, port_id)
         if 'fixed_ips' in port['port']:
-            original = self._get_port(context, port_id)
             added_ips, prev_ips = self._update_ips_for_port(
                 context, original['network_id'], port_id,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
-        if self._is_dpdk_enabled(context, port['port']):
+        if self._is_dpdk_enabled(context, original):
             port['port'][portbindings.VIF_TYPE] = \
                 portbindings.VIF_TYPE_VHOST_USER
             self._update_vhostuser_vif_details_for_port(port['port'], port_id)
