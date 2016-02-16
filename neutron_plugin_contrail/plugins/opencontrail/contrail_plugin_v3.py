@@ -115,17 +115,19 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
                 time.sleep(3)
         return True
 
-    def _set_user_auth_token(self):
+    def _set_user_infos(self, context):
+        """From the request context, the auth token and user roles are
+        forwarded to the API server.
+
+        """
         if not cfg.CONF.APISERVER.multi_tenancy:
             return
 
         # forward user token to API server for RBAC
         # token saved earlier in the pipeline
-        try:
-            auth_token = greenthread.getcurrent().contrail_vars.token
-            self._vnc_lib.set_auth_token(auth_token)
-        except AttributeError:
-            pass
+        if hasattr(self._vnc_lib, "set_auth_token"):
+            self._vnc_lib.set_auth_token(context.auth_token)
+        self._vnc_lib.set_user_roles(context.roles)
 
     def _prepare_res_handlers(self):
         contrail_extension_enabled = cfg.CONF.APISERVER.contrail_extensions
@@ -168,32 +170,32 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
             if value == attr.ATTR_NOT_SPECIFIED:
                 del res_data[res_type][key]
 
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         return self._res_handlers[res_type].resource_create(
             self._get_context_dict(context), res_data[res_type])
 
     def _get_resource(self, res_type, context, id, fields):
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         return self._res_handlers[res_type].resource_get(
             self._get_context_dict(context), id, fields)
 
     def _update_resource(self, res_type, context, id, res_data):
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         return self._res_handlers[res_type].resource_update(
             self._get_context_dict(context), id, res_data[res_type])
 
     def _delete_resource(self, res_type, context, id):
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         return self._res_handlers[res_type].resource_delete(
             self._get_context_dict(context), id)
 
     def _list_resource(self, res_type, context, filters, fields):
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         return self._res_handlers[res_type].resource_list(
             self._get_context_dict(context), filters, fields)
 
     def _count_resource(self, res_type, context, filters):
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         res_count = self._res_handlers[res_type].resource_count(
             self._get_context_dict(context), filters)
         return {'count': res_count}
@@ -210,7 +212,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
                 msg = "Cannot specify both subnet-id and port-id"
                 raise exc.BadRequest(resource='router', msg=msg)
 
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         port_id = interface_info.get('port_id')
         subnet_id = interface_info.get('subnet_id')
 
@@ -230,7 +232,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
         port_id = interface_info.get('port_id')
         subnet_id = interface_info.get('subnet_id')
 
-        self._set_user_auth_token()
+        self._set_user_infos(context)
         rtr_iface_handler = rtr_handler.LogicalRouterInterfaceHandler(
             self._vnc_lib)
         return rtr_iface_handler.remove_router_interface(
