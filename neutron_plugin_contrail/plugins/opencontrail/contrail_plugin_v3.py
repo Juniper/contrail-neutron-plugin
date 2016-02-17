@@ -1,3 +1,4 @@
+""" Contrail Neutron Plugin - V3 API """
 # Copyright 2015.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -14,8 +15,9 @@
 
 import time
 
+# Disable "ungrouped-import" warning
+# pylint: disable=C0412
 from neutron.api.v2 import attributes as attr
-from neutron.common import exceptions as exc
 from neutron.common.config import cfg
 import requests
 
@@ -24,47 +26,68 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
-from eventlet import greenthread
+try:
+    from neutron.common.exceptions import BadRequest
+except ImportError:
+    from neutron_lib.exceptions import BadRequest
 
-import contrail_plugin_base as plugin_base
+# pylint: enable=C0412
+
+from eventlet import greenthread
 
 from vnc_api import vnc_api
 
-from vnc_client import fip_res_handler as fip_handler
-from vnc_client import ipam_res_handler as ipam_handler
-from vnc_client import policy_res_handler as policy_handler
-from vnc_client import route_table_res_handler as route_table_handler
-from vnc_client import router_res_handler as rtr_handler
-from vnc_client import sg_res_handler as sg_handler
-from vnc_client import sgrule_res_handler as sgrule_handler
-from vnc_client import subnet_res_handler as subnet_handler
-from vnc_client import svc_instance_res_handler as svc_instance_handler
-from vnc_client import virtual_router_res_handler as vrouter_handler
-from vnc_client import vmi_res_handler as vmi_handler
-from vnc_client import vn_res_handler as vn_handler
+from neutron_plugin_contrail.plugins.opencontrail\
+    import contrail_plugin_base as plugin_base
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import fip_res_handler as fip_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import ipam_res_handler as ipam_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import policy_res_handler as policy_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import route_table_res_handler as route_table_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import router_res_handler as rtr_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import sg_res_handler as sg_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import sgrule_res_handler as sgrule_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import subnet_res_handler as subnet_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import svc_instance_res_handler as svc_instance_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import virtual_router_res_handler as vrouter_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import vmi_res_handler as vmi_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client\
+    import vn_res_handler as vn_handler
 
 
 LOG = logging.getLogger(__name__)
 
-vnc_extra_opts = [
+VNC_EXTRA_OPTS = [
     cfg.BoolOpt('apply_subnet_host_routes', default=False),
     cfg.BoolOpt('multi_tenancy', default=False)
 ]
 
 
 class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
+    """ Neutron Plugin for Contrail, V3"""
 
     PLUGIN_URL_PREFIX = '/neutron'
 
     def __init__(self):
         super(NeutronPluginContrailCoreV3, self).__init__()
-        cfg.CONF.register_opts(vnc_extra_opts, 'APISERVER')
+        cfg.CONF.register_opts(VNC_EXTRA_OPTS, 'APISERVER')
         self._vnc_lib = None
         self.connected = self._connect_to_vnc_server()
         self._res_handlers = {}
         self._prepare_res_handlers()
 
     def _connect_to_vnc_server(self):
+        """Connects to API server"""
         admin_user = cfg.CONF.keystone_authtoken.admin_user
         admin_password = cfg.CONF.keystone_authtoken.admin_password
         admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
@@ -116,6 +139,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
         return True
 
     def _set_user_auth_token(self):
+        """Forward user's token to API server for RBAC"""
         if not cfg.CONF.APISERVER.multi_tenancy:
             return
 
@@ -128,6 +152,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
             pass
 
     def _prepare_res_handlers(self):
+        """Prepare resource handlers"""
         contrail_extension_enabled = cfg.CONF.APISERVER.contrail_extensions
         apply_subnet_host_routes = cfg.CONF.APISERVER.apply_subnet_host_routes
         kwargs = {'contrail_extensions_enabled': contrail_extension_enabled,
@@ -161,6 +186,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
             vrouter_handler.VirtualRouterHandler(self._vnc_lib, **kwargs)
 
     def _get_context_dict(self, context):
+        """Return context dict"""
         return dict(context.__dict__)
 
     def _create_resource(self, res_type, context, res_data):
@@ -173,16 +199,19 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
             self._get_context_dict(context), res_data[res_type])
 
     def _get_resource(self, res_type, context, id, fields):
+        """Get resource"""
         self._set_user_auth_token()
         return self._res_handlers[res_type].resource_get(
             self._get_context_dict(context), id, fields)
 
     def _update_resource(self, res_type, context, id, res_data):
+        """Update resource"""
         self._set_user_auth_token()
         return self._res_handlers[res_type].resource_update(
             self._get_context_dict(context), id, res_data[res_type])
 
     def _delete_resource(self, res_type, context, id):
+        """Delete resource"""
         self._set_user_auth_token()
         return self._res_handlers[res_type].resource_delete(
             self._get_context_dict(context), id)
@@ -203,12 +232,12 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
 
         if not interface_info:
             msg = "Either subnet_id or port_id must be specified"
-            raise exc.BadRequest(resource='router', msg=msg)
+            raise BadRequest(resource='router', msg=msg)
 
         if 'port_id' in interface_info:
             if 'subnet_id' in interface_info:
                 msg = "Cannot specify both subnet-id and port-id"
-                raise exc.BadRequest(resource='router', msg=msg)
+                raise BadRequest(resource='router', msg=msg)
 
         self._set_user_auth_token()
         port_id = interface_info.get('port_id')
@@ -225,7 +254,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
 
         if not interface_info:
             msg = "Either subnet_id or port_id must be specified"
-            raise exc.BadRequest(resource='router', msg=msg)
+            raise BadRequest(resource='router', msg=msg)
 
         port_id = interface_info.get('port_id')
         subnet_id = interface_info.get('subnet_id')

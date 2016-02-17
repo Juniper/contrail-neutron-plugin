@@ -1,3 +1,4 @@
+""" Contrail Neutron Plugin - Policy """
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 #
 # Copyright 2014 Juniper Networks.  All rights reserved.
@@ -19,18 +20,27 @@
 import copy
 import logging
 from pprint import pformat
-import sys
-
-import cgitb
 
 LOG = logging.getLogger(__name__)
 
 
 class NeutronPluginContrailPolicy(object):
+    """Neutron Plugin Contrail, Policy"""
+
+    def __init__(self):
+        super(NeutronPluginContrailPolicy, self).__init__()
+        self._core = None
+
     def set_core(self, core_instance):
+        """
+        Set core instance
+        """
         self._core = core_instance
 
     def _make_policy_dict(self, entry, status_code=None, fields=None):
+        """
+        Make Policy dict
+        """
         return entry
 
     def create_policy(self, context, policy):
@@ -72,7 +82,7 @@ class NeutronPluginContrailPolicy(object):
         """
         self._core._delete_resource('policy', context, policy_id)
 
-        LOG.debug("delete_policy(): %s" % (policy_id))
+        LOG.debug("delete_policy(): %s", policy_id)
 
     def get_policys(self, context, filters=None, fields=None):
         """

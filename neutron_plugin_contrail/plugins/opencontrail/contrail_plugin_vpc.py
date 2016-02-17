@@ -1,3 +1,6 @@
+"""
+Neutron Plugin for Contrail, VPC version
+"""
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 #
 # Copyright 2014 Juniper Networks.  All rights reserved.
@@ -19,17 +22,29 @@
 import copy
 import logging
 from pprint import pformat
-import sys
 
 LOG = logging.getLogger(__name__)
 
 
 class NeutronPluginContrailVpc(object):
+    """
+    Neutron Plugin Contrail VPC class
+    """
+
+    def __init__(self):
+        self._core = None
+
     def set_core(self, core_instance):
+        """
+        Set the core instance
+        """
         self._core = core_instance
 
     # VPC route table handlers
     def _make_route_table_routes_dict(self, route_table_route, fields=None):
+        """
+        Make a route_table_route into a prefix/nexthop dict
+        """
         res = {'prefix': route_table_route['prefix'],
                'next_hop': route_table_route['next_hop']}
 
@@ -37,6 +52,9 @@ class NeutronPluginContrailVpc(object):
 
     def _make_route_table_dict(self, route_table, status_code=None,
                                fields=None):
+        """
+        Make a route table dict
+        """
         res = {'id': route_table['id'],
                'name': route_table['name'],
                'fq_name': route_table['fq_name'],
@@ -86,8 +104,7 @@ class NeutronPluginContrailVpc(object):
         """
         Deletes a route table
         """
-        self._core._delete_resource('route_table', context,
-                                                    rt_id)
+        self._core._delete_resource('route_table', context, rt_id)
 
         LOG.debug("delete_security_group(): %s" % (rt_id))
 
@@ -108,6 +125,9 @@ class NeutronPluginContrailVpc(object):
     # VPC route table nat instance handlers
     def _make_nat_instance_dict(self, nat_instance, status_code=None,
                                 fields=None):
+        """
+        Make a NAT instance dict
+        """
         res = {'id': nat_instance['id'],
                'name': nat_instance['name'],
                'tenant_id': nat_instance['tenant_id']}
@@ -145,7 +165,9 @@ class NeutronPluginContrailVpc(object):
         """
         self._core._delete_resource('nat_instance', context, nat_id)
 
-        LOG.debug("delete_nat_instance(): %s" % (nat_id))
+        # LOG.debug("delete_nat_instance(): %s" % (nat_id))
+        # XXX: Test the below
+        LOG.debug("delete_nat_instance(): %s", nat_id)
 
     def get_nat_instances(self, context, filters=None, fields=None,
                           sorts=None, limit=None, marker=None,

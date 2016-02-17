@@ -1,3 +1,4 @@
+""" Contrail Neutron Plugin, IPAM """
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 #
 # Copyright 2014 Juniper Networks.  All rights reserved.
@@ -19,18 +20,27 @@
 import copy
 import logging
 from pprint import pformat
-import sys
-
-import cgitb
 
 LOG = logging.getLogger(__name__)
 
 
 class NeutronPluginContrailIpam(object):
+    """Neutron Plugin Contrail, IPAM"""
+
+    def __init__(self):
+        super(NeutronPluginContrailIpam, self).__init__()
+        self._core = None
+
     def set_core(self, core_instance):
+        """
+        Set core instance
+        """
         self._core = core_instance
 
     def _make_ipam_dict(self, entry, status_code=None, fields=None):
+        """
+        Make IPAM dict
+        """
         return entry
 
     def create_ipam(self, context, ipam):
@@ -59,7 +69,7 @@ class NeutronPluginContrailIpam(object):
         """
         plugin_ipam = copy.deepcopy(ipam)
         ipam_dicts = self._core._update_resource('ipam', context, ipam_id,
-                                           plugin_ipam)
+                                                 plugin_ipam)
 
         LOG.debug("update_ipam(): " + pformat(ipam_dicts))
         return ipam_dicts
@@ -70,7 +80,7 @@ class NeutronPluginContrailIpam(object):
         """
         self._core._delete_resource('ipam', context, ipam_id)
 
-        LOG.debug("delete_ipam(): %s" % (ipam_id))
+        LOG.debug("delete_ipam(): %s", ipam_id)
 
     def get_ipams(self, context, filters=None, fields=None):
         """

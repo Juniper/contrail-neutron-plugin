@@ -1,8 +1,3 @@
-import logging
-
-from eventlet import corolocal
-from eventlet.greenthread import getcurrent
-
 """
 This middleware is used to forward user token to Contrail API server.
 Middleware is inserted at head of Neutron pipeline via api-paste.ini file
@@ -11,9 +6,18 @@ This is needed because neutron will later remove the user token before control
 finally reaches Contrail plugin. Contrail plugin will retreive the user token
 from thread's local storage and pass it to API server via X-AUTH-TOKEN header.
 """
+# Pylint settings
+# Disable the "too-few-public-method of a class" warning
+# pylint: disable=R0903
+
+import logging
+
+from eventlet import corolocal
+from eventlet.greenthread import getcurrent
 
 
 class UserToken(object):
+    """ Implements the UserToken call """
     def __init__(self, app, conf):
         self._logger = logging.getLogger(__name__)
         self._app = app
@@ -34,5 +38,6 @@ def token_factory(global_conf, **local_conf):
     conf.update(local_conf)
 
     def _factory(app):
+        """ Instantiates and returns a UserToken class object """
         return UserToken(app, conf)
     return _factory
