@@ -1,3 +1,4 @@
+""" Contrail Neutron Plugin - base class """
 # Copyright 2014 Juniper Networks.  All rights reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
@@ -20,15 +21,33 @@ import os.path as path
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
 from neutron.common.config import cfg
+from neutron._i18n import _
 from neutron.db import portbindings_base
-from neutron.db import quota_db  # noqa
+# from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
 from neutron.extensions import external_net
 from neutron.extensions import l3
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
 from neutron_plugin_contrail.extensions import serviceinterface
+# pylint: disable=C0412
 from neutron import neutron_plugin_base_v2
+
+try:
+    from neutron.common.exceptions import NeutronException
+except ImportError:
+    from neutron_lib.exceptions import NeutronException
+
+try:
+    from neutron.common.exceptions import ServiceUnavailable
+except ImportError:
+    from neutron_lib.exceptions import ServiceUnavailable
+
+try:
+    from neutron.common.exceptions import InvalidInput
+except ImportError:
+    from neutron_lib.exceptions import InvalidInput
+
 try:
     from neutron.openstack.common import importutils
 except ImportError:
@@ -39,6 +58,7 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
+# pylint: enable=C0412
 
 # Constant for max length of network interface names
 # eg 'bridge' in the Network class or 'devname' in
@@ -47,7 +67,7 @@ NIC_NAME_LEN = 14
 
 LOG = logging.getLogger(__name__)
 
-vnc_opts = [
+VNC_OPTS = [
     cfg.StrOpt('api_server_ip', default='127.0.0.1',
                help='IP address to connect to VNC controller'),
     cfg.StrOpt('api_server_port', default='8082',
@@ -55,9 +75,9 @@ vnc_opts = [
     cfg.DictOpt('contrail_extensions', default={},
                 help='Enable Contrail extensions(policy, ipam)'),
     cfg.BoolOpt('use_ssl', default=False,
-               help='Use SSL to connect with VNC controller'),
+                help='Use SSL to connect with VNC controller'),
     cfg.BoolOpt('insecure', default=False,
-               help='Insecurely connect to VNC controller'),
+                help='Insecurely connect to VNC controller'),
     cfg.StrOpt('certfile', default='',
                help='certfile to connect securely to VNC controller'),
     cfg.StrOpt('keyfile', default='',
@@ -66,48 +86,54 @@ vnc_opts = [
                help='cafile to connect securely to VNC controller'),
 ]
 
-analytics_opts = [
+ANALYTICS_OPTS = [
     cfg.StrOpt('analytics_api_ip', default='127.0.0.1',
                help='IP address to connect to VNC collector'),
     cfg.StrOpt('analytics_api_port', default='8081',
                help='Port to connect to VNC collector'),
 ]
 
-vrouter_opts = [
+VROUTER_OPTS = [
     cfg.StrOpt('vhostuser_sockets_dir', default='/var/run/vrouter',
                help='Path to dir where vhostuser socket are placed'),
 ]
 
 
-def _raise_contrail_error(info, obj_name):
-        exc_name = info.get('exception')
-        if exc_name:
-            if exc_name == 'BadRequest' and 'resource' not in info:
-                info['resource'] = obj_name
-            if hasattr(exc, exc_name):
-                raise getattr(exc, exc_name)(**info)
-            if hasattr(l3, exc_name):
-                raise getattr(l3, exc_name)(**info)
-            if hasattr(securitygroup, exc_name):
-                raise getattr(securitygroup, exc_name)(**info)
-            if hasattr(allowedaddresspairs, exc_name):
-                raise getattr(allowedaddresspairs, exc_name)(**info)
-        raise exc.NeutronException(**info)
+def raise_contrail_error(info, obj_name):
+    """ Private function, to raise a contrail error """
+    exc_name = info.get('exception')
+    if exc_name:
+        if exc_name == 'BadRequest' and 'resource' not in info:
+            info['resource'] = obj_name
+        if hasattr(exc, exc_name):
+            raise getattr(exc, exc_name)(**info)
+        if hasattr(l3, exc_name):
+            raise getattr(l3, exc_name)(**info)
+        if hasattr(securitygroup, exc_name):
+            raise getattr(securitygroup, exc_name)(**info)
+        if hasattr(allowedaddresspairs, exc_name):
+            raise getattr(allowedaddresspairs, exc_name)(**info)
+    raise NeutronException(**info)
 
 
-class InvalidContrailExtensionError(exc.ServiceUnavailable):
+class InvalidContrailExtensionError(ServiceUnavailable):
+    """ Invalid Contrail Extension exception. """
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
 
 
 class HttpResponseError(Exception):
-      def __init__(self, resp_info):
-          self.response_info = resp_info
+    """ A HttpResponseError exception """
+    def __init__(self, resp_info):
+        super(HttpResponseError, self).__init__()
+        self.response_info = resp_info
+
 
 class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     securitygroup.SecurityGroupPluginBase,
                                     portbindings_base.PortBindingBaseMixin,
                                     external_net.External_net,
                                     serviceinterface.Serviceinterface):
+    """ Base class of Neutron Plugin for Contrail """
 
     supported_extension_aliases = ["security-group", "router",
                                    "port-security", "binding", "agent",
@@ -164,39 +190,56 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         self._build_auth_details()
 
     def _build_auth_details(self):
+        """ Constructs auth details: overridden by classes extending this """
         pass
 
     def __init__(self):
         super(NeutronPluginContrailCoreBase, self).__init__()
         portbindings_base.register_port_dict_function()
-        cfg.CONF.register_opts(vnc_opts, 'APISERVER')
-        cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
-        cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
+        cfg.CONF.register_opts(VNC_OPTS, 'APISERVER')
+        cfg.CONF.register_opts(ANALYTICS_OPTS, 'COLLECTOR')
+        cfg.CONF.register_opts(VROUTER_OPTS, 'VROUTER')
         self._parse_class_args()
 
     def get_agents(self, context, filters=None, fields=None):
-        # This method is implemented so that horizon is happy
+        """ This method is implemented so that horizon is happy """
+
         return []
 
     def _create_resource(self, res_type, context, res_data):
+        """ Creates a Resource dict: implemented by extending classes """
+
         pass
 
-    def _get_resource(self, res_type, context, id, fields):
+    def _get_resource(self, res_type, context, id, fields,
+                      propagate_exc=False):
+        """ Gets a Resource dict: implemented by extending classes """
+
         pass
 
     def _update_resource(self, res_type, context, id, res_data):
+        """ Update a Resource dict: implemented by extending classes """
+
         pass
 
     def _delete_resource(self, res_type, context, id):
+        """ Deletes a Resource dict: implemented by extending classes """
+
         pass
 
     def _list_resource(self, res_type, context, filters, fields):
+        """ List Resource dicts: implemented by extending classes """
+
         pass
 
     def _count_resource(self, res_type, context, filters):
+        """ Count Resource dicts: implemented by extending classes """
+
         pass
 
     def _get_network(self, context, id, fields=None):
+        """ Get a network resource """
+
         return self._get_resource('network', context, id, fields)
 
     def create_network(self, context, network):
@@ -248,17 +291,21 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         if subnet['subnet']['host_routes'] != attr.ATTR_NOT_SPECIFIED:
             if (len(subnet['subnet']['host_routes']) >
                     cfg.CONF.max_subnet_host_routes):
-                raise exc.HostRoutesExhausted(subnet_id=subnet[
-                    'subnet'].get('id', _('new subnet')),
+                raise exc.HostRoutesExhausted(
+                    subnet_id=subnet['subnet'].get('id', _('new subnet')),
                     quota=cfg.CONF.max_subnet_host_routes)
 
         subnet_created = self._create_resource('subnet', context, subnet)
         return self._make_subnet_dict(subnet_created)
 
     def _make_subnet_dict(self, subnet):
+        """ Creates a subnet dict """
+
         return subnet
 
     def _get_subnet(self, context, subnet_id, fields=None):
+        """ Get subnet """
+
         subnet = self._get_resource('subnet', context, subnet_id, fields)
         return self._make_subnet_dict(subnet)
 
@@ -295,6 +342,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return subnets_count['count']
 
     def _extend_port_dict_security_group(self, port_res, port_db):
+        """ Extend port dict with security groups """
         # Security group bindings will be retrieved from the sqlalchemy
         # model. As they're loaded eagerly with ports because of the
         # joined load they will not cause an extra query.
@@ -305,8 +353,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _make_port_dict(self, port, fields=None):
         """filters attributes of a port based on fields."""
 
-        if portbindings.VIF_TYPE in port and \
-            port[portbindings.VIF_TYPE] == portbindings.VIF_TYPE_VHOST_USER:
+        if portbindings.VIF_TYPE in port and port[portbindings.VIF_TYPE] == \
+                portbindings.VIF_TYPE_VHOST_USER:
             vhostuser = True
         else:
             vhostuser = False
@@ -325,6 +373,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return port
 
     def _get_port(self, context, id, fields=None):
+        """ Get a port """
+
         return self._get_resource('port', context, id, fields)
 
     def _update_ips_for_port(self, context, network_id, port_id, original_ips,
@@ -337,7 +387,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # the new_ips contain all of the fixed_ips that are to be updated
         if len(new_ips) > cfg.CONF.max_fixed_ips_per_port:
             msg = _('Exceeded maximim amount of fixed ips per port')
-            raise exc.InvalidInput(error_message=msg)
+            raise InvalidInput(error_message=msg)
 
         # Remove all of the intersecting elements
         for original_ip in original_ips[:]:
@@ -351,27 +401,38 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return new_ips, prev_ips
 
     def _get_vrouter_config(self, context, id, fields=None):
+        """ Get vrouter config """
+
         return self._get_resource('virtual_router', context, id, fields,
                                   propagate_exc=True)
 
     def _list_vrouters(self, context, filters=None, fields=None):
+        """ List vrouters """
+
         return self._list_resource('virtual_router', context, filters, fields)
 
     @staticmethod
     def _get_port_vhostuser_socket_name(port, port_id=None):
+        """ Get vif's socket name """
         name = 'tap' + (port_id if port_id else port['id'])
         name = name[:NIC_NAME_LEN]
         return path.join(cfg.CONF.VROUTER.vhostuser_sockets_dir,
                          'uvh_vif_' + name)
 
     def _update_vhostuser_vif_details_for_port(self, port, port_id=None):
+        """ Update vif details with vhostuser for a port """
+
+        # no-member error (E1103) due to VHOST_USER_VROUTER_PLUG locally
+        # patched. ignore it.
+        # pylint: disable=E1103
         vif_details = {
-            portbindings.VHOST_USER_MODE: \
+            portbindings.VHOST_USER_MODE:
                 portbindings.VHOST_USER_MODE_CLIENT,
-            portbindings.VHOST_USER_SOCKET: \
+            portbindings.VHOST_USER_SOCKET:
                 self._get_port_vhostuser_socket_name(port, port_id),
             portbindings.VHOST_USER_VROUTER_PLUG: True
         }
+        # pylint: enable=E1103
 
         if portbindings.VIF_DETAILS not in port:
             port[portbindings.VIF_DETAILS] = vif_details
@@ -381,6 +442,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return port
 
     def _is_dpdk_enabled(self, context, port):
+        """ Returns true if a port is DPDK-enabled """
+
         # Do not consider a host being DPDK enabled when the port is for SR-IOV
         if portbindings.VNIC_TYPE in port and \
                 port[portbindings.VNIC_TYPE] != portbindings.VNIC_NORMAL:
@@ -394,15 +457,14 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         if 'binding:host_id' in port and port['binding:host_id'] and \
                 port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
             try:
-                vrouter = self._get_vrouter_config(context,
-                                               ['default-global-system-config',
-                                               port['binding:host_id']])
-            except HttpResponseError as e:
-              if e.response_info['exception'] == 'VirtualRouterNotFound':
-                  return False
+                vrouter = self._get_vrouter_config(
+                    context, ['default-global-system-config',
+                              port['binding:host_id']])
+            except HttpResponseError as exep:
+                if exep.response_info['exception'] == 'VirtualRouterNotFound':
+                    return False
 
         return vrouter['dpdk_enabled']
-
 
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
@@ -515,9 +577,13 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         return routers_count['count']
 
     def add_router_interface(self, context, router_id, interface_info):
+        """ Add interface to router: implemented by extending classes """
+
         pass
 
     def remove_router_interface(self, context, router_id, interface_info):
+        """ Remove interface from router: implemented by extending classes """
+
         pass
 
     # Floating IP API handlers
@@ -585,9 +651,13 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                    filters, fields)
 
     def get_security_groups_count(self, context, filters=None):
+        """ Get security groups count: Placeholder function """
+
         return 0
 
     def get_security_group_rules_count(self, context, filters=None):
+        """ Get security groups rules count: Placeholder function """
+
         return 0
 
     def create_security_group_rule(self, context, security_group_rule):

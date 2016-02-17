@@ -46,8 +46,8 @@ class ContrailResourceHandler(object):
     def _raise_contrail_exception(exc, **kwargs):
         exc_info = {'exception': exc}
         exc_info.update(kwargs)
-        contrail_plugin_base._raise_contrail_error(exc_info,
-                                                   kwargs.get('resource'))
+        contrail_plugin_base.raise_contrail_error(exc_info,
+                                                  kwargs.get('resource'))
 
     @staticmethod
     def _validate_project_ids(context, project_ids=None):
