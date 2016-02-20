@@ -9,7 +9,10 @@ from neutron.api.v2 import attributes as attr
 from neutron.plugins.common import constants
 from neutron.services import provider_configuration as pconf
 
-from neutron.openstack.common import uuidutils
+try:
+    from neutron.openstack.common import uuidutils
+except ImportError:
+    from oslo_utils import uuidutils
 from vnc_api.vnc_api import *
 
 from .. resource_manager import ResourceManager

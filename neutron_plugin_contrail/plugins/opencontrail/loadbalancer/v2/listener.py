@@ -10,7 +10,11 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
-from neutron.openstack.common import uuidutils
+try:
+    from neutron.openstack.common import uuidutils
+except ImportError:
+    from oslo_utils import uuidutils
+
 from vnc_api.vnc_api import IdPermsType, NoIdError
 from vnc_api.vnc_api import InstanceIp, VirtualMachineInterface
 from vnc_api.vnc_api import SecurityGroup
