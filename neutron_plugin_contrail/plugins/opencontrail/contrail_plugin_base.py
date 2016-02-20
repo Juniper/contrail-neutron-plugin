@@ -444,6 +444,9 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
+        if 'binding:host_id' in port['port']:
+            original['binding:host_id'] = port['port']['binding:host_id']
+
         if self._is_dpdk_enabled(context, original):
             port['port'][portbindings.VIF_TYPE] = \
                 portbindings.VIF_TYPE_VHOST_USER
