@@ -91,7 +91,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
             auth_url = "/v2.0/tokens"
 
         try:
-            auth_type = cfg.CONF.keystone_authtoken.auth_type
+            auth_type = cfg.CONF.auth_strategy
         except cfg.NoSuchOptError:
             auth_type = "keystone"
 
