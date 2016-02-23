@@ -530,7 +530,7 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
     def _get_port(self, context, id, fields=None):
         port = self._get_resource('port', context, id, fields)
-        return self._make_port_dict(port)
+        return self._make_port_dict(port, fields)
 
     def _update_ips_for_port(self, context, network_id, port_id, original_ips,
                              new_ips):
