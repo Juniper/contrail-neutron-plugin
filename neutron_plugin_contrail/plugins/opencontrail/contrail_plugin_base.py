@@ -386,10 +386,46 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         return port
 
-    def _is_dpdk_enabled(self, context, port):
-        # Do not consider a host being DPDK enabled when the port is for SR-IOV
+    @staticmethod
+    def _delete_vhostuser_vif_details_from_port(port, original):
+        # Nothing to do if the original port (the one that is saved in the API
+        # server) does not contains any vif details.
+        if not portbindings.VIF_DETAILS in original:
+            return
+
+        # Copy vif details from the original port and delete all vhostuser
+        # related fields
+        vif_details = dict(original[portbindings.VIF_DETAILS])
+        to_delete = [portbindings.VHOST_USER_MODE,
+                portbindings.VHOST_USER_SOCKET,
+                portbindings.VHOST_USER_VROUTER_PLUG]
+        for item in to_delete:
+            if item in vif_details:
+                del vif_details[item]
+
+        # Since the API server does not support deletion of a particular filed
+        # from vif details, we use the original vif details with all the
+        # vhostuser fields removed + any updates that comes in the 'port'
+        # argument. Perhaps it would be better to introduce some kind of a
+        # 'unspecified' value, that would indicate that the value should be
+        # removed from the vif details by the API server?
+        if portbindings.VIF_DETAILS not in port:
+            port[portbindings.VIF_DETAILS] = vif_details
+        else:
+            vif_details.update(port[portbindings.VIF_DETAILS])
+            port[portbindings.VIF_DETAILS] = vif_details
+
+    @staticmethod
+    def _port_is_sriov(port):
+        # TODO(md): Check whether VNIC_TYPE == VNIC_DIRECT would be sufficient
+        # and preferable here than VNIC_TYPE != VNIC_NORMAL.
         if portbindings.VNIC_TYPE in port and \
                 port[portbindings.VNIC_TYPE] != portbindings.VNIC_NORMAL:
+            return True
+
+    def _is_dpdk_enabled(self, context, port):
+        # Do not consider a host being DPDK enabled when the port is for SR-IOV
+        if self._port_is_sriov(port):
             return False
 
         vrouter = {'dpdk_enabled': False}
@@ -450,10 +486,18 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
+        if 'binding:host_id' in port['port']:
+            original['binding:host_id'] = port['port']['binding:host_id']
+
         if self._is_dpdk_enabled(context, original):
             port['port'][portbindings.VIF_TYPE] = \
                 portbindings.VIF_TYPE_VHOST_USER
             self._update_vhostuser_vif_details_for_port(port['port'], port_id)
+        elif not self._port_is_sriov(original):
+            port['port'][portbindings.VIF_TYPE] = \
+                portbindings.VIF_TYPE_VROUTER
+            self._delete_vhostuser_vif_details_from_port(port['port'],
+                                                         original)
 
         return self._update_resource('port', context, port_id, port)
 
