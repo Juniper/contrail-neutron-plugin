@@ -89,8 +89,6 @@ class SecurityGroupRuleMixin(object):
             sgr_q_dict['port_range_min'] = None if port_min == 0 else port_min
         port_max = (sg_rule.get_dst_ports()[0].get_end_port())
         sgr_q_dict['port_range_max'] = None if port_max == 65535 else port_max
-        if remote_cidr == '0.0.0.0/0' or remote_cidr == '::/0':
-            remote_cidr = None
         sgr_q_dict['remote_ip_prefix'] = remote_cidr
         sgr_q_dict['remote_group_id'] = remote_sg_uuid
 
