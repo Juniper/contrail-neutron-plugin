@@ -28,6 +28,7 @@ from neutron.extensions import l3
 from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
 from neutron_plugin_contrail.extensions import serviceinterface
+from neutron_plugin_contrail.extensions import vfbinding
 from neutron import neutron_plugin_base_v2
 try:
     from neutron.openstack.common import importutils
@@ -54,7 +55,8 @@ vnc_opts = [
                help='Port to connect to VNC controller'),
     cfg.DictOpt('contrail_extensions',
                 default={'contrail': None,
-                         'service-interface': None},
+                         'service-interface': None,
+                         'vf-binding': None},
                 help='Enable Contrail extensions(policy, ipam)'),
     cfg.BoolOpt('use_ssl', default=False,
                help='Use SSL to connect with VNC controller'),
@@ -109,7 +111,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     securitygroup.SecurityGroupPluginBase,
                                     portbindings_base.PortBindingBaseMixin,
                                     external_net.External_net,
-                                    serviceinterface.Serviceinterface):
+                                    serviceinterface.Serviceinterface,
+                                    vfbinding.Vfbinding):
 
     supported_extension_aliases = [
         "security-group",
@@ -122,6 +125,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         "allowed-address-pairs",
         "extra_dhcp_opt",
         "provider",
+        "vf-binding",
     ]
 
     __native_bulk_support = False
