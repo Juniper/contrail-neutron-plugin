@@ -36,6 +36,9 @@ EXTENDED_ATTRIBUTES_2_0 = {
                                   'allow_put': True,
                                   'default': '',
                                   'is_visible': True},
+        'contrail:dns_server_address': {'allow_post': False,
+                                        'allow_put': False,
+                                        'is_visible': True},
     }
 }
 
