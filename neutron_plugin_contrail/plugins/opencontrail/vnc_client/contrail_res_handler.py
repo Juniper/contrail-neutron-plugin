@@ -196,9 +196,10 @@ class VMachineHandler(ResourceGetHandler, ResourceCreateHandler,
                 # if instance_id is not a valid uuid, let
                 # virtual_machine_create generate uuid for the vm
                 pass
-            self._resource_create(instance_obj)
-        except vnc_exc.RefsExistError:
             instance_obj = self._resource_get(id=instance_obj.uuid)
+        except vnc_api.NoIdError:
+            instance_uuid = self._resource_create(instance_obj)
+            instance_obj = self._resource_get(id=instance_uuid)
 
         return instance_obj
 
