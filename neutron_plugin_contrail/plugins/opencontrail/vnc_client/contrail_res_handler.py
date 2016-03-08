@@ -96,16 +96,27 @@ class ResourceCreateHandler(ContrailResourceHandler):
     resource_create_method = None
 
     def _resource_create(self, obj):
+        """Create a new resource.
+
+        If the fq_name is already used, the object uuid is added to
+        the last fq_name element in order to generate a unique fq_name.
+
+        """
         create_method = getattr(self._vnc_lib, self.resource_create_method)
         try:
             try:
                 obj_uuid = create_method(obj)
             # To allow several resources with an identical name
-            except vnc_exc.RefsExistError:
-                obj.uuid = str(uuid.uuid4())
-                obj.name += '-' + obj.uuid
-                obj.fq_name[-1] += '-' + obj.uuid
-                obj_uuid = create_method(obj)
+            # but different uuids.
+            except vnc_exc.RefsExistError as e:
+                if obj.uuid is not None:
+                    raise e
+                else:
+                    # The fq_name is already used, a new one is generated
+                    obj.uuid = str(uuid.uuid4())
+                    obj.name += '-' + obj.uuid
+                    obj.fq_name[-1] += '-' + obj.uuid
+                    obj_uuid = create_method(obj)
         except (vnc_exc.BadRequest, vnc_exc.PermissionDenied) as e:
             res_type = obj.get_type()
             self._raise_contrail_exception('BadRequest',
