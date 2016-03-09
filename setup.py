@@ -18,6 +18,7 @@ setup(
     long_description="Contrail neutron plugin",
 
     install_requires=requirements('requirements.txt'),
+    setup_requires=['nose>=1.0'],
 
     test_suite='neutron_plugin_contrail.tests',
     tests_require=requirements('test-requirements.txt'),
