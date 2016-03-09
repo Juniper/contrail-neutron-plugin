@@ -5,7 +5,11 @@
 import uuid
 
 from neutron_lbaas.extensions import loadbalancerv2
-from neutron.openstack.common import uuidutils
+try:
+    from neutron.openstack.common import uuidutils
+except ImportError:
+    from oslo_utils import uuidutils
+
 from vnc_api.vnc_api import IdPermsType
 from vnc_api.vnc_api import LoadbalancerHealthmonitor
 from vnc_api.vnc_api import LoadbalancerHealthmonitorType
