@@ -11,11 +11,13 @@ sources = [
     'neutron_plugin_contrail/plugins/opencontrail/__init__.py',
     'neutron_plugin_contrail/plugins/opencontrail/agent/__init__.py',
     'neutron_plugin_contrail/plugins/opencontrail/agent/contrail_vif_driver.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_core.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_ipam.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_policy.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_vpc.py',
-    'neutron_plugin_contrail/plugins/opencontrail/neutron_middleware.py',
+    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin.py'
+    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_base.py'
+    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_ipam.py'
+    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_policy.py'
+    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_v3.py'
+    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_vpc.py'
+    'neutron_plugin_contrail/plugins/opencontrail/neutron_middleware.py'
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/__init__.py',
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_db.py',
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_healthmonitor.py',
@@ -36,7 +38,6 @@ sources = [
     'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/resource_manager.py',
     'neutron_plugin_contrail/plugins/opencontrail/quota/__init__.py',
     'neutron_plugin_contrail/plugins/opencontrail/quota/driver.py',
-#   'neutron_plugin_contrail/tests/test_plugins_opencontrail_quota_driver.py',
     'neutron_plugin_contrail/tests/__init__.py',
     'neutron_plugin_contrail/tests/loadbalancer/__init__.py',
     'neutron_plugin_contrail/tests/loadbalancer/test_driver.py',
