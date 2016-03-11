@@ -14,6 +14,7 @@
 #
 
 from neutron.api.v2 import attributes as attr
+from neutron.api import extensions
 
 EXTENDED_ATTRIBUTES_2_0 = {
     'ports': {
@@ -27,7 +28,7 @@ EXTENDED_ATTRIBUTES_2_0 = {
 }
 
 
-class Vfbinding(object):
+class Vfbinding(extensions.ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):

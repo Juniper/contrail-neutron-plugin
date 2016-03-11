@@ -125,7 +125,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         "allowed-address-pairs",
         "extra_dhcp_opt",
         "provider",
-        "vf-binding",
     ]
 
     __native_bulk_support = False
