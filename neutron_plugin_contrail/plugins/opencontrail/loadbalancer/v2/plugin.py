@@ -8,6 +8,8 @@ from loadbalancer_db import LoadBalancerPluginDbV2
 class LoadBalancerPluginV2(LoadBalancerPluginDbV2):
     supported_extension_aliases = ["lbaasv2", "extra_lbaas_opts"]
 
+    path_prefix = loadbalancerv2.LOADBALANCERV2_PREFIX
+
     def __init__(self):
         super(LoadBalancerPluginV2, self).__init__()
 
