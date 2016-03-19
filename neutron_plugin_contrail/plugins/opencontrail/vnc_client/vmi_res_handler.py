@@ -890,30 +890,21 @@ class VMInterfaceGetHandler(res_handler.ResourceGetHandler, VMInterfaceMixin):
             vmi_objs_t = pool.spawn(self._resource_list,
                                     parent_id=project_ids, back_refs=True)
 
-        # if admin no need to filter we can retrieve all the ips object
-        # with only one call
-        if context['is_admin']:
-            iip_list_handler = res_handler.InstanceIpHandler(self._vnc_lib)
-            iip_objs_t = pool.spawn(iip_list_handler.get_iip_obj_list,
-                                    detail=True)
-
         pool.waitall()
 
         vn_objs = vn_objs_t._exit_event._result
-        if context['is_admin']:
-            iips_objs = iip_objs_t._exit_event._result
-        else:
-            vn_ids = [vn_obj.uuid for vn_obj in vn_objs]
-            iip_list_handler = res_handler.InstanceIpHandler(self._vnc_lib)
-            iips_objs = iip_list_handler.get_iip_obj_list(back_ref_id=vn_ids,
-                                                          detail=True)
 
         vmi_objs = []
         if vmi_objs_t is not None:
-            vmi_objs = vmi_objs_t._exit_event._result
+            vmi_objs = vmi_objs_t._exit_event._result or []
 
         if vmi_obj_uuids_t is not None:
-            vmi_objs.extend(vmi_obj_uuids_t._exit_event._result)
+            vmi_objs.extend(vmi_obj_uuids_t._exit_event._result or [])
+
+        vmis_ids = [vmi.uuid for vmi in vmi_objs]
+        iip_list_handler = res_handler.InstanceIpHandler(self._vnc_lib)
+        iips_objs = iip_list_handler.get_iip_obj_list(back_ref_id=vmis_ids,
+                                                      detail=True)
 
         return vmi_objs, vn_objs, iips_objs
 
