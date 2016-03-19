@@ -950,6 +950,10 @@ class VMInterfaceGetHandler(res_handler.ResourceGetHandler, VMInterfaceMixin):
         return self._resource_list(**kwargs)
 
     def resource_list(self, context=None, filters=None, fields=None):
+        if (filters.get('device_owner') == 'network:dhcp' or
+                'network:dhcp' in filters.get('device_owner', [])):
+            return []
+
         if not context:
             context = {'is_admin': True}
 
