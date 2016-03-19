@@ -110,7 +110,8 @@ class FloatingIpMixin(object):
         if vmi_obj:
             router_get_handler = router_handler.LogicalRouterGetHandler(
                 self._vnc_lib)
-            router_id = router_get_handler.get_vmi_obj_router_id(vmi_obj)
+            router_id = router_get_handler.get_vmi_obj_router_id(vmi_obj,
+                                                                 project_id=tenant_id)
 
         fip_q_dict['id'] = fip_obj.uuid
         fip_q_dict['tenant_id'] = tenant_id
