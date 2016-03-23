@@ -174,19 +174,9 @@ class LogicalRouterGetHandler(res_handler.ResourceGetHandler,
     resource_list_method = 'logical_routers_list'
 
     def _router_list_project(self, project_id=None, detail=False):
-        if project_id:
-            try:
-                project_uuid = self._project_id_neutron_to_vnc(project_id)
-            except Exception:
-                return []
-        else:
-            project_uuid = None
-
-        resp = self._resource_list(parent_id=project_uuid,
-                                   detail=detail)
+        resp = self._resource_list(parent_id=project_id, detail=detail)
         if detail:
             return resp
-
         return resp['logical-routers']
 
     def _get_router_list_for_ids(self, rtr_ids, extensions_enabled=True):
@@ -247,7 +237,11 @@ class LogicalRouterGetHandler(res_handler.ResourceGetHandler,
                 return ret_list
 
         if not filters:
-            return self._get_router_list_for_project()
+            if context['is_admin']:
+                return self._get_router_list_for_project()
+            else:
+                proj_id = self._project_id_neutron_to_vnc(context['tenant'])
+                return self._get_router_list_for_project(project_id=proj_id)
 
         all_rtrs = []  # all n/ws in all projects
         if 'id' in filters:
