@@ -51,10 +51,16 @@ class LoadbalancerMemberManager(ResourceManager):
         except Exception:
             member_stats = []
 
+        # In case of missing analytics, return ACTIVE
+        if not member_stats:
+            return constants.ACTIVE
+
         for member_stat in member_stats:
-            if member_stat['uuid'] == member.uuid:
-                return member_stat['status']
-        return constants.ACTIVE
+            if member_stat['uuid'] == member.uuid and \
+                member_stat['status'] == 'ACTIVE':
+                    return member_stat['status']
+
+        return constants.DOWN
 
     def make_dict(self, member, fields=None):
         res = {'id': member.uuid,
