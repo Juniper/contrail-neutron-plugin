@@ -512,11 +512,18 @@ class VMInterfaceMixin(object):
 
         # pick binding keys from neutron repr and persist as kvp elements.
         # it is assumed allowing/denying oper*key is done at neutron-server.
-        vmi_binding_kvps = dict((k.replace('binding:',''), v)
-            for k,v in port_q.items() if k.startswith('binding:'))
-        for k,v in vmi_binding_kvps.items():
-            vmi_obj.add_virtual_machine_interface_bindings(
-                vnc_api.KeyValuePair(key=k, value=v), elem_position=k)
+        if not update:
+            vmi_binding_kvps = dict((k.replace('binding:',''), v)
+                for k,v in port_q.items() if k.startswith('binding:'))
+            vmi_obj.set_virtual_machine_interface_bindings(
+                vnc_api.KeyValuePairs([vnc_api.KeyValuePair(k,v)
+                              for k,v in vmi_binding_kvps.items()]))
+        else:
+            vmi_binding_kvps = dict((k.replace('binding:',''), v)
+                for k,v in port_q.items() if k.startswith('binding:'))
+            for k,v in vmi_binding_kvps.items():
+                vmi_obj.add_virtual_machine_interface_bindings(
+                    vnc_api.KeyValuePair(key=k, value=v))
 
         return vmi_obj
 
