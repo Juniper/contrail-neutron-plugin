@@ -227,20 +227,17 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         return resource_dict
 
     def _transform_response(self, status_code, info=None, obj_name=None,
-                            fields=None, propagate_exc=False):
+                            fields=None):
         if status_code == requests.codes.ok:
             if not isinstance(info, list):
                 return self._prune(info, fields)
             else:
                 return [self._prune(items, fields) for items in info]
 
-        if propagate_exc:
-            raise HttpResponseError(info)
-
         plugin_base._raise_contrail_error(info, obj_name)
 
 
-    def _create_resource(self, res_type, context, res_data, propagate_exc=False):
+    def _create_resource(self, res_type, context, res_data):
         """Create a resource in API server.
 
         This method encodes neutron model, and sends it to the
@@ -255,14 +252,13 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'CREATE')
         res_dicts = self._transform_response(status_code, info=res_info,
-                                             obj_name=res_type,
-                                             propagate_exc=propagate_exc)
+                                             obj_name=res_type)
         LOG.debug("create_%(res_type)s(): %(res_dicts)s",
                   {'res_type': res_type, 'res_dicts': res_dicts})
 
         return res_dicts
 
-    def _get_resource(self, res_type, context, id, fields, propagate_exc=False):
+    def _get_resource(self, res_type, context, id, fields):
         """Get a resource from API server.
 
         This method gets a resource from the contrail api server
@@ -272,14 +268,13 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'READ')
         res_dicts = self._transform_response(status_code, info=res_info,
-                                             fields=fields, obj_name=res_type,
-                                             propagate_exc=propagate_exc)
+                                             fields=fields, obj_name=res_type)
         LOG.debug("get_%(res_type)s(): %(res_dicts)s",
                   {'res_type': res_type, 'res_dicts': res_dicts})
 
         return res_dicts
 
-    def _update_resource(self, res_type, context, id, res_data, propagate_exc=False):
+    def _update_resource(self, res_type, context, id, res_data):
         """Update a resource in API server.
 
         This method updates a resource in the contrail api server
@@ -290,14 +285,13 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'UPDATE')
         res_dicts = self._transform_response(status_code, info=res_info,
-                                             obj_name=res_type,
-                                             propagate_exc=propagate_exc)
+                                             obj_name=res_type)
         LOG.debug("update_%(res_type)s(): %(res_dicts)s",
                   {'res_type': res_type, 'res_dicts': res_dicts})
 
         return res_dicts
 
-    def _delete_resource(self, res_type, context, id, propagate_exc=False):
+    def _delete_resource(self, res_type, context, id):
         """Delete a resource in API server
 
         This method deletes a resource in the contrail api server
@@ -312,13 +306,12 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
             plugin_base._raise_contrail_error(info=res_info,
                                               obj_name=res_type)
 
-    def _list_resource(self, res_type, context, filters, fields, propagate_exc=False):
+    def _list_resource(self, res_type, context, filters, fields):
         res_dict = self._encode_resource(filters=filters, fields=fields)
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'READALL')
         res_dicts = self._transform_response(status_code, info=res_info,
-                                             fields=fields, obj_name=res_type,
-                                             propagate_exc=propagate_exc)
+                                             fields=fields, obj_name=res_type)
         LOG.debug(
             "get_%(res_type)s(): filters: %(filters)r data: %(res_dicts)r",
             {'res_type': res_type, 'filters': filters,

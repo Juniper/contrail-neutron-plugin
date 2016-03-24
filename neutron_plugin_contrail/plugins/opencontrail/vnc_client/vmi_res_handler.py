@@ -217,7 +217,9 @@ class VMInterfaceMixin(object):
         return device_id, device_owner
 
     def _get_port_bindings(self, vmi_obj):
+        vmi_bindings_kvps = None
         vmi_bindings_kvps = vmi_obj.get_virtual_machine_interface_bindings()
+
         if vmi_bindings_kvps:
             vmi_bindings = vmi_bindings_kvps.exportDict(name_=None) or {}
         else:
