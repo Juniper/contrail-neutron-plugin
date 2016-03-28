@@ -14,7 +14,7 @@ from vnc_api.vnc_api import IdPermsType
 from vnc_api.vnc_api import LoadbalancerHealthmonitor
 from vnc_api.vnc_api import LoadbalancerHealthmonitorType
 
-from .. resource_manager import ResourceManager
+from .. resource_manager import ResourceManager, EntityInUse
 
 
 class LoadbalancerHealthmonitorManager(ResourceManager):
@@ -82,10 +82,10 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
         return self._api.loadbalancer_healthmonitor_delete(id=id)
 
     def get_exception_notfound(self, id=None):
-        return loadbalancer.HealthMonitorNotFound(monitor_id=id)
+        return loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
     def get_exception_inuse(self, id=None):
-        return loadbalancer.HealthMonitorInUse(monitor_id=id)
+        return EntityInUse(name=self.neutron_name, id=id)
 
     @property
     def neutron_name(self):
@@ -111,6 +111,14 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
             id_perms=id_perms)
         monitor_db.uuid = uuid
 
+        try:
+            pool = self._api.loadbalancer_pool_read(id=m['pool_id'])
+        except NoIdError:
+            raise loadbalancerv2.EntityNotFound(name='Pool', id=m['pool_id'])
+        exist_hm_refs = pool.get_loadbalancer_healthmonitor_refs()
+        if exist_hm_refs is not None:
+            raise loadbalancerv2.OneHealthMonitorPerPool(pool_id=m['pool_id'],
+                                               hm_id=exist_hm_refs[0]['uuid'])
         self._api.loadbalancer_healthmonitor_create(monitor_db)
         self._api.ref_update('loadbalancer-pool', m['pool_id'],
             'loadbalancer-health-monitor', uuid, None, 'ADD')
