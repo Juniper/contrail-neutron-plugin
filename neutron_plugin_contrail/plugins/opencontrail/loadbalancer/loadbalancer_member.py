@@ -9,7 +9,7 @@ try:
 except ImportError:
     from neutron_lbaas.extensions import loadbalancer
 
-from neutron.openstack.common import uuidutils
+from oslo_utils import uuidutils
 from neutron.common import exceptions as n_exc
 
 from vnc_api.vnc_api import IdPermsType, NoIdError
