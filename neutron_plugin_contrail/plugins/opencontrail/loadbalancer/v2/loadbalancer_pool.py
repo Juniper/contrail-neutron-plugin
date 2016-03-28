@@ -15,7 +15,7 @@ except ImportError:
     from oslo_utils import uuidutils
 from vnc_api.vnc_api import *
 
-from .. resource_manager import ResourceManager
+from .. resource_manager import ResourceManager, EntityInUse
 from .. resource_manager import LoadbalancerMethodInvalid
 
 import uuid
@@ -103,10 +103,10 @@ class LoadbalancerPoolManager(ResourceManager):
         return self._api.loadbalancer_pool_delete(id=id)
 
     def get_exception_notfound(self, id=None):
-        return loadbalancer.PoolNotFound(pool_id=id)
+        return loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
     def get_exception_inuse(self, id=None):
-        return loadbalancer.PoolInUse(pool_id=id)
+        return EntityInUse(name=self.neutron_name, id=id)
 
     @property
     def neutron_name(self):
@@ -136,7 +136,8 @@ class LoadbalancerPoolManager(ResourceManager):
             try:
                 ll = self._api.loadbalancer_listener_read(id=p['listener_id'])
             except NoIdError:
-                raise loadbalancer.EntityNotFound(id=p['listener_id'])
+                raise loadbalancerv2.EntityNotFound(name='Listener',
+                                                    id=p['listener_id'])
             project_id = ll.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
                 raise n_exc.NotAuthorized()
@@ -159,6 +160,11 @@ class LoadbalancerPoolManager(ResourceManager):
 
 
         if ll:
+            pool_exists = ll.get_loadbalancer_pool_back_refs()
+            if pool_exists is not None:
+                raise loadbalancerv2.OnePoolPerListener(
+                                     listener_id=p['listener_id'],
+                                     pool_id=pool_exists[0]['uuid'])
             pool.set_loadbalancer_listener(ll)
 
         self._api.loadbalancer_pool_create(pool)
