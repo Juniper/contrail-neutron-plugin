@@ -20,7 +20,7 @@ from vnc_api.vnc_api import InstanceIp, VirtualMachineInterface
 from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import LoadbalancerListener, LoadbalancerListenerType
 
-from .. resource_manager import ResourceManager
+from .. resource_manager import ResourceManager, EntityInUse
 from .. import utils
 import uuid
 
@@ -79,10 +79,10 @@ class ListenerManager(ResourceManager):
         return self._api.loadbalancer_listener_delete(id=id)
 
     def get_exception_notfound(self, id=None):
-        return listener.EntityNotFound(id=id)
+        return loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
     def get_exception_inuse(self, id=None):
-        pass
+        return EntityInUse(name=self.neutron_name, id=id)
 
     @property
     def neutron_name(self):
@@ -101,7 +101,8 @@ class ListenerManager(ResourceManager):
             try:
                 lb = self._api.loadbalancer_read(id=l['loadbalancer_id'])
             except NoIdError:
-                raise loadbalancerv2.EntityNotFound(id=v['loadbalancer_id'])
+                raise loadbalancerv2.EntityNotFound(name='Loadbalancer',
+                                                    id=v['loadbalancer_id'])
             project_id = lb.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
                 raise n_exc.NotAuthorized()
@@ -129,7 +130,7 @@ class ListenerManager(ResourceManager):
         try:
             ll = self._api.loadbalancer_listener_read(id=id)
         except NoIdError:
-            listener.EntityNotFound(id=id)
+            loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
         super(ListenerManager, self).delete(context, id)
 

@@ -19,6 +19,8 @@ import uuid
 class LoadbalancerMethodInvalid(n_exc.BadRequest):
     message = "Method %(lb_method)s not supported for pool %(pool_id)s"
 
+class EntityInUse(nexception.InUse):
+    message = "%(name)s %(id)s is in use"
 
 @six.add_metaclass(ABCMeta)
 class ResourceManager(object):
