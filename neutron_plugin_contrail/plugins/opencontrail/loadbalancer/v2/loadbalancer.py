@@ -22,7 +22,7 @@ from vnc_api.vnc_api import InstanceIp, VirtualMachineInterface
 from vnc_api.vnc_api import SecurityGroup
 from vnc_api.vnc_api import Loadbalancer, LoadbalancerType
 
-from .. resource_manager import ResourceManager
+from .. resource_manager import ResourceManager, EntityInUse
 from .. import utils
 import uuid
 
@@ -111,10 +111,10 @@ class LoadbalancerManager(ResourceManager):
         return self._api.loadbalancer_delete(id=id)
 
     def get_exception_notfound(self, id=None):
-        return loadbalancer.VipNotFound(vip_id=id)
+        return loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
     def get_exception_inuse(self, id=None):
-        pass
+        return EntityInUse(name=self.neutron_name, id=id)
 
     @property
     def neutron_name(self):
@@ -211,7 +211,7 @@ class LoadbalancerManager(ResourceManager):
         try:
             lb = self._api.loadbalancer_read(id=id)
         except NoIdError:
-            loadbalancer.EntityNotFound(id=id)
+            loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
         super(LoadbalancerManager, self).delete(context, id)
         self._delete_virtual_interface(

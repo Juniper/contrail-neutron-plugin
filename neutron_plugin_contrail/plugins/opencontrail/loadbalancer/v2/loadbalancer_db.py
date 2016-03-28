@@ -146,10 +146,10 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         return self._pool_manager.delete(context, id)
 
     def get_pool_members(self, context, pool_id, filters=None, fields=None):
-        return self._member_manager.get_collection(context, filters, fields)
+        return self._member_manager.get_collection(context, pool_id, filters, fields)
 
     def get_pool_member(self, context, id, pool_id, fields=None):
-        return self._member_manager.get_resource(context, id, fields)
+        return self._member_manager.get_resource(context, id, pool_id, fields)
 
     def create_pool_member(self, context, pool_id, member):
         try:
