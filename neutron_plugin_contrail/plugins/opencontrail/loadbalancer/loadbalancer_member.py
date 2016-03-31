@@ -54,29 +54,6 @@ class LoadbalancerMemberManager(ResourceManager):
         pool_uuid = member.parent_uuid
         return pool_uuid
 
-    def _get_object_status(self, member):
-        endpoint = "http://%s:%s" % (cfg.CONF.COLLECTOR.analytics_api_ip,
-                                     cfg.CONF.COLLECTOR.analytics_api_port)
-        analytics = analytics_client.Client(endpoint)
-        path = "/analytics/uves/service-instance/"
-        fqdn_uuid = "%s?cfilt=UveLoadbalancer" % member.parent_uuid
-        try:
-            lb_stats = analytics.request(path, fqdn_uuid)
-            member_stats = lb_stats['UveLoadbalancer']['member_stats']
-        except Exception:
-            member_stats = []
-
-        # In case of missing analytics, return ACTIVE
-        if not member_stats:
-            return constants.ACTIVE
-
-        for member_stat in member_stats:
-            if member_stat['uuid'] == member.uuid and \
-                member_stat['status'] == 'ACTIVE':
-                    return member_stat['status']
-
-        return constants.DOWN
-
     def make_dict(self, member, fields=None):
         res = {'id': member.uuid,
                'pool_id': member.parent_uuid,
