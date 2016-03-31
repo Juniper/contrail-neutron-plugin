@@ -14,6 +14,14 @@ try:
 except ImportError:
     from oslo_utils import uuidutils
 
+try:
+    from neutron.common.config import cfg
+except ImportError:
+    try:
+        from oslo.config import cfg
+    except ImportError:
+        from oslo_config import cfg
+
 from neutron.common import exceptions as n_exc
 
 from vnc_api.vnc_api import IdPermsType, NoIdError
