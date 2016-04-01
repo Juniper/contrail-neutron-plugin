@@ -38,6 +38,12 @@ class LoadbalancerPoolManager(ResourceManager):
         for key, mapping in self._loadbalancer_pool_type_mapping.iteritems():
             if mapping in pool:
                 setattr(props, key, pool[mapping])
+        sp = pool['session_persistence']
+        if sp is not None:
+            if 'type' in sp:
+                props.session_persistence = sp['type']
+            if 'cookie_name' in sp:
+                props.persistence_cookie_name = sp['cookie_name']
         return props
 
     def _get_listeners(self, pool):
@@ -56,6 +62,7 @@ class LoadbalancerPoolManager(ResourceManager):
             'description': self._get_object_description(pool),
             'status': self._get_object_status(pool),
             'listeners': self._get_listeners(pool),
+            'session_persistence': None,
         }
 
         props = pool.get_loadbalancer_pool_properties()
@@ -63,6 +70,12 @@ class LoadbalancerPoolManager(ResourceManager):
             value = getattr(props, key, None)
             if value is not None:
                 res[mapping] = value
+
+        if props.session_persistence:
+            sp = {'type': props.session_persistence}
+            if props.session_persistence == 'APP_COOKIE':
+                sp['cookie_name'] = props.persistence_cookie_name
+            res['session_persistence'] = sp
 
         res['provider'] = pool.get_loadbalancer_pool_provider()
 
@@ -164,10 +177,25 @@ class LoadbalancerPoolManager(ResourceManager):
         self._api.loadbalancer_pool_create(pool)
         return self.make_dict(pool)
 
+    def _update_pool_properties(self, props, pool):
+        change = self.update_properties_subr(props, pool)
+        if 'session_persistence' in pool:
+            sp = pool['session_persistence']
+            new_type = sp.get('type', None)
+            if props.session_persistence != new_type:
+                props.session_persistence = new_type
+                change = True
+            new_cookie_name = sp.get('cookie_name', None)
+            if props.persistence_cookie_name != new_cookie_name and \
+                    props.session_persistence == 'APP_COOKIE':
+                props.persistence_cookie_name = new_cookie_name
+                change = True
+        return change
+
     def update_properties(self, pool_db, id, p):
         props = pool_db.get_loadbalancer_pool_properties()
         change = False
-        if self.update_properties_subr(props, p):
+        if self._update_pool_properties(props, p):
             pool_db.set_loadbalancer_pool_properties(props)
             change = True
 
