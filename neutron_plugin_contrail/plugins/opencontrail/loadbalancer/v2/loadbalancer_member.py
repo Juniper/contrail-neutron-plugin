@@ -85,26 +85,27 @@ class LoadbalancerMemberManager(ResourceManager):
         response = {'loadbalancer-members': member_list}
         return response
 
-    def get_collection(self, context, filters=None, fields=None):
+    def get_resource(self, context, id, pool_id, fields=None):
+        res = super(LoadbalancerMemberManager, self).get_resource(context, id)
+        if res and res['pool_id'] != pool_id:
+            raise loadbalancerv2.MemberNotFoundForPool(member_id=res['id'],
+                                                       pool_id=res['pool_id'])
+        return self._fields(res, fields)
+
+    def get_collection(self, context, pool_id, filters=None, fields=None):
         """ Optimize the query for members in a pool.
         """
-        if 'pool_id' not in filters:
-            return super(LoadbalancerMemberManager, self).get_collection(
-                context, filters, fields)
-
         member_list = []
-        for pool in filters['pool_id']:
-            pool_members = self._api.loadbalancer_members_list(
-                parent_id=pool)
-            if 'loadbalancer-members' in pool_members:
-                member_list.extend(pool_members['loadbalancer-members'])
+        pool_members = self._api.loadbalancer_members_list(
+                parent_id=pool_id)
+        if 'loadbalancer-members' in pool_members:
+            member_list.extend(pool_members['loadbalancer-members'])
 
         response = []
         for m in member_list:
             res = self._get_resource_dict(m['uuid'], filters, fields)
             if res is not None and self._is_authorized(context, res):
                 response.append(res)
-
         return response
 
     def resource_update(self, obj):
@@ -114,7 +115,7 @@ class LoadbalancerMemberManager(ResourceManager):
         return self._api.loadbalancer_member_delete(id=id)
 
     def get_exception_notfound(self, id=None):
-        return loadbalancer.MemberNotFound(member_id=id)
+        return loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
     def get_exception_inuse(self, id=None):
         pass
@@ -135,7 +136,7 @@ class LoadbalancerMemberManager(ResourceManager):
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
         except NoIdError:
-            raise loadbalancer.PoolNotFound(pool_id=pool_id)
+            raise loadbalancerv2.EntityNotFound(name='Pool', id=pool_id)
 
         tenant_id = self._get_tenant_id_for_create(context, m)
         if str(uuid.UUID(tenant_id)) != pool.parent_uuid:
@@ -164,15 +165,25 @@ class LoadbalancerMemberManager(ResourceManager):
         try:
             member = self._api.loadbalancer_member_read(id=id)
         except NoIdError:
-            loadbalancer.EntityNotFound(id=id)
+            raise loadbalancerv2.EntityNotFound(name=self.neutron_name, id=id)
 
+        try:
+            pool = self._api.loadbalancer_pool_read(id=pool_id)
+        except NoIdError:
+            raise loadbalancerv2.EntityNotFound(name='Pool',
+                                                id=pool_id)
+        if id not in [member['uuid'] for member in
+           pool.get_loadbalancer_members() or []]:
+            raise loadbalancerv2.MemberNotFoundForPool(member_id=id,
+                                                       pool_id=pool_id)
         super(LoadbalancerMemberManager, self).delete(context, id)
 
     def update_object(self, member_db, id, pool_id, m):
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
         except NoIdError:
-            raise loadbalancer.PoolNotFound(pool_id=pool_id)
+            raise loadbalancerv2.EntityNotFound(name='Pool',
+                                                id=pool_id)
 
         db_props = member_db.get_loadbalancer_member_properties()
         members = pool.get_loadbalancer_members()
@@ -182,7 +193,7 @@ class LoadbalancerMemberManager(ResourceManager):
             props = member_obj.get_loadbalancer_member_properties()
             if ((props.get_address() == db_props.get_address()) and
                 (props.get_protocol_port() == db_props.get_protocol_port())):
-                raise loadbalancer.MemberExists(
+                raise loadbalancerv2.MemberExists(
                     address=props.get_address(),
                     port=props.get_protocol_port(),
                     pool=pool_id)
