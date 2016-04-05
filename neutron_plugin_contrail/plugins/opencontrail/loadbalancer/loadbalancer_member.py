@@ -23,6 +23,9 @@ except ImportError:
         from oslo_config import cfg
 
 from neutron.common import exceptions as n_exc
+from neutron.plugins.common import constants
+
+from cfgm_common import analytics_client
 
 from vnc_api.vnc_api import IdPermsType, NoIdError
 from vnc_api.vnc_api import LoadbalancerMember, LoadbalancerMemberType
@@ -71,9 +74,9 @@ class LoadbalancerMemberManager(ResourceManager):
             return constants.ACTIVE
 
         for member_stat in member_stats:
-            if member_stat['uuid'] == member.uuid and \
-                member_stat['status'] == 'ACTIVE':
-                    return member_stat['status']
+            if (member_stat['uuid'] == member.uuid and
+                    member_stat['status'] == 'ACTIVE'):
+                return member_stat['status']
 
         return constants.DOWN
 
