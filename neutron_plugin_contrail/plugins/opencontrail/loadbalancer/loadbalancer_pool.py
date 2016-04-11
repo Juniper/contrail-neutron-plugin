@@ -143,13 +143,8 @@ class LoadbalancerPoolManager(ResourceManager):
         Create a loadbalancer_pool object.
         """
         p = pool['pool']
-        try:
-            sas_fq_name = ["default-global-system-config"]
-            sas_fq_name.append(p['provider'])
-            sas_obj = self._api.service_appliance_set_read(fq_name=sas_fq_name)
-        except NoIdError:
-            raise pconf.ServiceProviderNotFound(
-                provider=p['provider'], service_type=constants.LOADBALANCER)
+
+        sas_obj = self.check_provider_exists(p['provider'])
 
         tenant_id = self._get_tenant_id_for_create(context, p)
         project = self._project_read(project_id=tenant_id)
@@ -176,7 +171,7 @@ class LoadbalancerPoolManager(ResourceManager):
 
         pool.set_service_appliance_set(sas_obj)
 
-         # Custom attributes
+        # Custom attributes
         if p['custom_attributes'] != attr.ATTR_NOT_SPECIFIED:
             custom_attributes = KeyValuePairs()
             self.create_update_custom_attributes(p['custom_attributes'], custom_attributes)
