@@ -121,14 +121,14 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
                                                hm_id=exist_hm_refs[0]['uuid'])
         self._api.loadbalancer_healthmonitor_create(monitor_db)
         self._api.ref_update('loadbalancer-pool', m['pool_id'],
-            'loadbalancer-health-monitor', uuid, None, 'ADD')
+            'loadbalancer-healthmonitor', uuid, None, 'ADD')
         return self.make_dict(monitor_db)
 
     def delete(self, context, id):
         hm_obj = self._api.loadbalancer_healthmonitor_read(id=id)
         for pool_back_refs in hm_obj.get_loadbalancer_pool_back_refs() or []:
             self._api.ref_update('loadbalancer-pool', pool_back_refs['uuid'],
-                'loadbalancer-health-monitor', id, None, 'DELETE')
+                'loadbalancer-healthmonitor', id, None, 'DELETE')
         super(LoadbalancerHealthmonitorManager, self).delete(context, id)
 
     def update_properties(self, monitor_db, id, m):
