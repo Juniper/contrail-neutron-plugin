@@ -30,6 +30,9 @@ class ListenerManager(ResourceManager):
         'protocol': 'protocol',
         'protocol_port': 'protocol_port',
         'admin_state': 'admin_state_up',
+        'connection_limit': 'connection_limit',
+        'default_tls_container': 'default_tls_container_ref',
+        'sni_containers': 'sni_container_refs',
     }
 
     @property
