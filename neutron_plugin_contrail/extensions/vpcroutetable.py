@@ -28,7 +28,11 @@ from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
 from neutron.common import exceptions as qexception
 from neutron import manager
-from neutron import quota
+
+try:
+    from neutron import quota
+except ImportError:
+    from neutron.quota import resource_registry as quota
 
 try:
     from neutron.openstack.common import uuidutils
