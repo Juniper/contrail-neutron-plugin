@@ -158,7 +158,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
             raise n_exc.BadRequest(resource='member', msg=str(ex))
 
     def update_pool_member(self, context, id, pool_id, member):
-        return self._member_manager.update(context, id, pool_id, member)
+        return self._member_manager.update(context, id, member)
 
     def delete_pool_member(self, context, id, pool_id):
         return self._member_manager.delete(context, id, pool_id)
