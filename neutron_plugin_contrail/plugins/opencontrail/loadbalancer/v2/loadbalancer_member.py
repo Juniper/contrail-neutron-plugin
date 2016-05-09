@@ -179,18 +179,19 @@ class LoadbalancerMemberManager(ResourceManager):
                                                        pool_id=pool_id)
         super(LoadbalancerMemberManager, self).delete(context, id)
 
-    def update_object(self, member_db, id, pool_id, m):
+    def update_object(self, member_db, id, m):
+        pool_id = member_db.parent_uuid
         try:
             pool = self._api.loadbalancer_pool_read(id=pool_id)
         except NoIdError:
             raise loadbalancerv2.EntityNotFound(name='Pool',
                                                 id=pool_id)
-
         db_props = member_db.get_loadbalancer_member_properties()
         members = pool.get_loadbalancer_members()
         for member in members or []:
-            member_obj = self._api.loadbalancer_member_read(
-                id=member['uuid'])
+            if id == member['uuid']:
+                continue
+            member_obj = self._api.loadbalancer_member_read(id=member['uuid'])
             props = member_obj.get_loadbalancer_member_properties()
             if ((props.get_address() == db_props.get_address()) and
                 (props.get_protocol_port() == db_props.get_protocol_port())):
@@ -198,5 +199,4 @@ class LoadbalancerMemberManager(ResourceManager):
                     address=props.get_address(),
                     port=props.get_protocol_port(),
                     pool=pool_id)
-
         return True
