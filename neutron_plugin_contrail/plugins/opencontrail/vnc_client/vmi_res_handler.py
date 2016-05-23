@@ -128,8 +128,12 @@ class VMInterfaceMixin(object):
                     continue
 
             ip_addr = ip_obj.get_instance_ip_address()
-            subnet_id = self._ip_address_to_subnet_id(ip_addr, vn_obj,
-                                                      port_req_memo)
+            subnet_id = getattr(ip_obj, 'subnet_uuid', None)
+            if not subnet_id:
+                subnet_id = self._ip_address_to_subnet_id(ip_addr, vn_obj,
+                                                          port_req_memo)
+                ip_obj.set_subnet_uuid(subnet_id)
+                self._vnc_lib.instance_ip_update(ip_obj)
             ip_q_dict = {'ip_address': ip_addr,
                          'subnet_id': subnet_id}
 
