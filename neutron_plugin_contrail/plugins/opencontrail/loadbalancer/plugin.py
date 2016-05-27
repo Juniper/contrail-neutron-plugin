@@ -23,16 +23,16 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
         self._get_default_provider()
 
     def _get_default_provider(self):
-        service_type_manager = sdb.ServiceTypeManager.get_instance()
+        self.default_provider = "opencontrail"
         try:
+            service_type_manager = sdb.ServiceTypeManager.get_instance()
             provider = (service_type_manager.
                         get_default_service_provider(None,
                                                      constants.LOADBALANCER))
-        except pconf.DefaultServiceProviderNotFound:
-            self.default_provider = "opencontrail"
-        else:
             self._pool_manager.check_provider_exists(provider['name'])
             self.default_provider = provider['name']
+        except:
+            pass
 
     def get_plugin_description(self):
         return "OpenContrail LoadBalancer Service Plugin"
