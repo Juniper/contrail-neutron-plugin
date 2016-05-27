@@ -28,7 +28,10 @@ from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
 from neutron.common import exceptions as qexception
 from neutron import manager
-from neutron import quota
+try:
+    from neutron.quota import resource_registry as quota
+except ImportError:
+    from neutron.quota import QUOTAS as quota
 
 try:
     from neutron.openstack.common import uuidutils
@@ -127,7 +130,7 @@ class Vpcroutetable(extensions.ExtensionDescriptor):
         for resource_name in ['route_table', 'nat_instance']:
             collection_name = resource_name.replace('_', '-') + "s"
             params = RESOURCE_ATTRIBUTE_MAP.get(resource_name + "s", dict())
-            quota.QUOTAS.register_resource_by_name(resource_name)
+            quota.register_resource_by_name(resource_name)
             controller = base.create_resource(collection_name,
                                               resource_name,
                                               plugin, params, allow_bulk=True,
