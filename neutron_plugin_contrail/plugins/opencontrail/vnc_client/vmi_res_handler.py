@@ -773,6 +773,8 @@ class VMInterfaceUpdateHandler(res_handler.ResourceUpdateHandler,
     def resource_update(self, context, port_id, port_q):
         contrail_extensions_enabled = self._kwargs.get(
             'contrail_extensions_enabled', False)
+        apply_subnet_host_routes = self._kwargs.get(
+            'apply_subnet_host_routes', False)
         port_q['id'] = port_id
         try:
             vmi_obj = self._resource_get(id=port_q.get('id'),
@@ -799,6 +801,10 @@ class VMInterfaceUpdateHandler(res_handler.ResourceUpdateHandler,
                                      fields=['instance_ip_back_refs'])
         ret_port_q = self._vmi_to_neutron_port(
             vmi_obj, extensions_enabled=contrail_extensions_enabled)
+
+        if apply_subnet_host_routes:
+            aap_handler = AAPITRHandler(self._vnc_lib)
+            aap_handler.port_aap_link_irt(vmi_obj)
 
         return ret_port_q
 
@@ -854,10 +860,12 @@ class VMInterfaceDeleteHandler(res_handler.ResourceDeleteHandler,
 
         # delete any interface route table associatd with the port
         for rt_ref in vmi_obj.get_interface_route_table_refs() or []:
-            try:
-                self._vnc_lib.interface_route_table_delete(id=rt_ref['uuid'])
-            except vnc_exc.NoIdError:
-                pass
+            # last itr uuid is the vmi uuid
+            # delete only if the itr correspond to the current port
+            if rt_ref['to'][-1].split('_')[-1] == port_id:
+                subnet_host_handler = subnet_handler.SubnetHostRoutesHandler(
+                    self._vnc_lib)
+                subnet_host_handler._remove_iface_route_table(vmi_obj, rt_ref)
 
         # delete instance if this was the last port
         try:
@@ -1063,3 +1071,97 @@ class VMInterfaceHandler(VMInterfaceGetHandler,
                          VMInterfaceDeleteHandler,
                          VMInterfaceUpdateHandler):
     pass
+
+
+class AAPITRHandler(res_handler.ContrailResourceHandler,
+                    VMInterfaceMixin):
+
+    def _tenant_vmis(self, project_uuid):
+        return [self._vnc_lib.virtual_machine_interface_read(id=vmi['uuid'],
+                                                             fields=['instance_ip_back_refs'])
+                for vmi in self._vnc_lib.virtual_machine_interfaces_list(
+                    parent_id=project_uuid)['virtual-machine-interfaces']]
+
+    def _vmis_macs(self, vmis):
+        return [vmi.virtual_machine_interface_mac_addresses.mac_address
+                for vmi in vmis]
+
+    def _vmis_ips(self, vmis):
+        return [self._get_vmi_ip_list(vmi) for vmi in vmis]
+
+    def _tenant_vmis_ips_macs(self, project_uuid):
+        vmis = self._tenant_vmis(project_uuid)
+        return (vmis, self._vmis_ips(vmis), self._vmis_macs(vmis))
+
+    def _tenant_vmis_aap_ips_macs(self, project_uuid):
+        vmis = self._tenant_vmis(project_uuid)
+        ips = []
+        macs = []
+        for vmi in vmis:
+            aaps = vmi.virtual_machine_interface_allowed_address_pairs
+            if not aaps:
+                ips.append([])
+                macs.append([])
+                continue
+            ips.append([aap.ip.ip_prefix for aap in aaps.allowed_address_pair])
+            macs.append([aap.mac for aap in aaps.allowed_address_pair])
+        return (vmis, ips, macs)
+
+    def _find_vmis_for_aap(self, vmi_obj, aaps):
+        """For a given AllowedAddressPair object find tenant VMIs that
+        matches AllowedAddressPair info.
+        """
+        vmis, vmis_ips, vmis_macs = self._tenant_vmis_ips_macs(vmi_obj.parent_uuid)
+        for aap in aaps:
+            for vmi, vmi_ips, vmi_macs in zip(vmis, vmis_ips, vmis_macs):
+                if aap.get_mac() in vmi_macs and aap.get_ip().ip_prefix in vmi_ips:
+                    yield vmi
+
+    def port_aap_link_irt(self, vmi_obj):
+        """On port update with allowed_address_pairs find the target VMI and
+        link its interface_route_table if any.
+        """
+        vmi_obj = self._vnc_lib.virtual_machine_interface_read(id=vmi_obj.uuid)
+        # when AAP is set on vmi, try to find the irt of the aap if any
+        aaps = vmi_obj.virtual_machine_interface_allowed_address_pairs
+        # aaps have been cleared
+        if not aaps:
+            # unlink all IRT that don't belong to the VMI ifself
+            for rt_ref in vmi_obj.get_interface_route_table_refs() or []:
+                if rt_ref['to'][-1].split('_')[-1] != vmi_obj.uuid:
+                    self._link_irt(vmi_obj.uuid, rt_ref['uuid'], rt_ref['to'], 'DELETE')
+            return
+        # get vmis for all aap and link interface-route-table if aap vmi has one
+        for vmi in self._find_vmis_for_aap(vmi_obj, aaps.allowed_address_pair):
+            for rt_ref in vmi.get_interface_route_table_refs() or []:
+                # make sure to link to the IRT that belong to the app_vmi
+                if rt_ref['to'][-1].split('_')[-1] == vmi.uuid:
+                    self._link_irt(vmi_obj.uuid, rt_ref['uuid'], rt_ref['to'])
+
+    def _find_vmis_has_aap(self, vmi_obj, ips, macs):
+        """Finds VMIs in the tenant that have an AAP on ips/macs.
+        """
+        vmis, vmis_ips, vmis_macs = self._tenant_vmis_aap_ips_macs(vmi_obj.parent_uuid)
+        for vmi, vmi_ips, vmi_macs in zip(vmis, vmis_ips, vmis_macs):
+            if set(ips) <= set(vmi_ips) and set(macs) <= set(vmi_macs):
+                yield vmi
+
+    def port_irt_link_aap(self, vmi_obj):
+        """On port creation check interface_route_table of the port.
+        If any, find all VMIs that have AAP on this port and link the
+        interface_route_table to them.
+        """
+        # port created and ITR was added by SubnetHostRoutesHandler
+        vmi_obj = self._vnc_lib.virtual_machine_interface_read(id=vmi_obj.uuid,
+                                                               fields=['instance_ip_back_refs'])
+        ips = self._vmis_ips([vmi_obj])[0]
+        macs = self._vmis_macs([vmi_obj])[0]
+        # find VMIs that have this port IP/MAC in AAPs
+        for vmi in self._find_vmis_has_aap(vmi_obj, ips, macs):
+            for rt_ref in vmi_obj.interface_route_table_refs or []:
+                self._link_irt(vmi.uuid, rt_ref['uuid'], rt_ref['to'])
+
+    def _link_irt(self, vmi_uuid, itr_uuid, irt_fqname, action='ADD'):
+        self._vnc_lib.ref_update('virtual-machine-interface', vmi_uuid,
+                                 'interface-route-table', itr_uuid,
+                                 irt_fqname, action)
