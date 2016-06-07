@@ -19,6 +19,7 @@ import contrail_res_handler as res_handler
 from contrail_res_handler import ContrailResourceHandler
 import netaddr
 import vn_res_handler as vn_handler
+import vmi_res_handler as vmi_handler
 from vnc_api import vnc_api
 
 import logging
@@ -735,6 +736,9 @@ class SubnetHostRoutesHandler(res_handler.ContrailResourceHandler,
         vmi_obj.add_interface_route_table(intf_route_table_obj)
         self._vnc_lib.virtual_machine_interface_update(vmi_obj)
 
+        aap_handler = vmi_handler.AAPITRHandler(self._vnc_lib)
+        aap_handler.port_irt_link_aap(vmi_obj)
+
     def port_check_and_add_iface_route_table(self, fixed_ips, vn_obj,
                                              vmi_obj):
         ipam_refs = vn_obj.get_network_ipam_refs()
@@ -823,16 +827,20 @@ class SubnetHostRoutesHandler(res_handler.ContrailResourceHandler,
             for rt_ref in vmi_obj.get_interface_route_table_refs() or []:
                 if rt_ref['to'][2] != intf_rt_name:
                     continue
-                try:
-                    intf_route_table_obj = (
-                        self._vnc_lib.interface_route_table_read(
-                            id=rt_ref['uuid']))
-                    vmi_obj.del_interface_route_table(intf_route_table_obj)
-                    self._vnc_lib.virtual_machine_interface_update(vmi_obj)
-                    self._vnc_lib.interface_route_table_delete(
-                        id=rt_ref['uuid'])
-                except vnc_exc.NoIdError:
-                    pass
+                self._remove_iface_route_table(vmi_obj, rt_ref)
+
+    def _remove_iface_route_table(self, vmi_obj, rt_ref):
+        intf_route_table_obj = (
+            self._vnc_lib.interface_route_table_read(
+                id=rt_ref['uuid'], fields=['virtual_machine_interface_back_refs']))
+        for vmi_ref in intf_route_table_obj.get_virtual_machine_interface_back_refs() or []:
+            vmi_ref_obj = self._vnc_lib.virtual_machine_interface_read(id=vmi_ref['uuid'])
+            vmi_ref_obj.del_interface_route_table(intf_route_table_obj)
+            self._vnc_lib.virtual_machine_interface_update(vmi_ref_obj)
+        try:
+            self._vnc_lib.interface_route_table_delete(id=rt_ref['uuid'])
+        except vnc_exc.NoIdError:
+            pass
 
 
 class SubnetHandler(SubnetGetHandler,
