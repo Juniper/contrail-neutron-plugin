@@ -17,6 +17,7 @@
 from oslo.config import cfg
 import requests
 
+import custom_exceptions as cexc
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
 from neutron.db import portbindings_base
@@ -224,6 +225,8 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
         if exc_name:
             if exc_name == 'BadRequest' and 'resource' not in info:
                 info['resource'] = obj_name
+            if hasattr(cexc, exc_name):
+                raise getattr(cexc, exc_name)(**info)
             if hasattr(exc, exc_name):
                 raise getattr(exc, exc_name)(**info)
             if hasattr(l3, exc_name):
