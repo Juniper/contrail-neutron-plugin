@@ -46,6 +46,11 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
+try:
+    from neutron_lib import exceptions as libexc
+except ImportError:
+    libexc = None
+
 from simplejson import JSONDecodeError
 from cfgm_common import utils as cfgmutils
 
@@ -322,6 +327,8 @@ class NeutronPluginContrailCoreV2(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 raise getattr(securitygroup, exc_name)(**info)
             if hasattr(allowedaddresspairs, exc_name):
                 raise getattr(allowedaddresspairs, exc_name)(**info)
+            if libexc and hasattr(libexc, exc_name):
+                raise getattr(libexc, exc_name)(**info)
         raise exc.NeutronException(**info)
 
     def _create_resource(self, res_type, context, res_data):
