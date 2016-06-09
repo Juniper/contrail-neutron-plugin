@@ -17,6 +17,7 @@
 
 import os.path as path
 
+import custom_exceptions as cexc
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
 from neutron.common.config import cfg
@@ -90,6 +91,8 @@ def _raise_contrail_error(info, obj_name):
                 info['resource'] = obj_name
             if exc_name == 'VirtualRouterNotFound':
                 raise HttpResponseError(info)
+            if hasattr(cexc, exc_name):
+                raise getattr(cexc, exc_name)(**info)
             if hasattr(exc, exc_name):
                 raise getattr(exc, exc_name)(**info)
             if hasattr(l3, exc_name):
