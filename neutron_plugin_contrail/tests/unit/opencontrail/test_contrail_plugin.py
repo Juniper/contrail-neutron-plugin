@@ -23,7 +23,6 @@ except ImportError:
     from oslo.config import cfg
 
 from neutron.api import extensions
-from neutron.extensions import portbindings
 from neutron.tests.unit import _test_extension_portbindings as test_bindings
 
 try:
@@ -50,6 +49,7 @@ from neutron_plugin_contrail.plugins.opencontrail.vnc_client import (
     contrail_res_handler)
 from neutron_plugin_contrail.tests.unit.opencontrail.vnc_mock import MockVnc
 from vnc_api import vnc_api
+from neutron_plugin_contrail.plugins.opencontrail import contrail_plugin_base as plugin_base
 
 CONTRAIL_PKG_PATH = (
     "neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_v3")
@@ -352,7 +352,7 @@ class TestContrailPortBinding(JVContrailPluginTestCase,
                               test_bindings.PortBindingsTestCase):
     # from neutron_plugin_contrail.plugins.opencontrail.contrail_plugin
     # import (NeutronPluginContrailCoreV2)
-    VIF_TYPE = portbindings.VIF_TYPE_VROUTER
+    VIF_TYPE = plugin_base.VIF_TYPE_VROUTER
     HAS_PORT_FILTER = True
 
     def setUp(self):
