@@ -46,6 +46,16 @@ class LoadbalancerPoolManager(ResourceManager):
                 props.persistence_cookie_name = sp['cookie_name']
         return props
 
+    def create_update_custom_attributes(self, custom_attributes, kvps):
+        kvp_array = []
+        for custom_attribute in custom_attributes or []:
+            for key,value in custom_attribute.iteritems():
+                kvp = KeyValuePair(key, value)
+                kvp_array.append(kvp)
+
+        kvps.set_key_value_pair(kvp_array)
+        return True
+
     def _get_listeners(self, pool):
         ll_list = []
         ll_back_refs = pool.get_loadbalancer_listener_refs()
@@ -70,6 +80,13 @@ class LoadbalancerPoolManager(ResourceManager):
             value = getattr(props, key, None)
             if value is not None:
                 res[mapping] = value
+
+        custom_attributes = []
+        kvps = pool.get_loadbalancer_pool_custom_attributes()
+        if kvps:
+            custom_attributes = [{kvp.get_key(): kvp.get_value()} \
+                                 for kvp in kvps.get_key_value_pair() or []]
+        res['custom_attributes'] = [custom_attributes]
 
         if props.session_persistence:
             sp = {'type': props.session_persistence}
@@ -180,6 +197,13 @@ class LoadbalancerPoolManager(ResourceManager):
                                      pool_id=pool_exists[0]['uuid'])
             pool.set_loadbalancer_listener(ll)
 
+        # Custom attributes
+        if p['custom_attributes'] != attr.ATTR_NOT_SPECIFIED:
+            custom_attributes = KeyValuePairs()
+            self.create_update_custom_attributes(p['custom_attributes'],
+                                                 custom_attributes)
+            pool.set_loadbalancer_pool_custom_attributes(custom_attributes)
+
         self._api.loadbalancer_pool_create(pool)
         return self.make_dict(pool)
 
@@ -204,5 +228,16 @@ class LoadbalancerPoolManager(ResourceManager):
         if self._update_pool_properties(props, p):
             pool_db.set_loadbalancer_pool_properties(props)
             change = True
+
+        if 'custom_attributes' in p:
+            custom_attributes = pool_db.get_loadbalancer_pool_custom_attributes()
+            # Make sure to initialize custom_attributes
+            if not custom_attributes:
+                custom_attributes = KeyValuePairs()
+
+            if self.create_update_custom_attributes(p['custom_attributes'],
+                                                    custom_attributes):
+                pool_db.set_loadbalancer_pool_custom_attributes(custom_attributes)
+                change = True
 
         return change
