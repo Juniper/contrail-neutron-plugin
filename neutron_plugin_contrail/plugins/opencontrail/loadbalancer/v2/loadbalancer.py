@@ -34,6 +34,8 @@ class LoadbalancerManager(ResourceManager):
         'vip_address': 'vip_address',
         'vip_subnet_id': 'vip_subnet_id',
         'admin_state': 'admin_state_up',
+        'provisioning_status': 'provisioning_status',
+        'operating_status': 'operating_status',
     }
 
     @property
@@ -90,6 +92,8 @@ class LoadbalancerManager(ResourceManager):
                'vip_subnet_id': props.vip_subnet_id,
                'vip_address': props.vip_address,
                'admin_state_up': props.admin_state,
+               'provisioning_status': props.provisioning_status,
+               'operating_status': props.operating_status,
                'listeners': self._get_listeners(lb)}
 
         return self._fields(res, fields)
@@ -200,6 +204,8 @@ class LoadbalancerManager(ResourceManager):
             obj_uuid, l['vip_subnet_id'], l.get('vip_address'))
         lb.set_virtual_machine_interface(vmi)
 
+        l['provisioning_status'] = 'ACTIVE'
+        l['operating_status'] = 'ONLINE'
         props = self.make_properties(l)
         props.set_vip_address(vip_address)
         lb.set_loadbalancer_properties(props)
