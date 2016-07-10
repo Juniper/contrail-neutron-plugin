@@ -306,6 +306,10 @@ class ResourceManager(object):
                 obj.set_id_perms(id_perms)
                 update = True
 
+            if 'name' in r and r['name'] != obj.get_display_name():
+                obj.set_display_name(r['name'])
+                update = True
+
             if self.update_properties(obj, id, r):
                 update = True
             if self.update_object(obj, id, r):
