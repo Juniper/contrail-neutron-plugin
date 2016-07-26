@@ -2,3 +2,5 @@ mock
 testtools
 fixtures
 webtest
+oslo.config
+python-neutron

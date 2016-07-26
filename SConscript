@@ -47,6 +47,13 @@ sources = [
     'requirements.txt',
     'setup.py',
     'test-requirements.txt',
+    'vif_plug_vrouter/i18n.py',
+    'vif_plug_vrouter/tests/test_plugin.py',
+    'vif_plug_vrouter/tests/__init__.py',
+    'vif_plug_vrouter/privsep.py',
+    'vif_plug_vrouter/exception.py',
+    'vif_plug_vrouter/__init__.py',
+    'vif_plug_vrouter/vrouter.py',
 ]
 
 packages = [
