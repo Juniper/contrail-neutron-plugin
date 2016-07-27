@@ -65,6 +65,11 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         except cfg.NoSuchOptError:
             api_server_url = "/"
 
+    @property
+    def api(self):
+        if getattr(self, '_api'):
+            return self._api
+
         # Retry till a api-server is up
         connected = False
         while not connected:
@@ -78,90 +83,127 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
             except requests.exceptions.RequestException:
                 time.sleep(3)
 
+    @property
+    def pool_manager(self):
+        if getattr(self, '_pool_manager'):
+            return self._pool_manager
+
         self._pool_manager = \
-            loadbalancer_pool.LoadbalancerPoolManager(self._api)
-        self._loadbalancer_manager = loadbalancer.LoadbalancerManager(self._api)
-        self._listener_manager = listener.ListenerManager(self._api)
+            loadbalancer_pool.LoadbalancerPoolManager(self.api)
+
+        return self._pool_manager
+
+    @property
+    def loadbalancer_manager(self):
+        if getattr(self, '_loadbalancer_manager'):
+            return self._loadbalancer_manager
+
+        self._loadbalancer_manager = loadbalancer.LoadbalancerManager(self.api)
+
+        return self._loadbalancer_manager
+
+    @property
+    def listener_manager(self):
+        if getattr(self, '_listener_manager'):
+            return self._listener_manager
+        self._listener_manager = listener.ListenerManager(self.api)
+
+        return self._listener_manager
+
+    @property
+    def member_manager(self):
+        if getattr(self, '_member_manager'):
+            return self._member_manager
+
         self._member_manager = \
-            loadbalancer_member.LoadbalancerMemberManager(self._api)
+            loadbalancer_member.LoadbalancerMemberManager(self.api)
+
+        return self._member_manager
+
+    @property
+    def monitor_manager(self):
+        if getattr(self, '_monitor_manager'):
+            return self._monitor_manager
         self._monitor_manager = \
             loadbalancer_healthmonitor.LoadbalancerHealthmonitorManager(
-                self._api)
+                self.api)
+
+        return self._monitor_manager
 
     def get_api_client(self):
-        return self._api
+        return self.api
 
     def get_loadbalancers(self, context, filters=None, fields=None):
-        return self._loadbalancer_manager.get_collection(context, filters, fields)
+        return self.loadbalancer_manager.get_collection(context, filters, fields)
 
     def get_loadbalancer(self, context, id, fields=None):
-        return self._loadbalancer_manager.get_resource(context, id, fields)
+        return self.loadbalancer_manager.get_resource(context, id, fields)
 
     def create_loadbalancer(self, context, loadbalancer):
         try:
-            return self._loadbalancer_manager.create(context, loadbalancer)
+            return self.loadbalancer_manager.create(context, loadbalancer)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='loadbalancer', msg=str(ex))
 
     def update_loadbalancer(self, context, id, loadbalancer):
-        return self._loadbalancer_manager.update(context, id, loadbalancer)
+        return self.loadbalancer_manager.update(context, id, loadbalancer)
 
     def delete_loadbalancer(self, context, id):
-        return self._loadbalancer_manager.delete(context, id)
+        return self.loadbalancer_manager.delete(context, id)
 
     def create_listener(self, context, listener):
         try:
-            return self._listener_manager.create(context, listener)
+            return self.listener_manager.create(context, listener)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='listener', msg=str(ex))
 
     def get_listener(self, context, id, fields=None):
-        return self._listener_manager.get_resource(context, id, fields)
+        return self.listener_manager.get_resource(context, id, fields)
 
     def get_listeners(self, context, filters=None, fields=None):
-        return self._listener_manager.get_collection(context, filters, fields)
+        return self.listener_manager.get_collection(context, filters, fields)
 
     def update_listener(self, context, id, listener):
-        return self._listener_manager.update(context, id, listener)
+        return self.listener_manager.update(context, id, listener)
 
     def delete_listener(self, context, id):
-        return self._listener_manager.delete(context, id)
+        return self.listener_manager.delete(context, id)
 
     def get_pools(self, context, filters=None, fields=None):
-        return self._pool_manager.get_collection(context, filters, fields)
+        return self.pool_manager.get_collection(context, filters, fields)
 
     def get_pool(self, context, id, fields=None):
-        return self._pool_manager.get_resource(context, id, fields)
+        return self.pool_manager.get_resource(context, id, fields)
 
     def create_pool(self, context, pool):
         try:
-            return self._pool_manager.create(context, pool)
+            return self.pool_manager.create(context, pool)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='pool', msg=str(ex))
 
     def update_pool(self, context, id, pool):
-        return self._pool_manager.update(context, id, pool)
+        return self.pool_manager.update(context, id, pool)
 
     def delete_pool(self, context, id):
-        return self._pool_manager.delete(context, id)
+        return self.pool_manager.delete(context, id)
 
     def get_pool_members(self, context, pool_id, filters=None, fields=None):
-        return self._member_manager.get_collection(context, pool_id, filters, fields)
+        return self.member_manager.get_collection(context, pool_id, filters, fields)
 
     def get_pool_member(self, context, id, pool_id, fields=None):
-        return self._member_manager.get_resource(context, id, pool_id, fields)
+        return self.member_manager.get_resource(context, id, pool_id, fields)
 
     def create_pool_member(self, context, pool_id, member):
         try:
-            return self._member_manager.create(context, pool_id, member)
+            return self.member_manager.create(context, pool_id, member)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='member', msg=str(ex))
 
     def update_pool_member(self, context, id, pool_id, member):
-        return self._member_manager.update(context, id, member)
+        return self.member_manager.update(context, id, member)
 
     def delete_pool_member(self, context, id, pool_id):
-        return self._member_manager.delete(context, id, pool_id)
+        return self.member_manager.delete(context, id, pool_id)
 
     def get_members(self, context, filters=None, fields=None):
         pass
@@ -170,22 +212,22 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         pass
 
     def get_healthmonitors(self, context, filters=None, fields=None):
-        return self._monitor_manager.get_collection(context, filters, fields)
+        return self.monitor_manager.get_collection(context, filters, fields)
 
     def get_healthmonitor(self, context, id, fields=None):
-        return self._monitor_manager.get_resource(context, id, fields)
+        return self.monitor_manager.get_resource(context, id, fields)
 
     def create_healthmonitor(self, context, healthmonitor):
         try:
-            return self._monitor_manager.create(context, healthmonitor)
+            return self.monitor_manager.create(context, healthmonitor)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='healthmonitor', msg=str(ex))
 
     def update_healthmonitor(self, context, id, healthmonitor):
-        return self._monitor_manager.update(context, id, healthmonitor)
+        return self.monitor_manager.update(context, id, healthmonitor)
 
     def delete_healthmonitor(self, context, id):
-        return self._monitor_manager.delete(context, id)
+        return self.monitor_manager.delete(context, id)
 
     def stats(self, context, loadbalancer_id):
         pass

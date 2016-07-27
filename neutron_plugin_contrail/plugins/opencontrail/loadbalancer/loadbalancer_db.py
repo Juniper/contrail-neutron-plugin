@@ -75,6 +75,12 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         except cfg.NoSuchOptError:
             api_server_url = "/"
 
+
+    @property
+    def api(self):
+        if getattr(self, '_api'):
+            return self._api
+
         # Retry till a api-server is up
         connected = False
         while not connected:
@@ -89,53 +95,84 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             except requests.exceptions.RequestException:
                 time.sleep(3)
 
+    @property
+    def pool_manager(self):
+        if getattr(self, '_pool_manager'):
+            return self._pool_manager
+
         self._pool_manager = \
-            loadbalancer_pool.LoadbalancerPoolManager(self._api)
-        self._vip_manager = virtual_ip.VirtualIpManager(self._api)
+            loadbalancer_pool.LoadbalancerPoolManager(self.api)
+
+        return self._pool_manager
+
+    @property
+    def vip_manager(self):
+        if getattr(self, '_vip_manager'):
+            return self._vip_manager
+
+        self._vip_manager = virtual_ip.VirtualIpManager(self.api)
+
+        return self._vip_manager
+
+    @property
+    def member_manager(self):
+        if getattr(self, '_member_manager'):
+            return self._member_manager
+
         self._member_manager = \
-            loadbalancer_member.LoadbalancerMemberManager(self._api)
+            loadbalancer_member.LoadbalancerMemberManager(self.api)
+
+        return self._member_manager
+
+    @property
+    def monitor_manager(self):
+        if getattr(self, '_monitor_manager'):
+            return self._monitor_manager
+
         self._monitor_manager = \
             loadbalancer_healthmonitor.LoadbalancerHealthmonitorManager(
-                self._api)
+                self.api)
+
+        return self._monitor_manager
 
     def get_api_client(self):
-        return self._api
+        return self.api
 
     def get_vips(self, context, filters=None, fields=None):
-        return self._vip_manager.get_collection(context, filters, fields)
+        return self.vip_manager.get_collection(context, filters, fields)
 
     def get_vip(self, context, id, fields=None):
-        return self._vip_manager.get_resource(context, id, fields)
+        return self.vip_manager.get_resource(context, id, fields)
 
     def create_vip(self, context, vip):
         try:
-            return self._vip_manager.create(context, vip)
+            return self.vip_manager.create(context, vip)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='vip', msg=str(ex))
 
     def update_vip(self, context, id, vip):
-        return self._vip_manager.update(context, id, vip)
+        return self.vip_manager.update(context, id, vip)
 
     def delete_vip(self, context, id):
-        return self._vip_manager.delete(context, id)
+        return self.vip_manager.delete(context, id)
 
     def get_pools(self, context, filters=None, fields=None):
-        return self._pool_manager.get_collection(context, filters, fields)
+        return self.pool_manager.get_collection(context, filters, fields)
 
     def get_pool(self, context, id, fields=None):
-        return self._pool_manager.get_resource(context, id, fields)
+        return self.pool_manager.get_resource(context, id, fields)
 
     def create_pool(self, context, pool):
         try:
-            return self._pool_manager.create(context, pool)
+            return self.pool_manager.create(context, pool)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='pool', msg=str(ex))
 
     def update_pool(self, context, id, pool):
-        return self._pool_manager.update(context, id, pool)
+        return self.pool_manager.update(context, id, pool)
 
     def delete_pool(self, context, id):
-        return self._pool_manager.delete(context, id)
+        return self.pool_manager.delete(context, id)
 
     def stats(self, context, pool_id):
         stats = {
@@ -168,12 +205,12 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         """
         m = health_monitor['health_monitor']
         try:
-            pool = self._api.loadbalancer_pool_read(id=pool_id)
+            pool = self.api.loadbalancer_pool_read(id=pool_id)
         except vnc_exc.NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=pool_id)
 
         try:
-            monitor = self._api.loadbalancer_healthmonitor_read(id=m['id'])
+            monitor = self.api.loadbalancer_healthmonitor_read(id=m['id'])
         except vnc_exc.NoIdError:
             raise loadbalancer.HealthMonitorNotFound(monitor_id=m['id'])
 
@@ -191,7 +228,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
                         monitor_id=m['id'], pool_id=pool_id)
 
         pool.add_loadbalancer_healthmonitor(monitor)
-        self._api.loadbalancer_pool_update(pool)
+        self.api.loadbalancer_pool_update(pool)
 
         res = {
             'id': monitor.uuid,
@@ -203,7 +240,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         """ Query a specific pool, health_monitor association.
         """
         try:
-            pool = self._api.loadbalancer_pool_read(id=pool_id)
+            pool = self.api.loadbalancer_pool_read(id=pool_id)
         except vnc_exc.NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=id)
         tenant_id = str(uuid.UUID(context.tenant_id))
@@ -223,14 +260,14 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         res = {
             'pool_id': pool_id,
             'monitor_id': id,
-            'status': self._pool_manager._get_object_status(pool),
+            'status': self.pool_manager._get_object_status(pool),
             'tenant_id': pool.parent_uuid.replace('-', '')
         }
-        return self._pool_manager._fields(res, fields)
+        return self.pool_manager._fields(res, fields)
 
     def delete_pool_health_monitor(self, context, id, pool_id):
         try:
-            pool = self._api.loadbalancer_pool_read(id=pool_id)
+            pool = self.api.loadbalancer_pool_read(id=pool_id)
         except vnc_exc.NoIdError:
             raise loadbalancer.PoolNotFound(pool_id=id)
         tenant_id = str(uuid.UUID(context.tenant_id))
@@ -238,7 +275,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             raise loadbalancer.PoolNotFound(pool_id=id)
 
         try:
-            monitor = self._api.loadbalancer_healthmonitor_read(id=id)
+            monitor = self.api.loadbalancer_healthmonitor_read(id=id)
         except vnc_exc.NoIdError:
             raise loadbalancer.HealthMonitorNotFound(monitor_id=id)
 
@@ -253,40 +290,40 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
                 monitor_id=id, pool_id=pool_id)
 
         pool.del_loadbalancer_healthmonitor(monitor)
-        self._api.loadbalancer_pool_update(pool)
+        self.api.loadbalancer_pool_update(pool)
 
     def get_members(self, context, filters=None, fields=None):
-        return self._member_manager.get_collection(context, filters, fields)
+        return self.member_manager.get_collection(context, filters, fields)
 
     def get_member(self, context, id, fields=None):
-        return self._member_manager.get_resource(context, id, fields)
+        return self.member_manager.get_resource(context, id, fields)
 
     def create_member(self, context, member):
         try:
-            return self._member_manager.create(context, member)
+            return self.member_manager.create(context, member)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='member', msg=str(ex))
 
     def update_member(self, context, id, member):
-        return self._member_manager.update(context, id, member)
+        return self.member_manager.update(context, id, member)
 
     def delete_member(self, context, id):
-        return self._member_manager.delete(context, id)
+        return self.member_manager.delete(context, id)
 
     def get_health_monitors(self, context, filters=None, fields=None):
-        return self._monitor_manager.get_collection(context, filters, fields)
+        return self.monitor_manager.get_collection(context, filters, fields)
 
     def get_health_monitor(self, context, id, fields=None):
-        return self._monitor_manager.get_resource(context, id, fields)
+        return self.monitor_manager.get_resource(context, id, fields)
 
     def create_health_monitor(self, context, health_monitor):
         try:
-            return self._monitor_manager.create(context, health_monitor)
+            return self.monitor_manager.create(context, health_monitor)
         except vnc_exc.PermissionDenied as ex:
             raise n_exc.BadRequest(resource='health_monitor', msg=str(ex))
 
     def update_health_monitor(self, context, id, health_monitor):
-        return self._monitor_manager.update(context, id, health_monitor)
+        return self.monitor_manager.update(context, id, health_monitor)
 
     def delete_health_monitor(self, context, id):
-        return self._monitor_manager.delete(context, id)
+        return self.monitor_manager.delete(context, id)
