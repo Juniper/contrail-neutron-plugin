@@ -29,7 +29,7 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
             provider = (service_type_manager.
                         get_default_service_provider(None,
                                                      constants.LOADBALANCER))
-            self._pool_manager.check_provider_exists(provider['name'])
+            self.pool_manager.check_provider_exists(provider['name'])
             self.default_provider = provider['name']
         except:
             pass
