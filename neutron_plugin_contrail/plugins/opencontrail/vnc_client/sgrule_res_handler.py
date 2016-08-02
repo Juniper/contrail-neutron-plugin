@@ -60,15 +60,16 @@ class SecurityGroupRuleMixin(object):
             if addr.get_security_group() != 'any' and (
                     addr.get_security_group() != 'local'):
                 remote_sg = addr.get_security_group()
-                try:
-                    if remote_sg != ':'.join(sg_obj.get_fq_name()):
-                        remote_sg_obj = sg_handler.SecurityGroupHandler(
-                            self._vnc_lib).get_sg_obj(fq_name_str=remote_sg)
-                    else:
-                        remote_sg_obj = sg_obj
-                    remote_sg_uuid = remote_sg_obj.uuid
-                except vnc_exc.NoIdError:
-                    pass
+                if remote_sg != ':'.join(sg_obj.get_fq_name()):
+                    try:
+                        remote_sg_uuid = self._vnc_lib.fq_name_to_id(
+                            'security-group', remote_sg.split(':'))
+                    except vnc_exc.NoIdError:
+                        # Filter rule out as the remote security group does not
+                        # exist anymore
+                        return sgr_q_dict
+                else:
+                    remote_sg_uuid = sg_obj.uuid
 
         sgr_q_dict['id'] = sg_rule.get_rule_uuid()
         sgr_q_dict['tenant_id'] = self._project_id_vnc_to_neutron(
@@ -131,9 +132,11 @@ class SecurityGroupRuleGetHandler(res_handler.ResourceGetHandler,
 
         sg_obj, sg_rule = self._security_group_rule_find(sgr_id, project_uuid)
         if sg_obj and sg_rule:
-            return self._security_group_rule_vnc_to_neutron(sg_obj.uuid,
-                                                            sg_rule, sg_obj,
-                                                            fields=fields)
+            sgr_info = self._security_group_rule_vnc_to_neutron(sg_obj.uuid,
+                                                                sg_rule, sg_obj,
+                                                                fields=fields)
+            if sgr_info:
+                return sgr_info
 
         self._raise_contrail_exception('SecurityGroupRuleNotFound', id=sgr_id,
                                        resource='security_group_rule')
@@ -152,11 +155,12 @@ class SecurityGroupRuleGetHandler(res_handler.ResourceGetHandler,
             if filter_ids and sg_rule.get_rule_uuid() not in filter_ids:
                 continue
 
-            sg_info = self._security_group_rule_vnc_to_neutron(sg_obj.uuid,
-                                                               sg_rule,
-                                                               sg_obj,
-                                                               fields=fields)
-            sg_rules.append(sg_info)
+            sgr_info = self._security_group_rule_vnc_to_neutron(sg_obj.uuid,
+                                                                sg_rule,
+                                                                sg_obj,
+                                                                fields=fields)
+            if sgr_info:
+                sg_rules.append(sgr_info)
 
         return sg_rules
     # end security_group_rules_read
