@@ -693,9 +693,6 @@ class VMInterfaceCreateHandler(res_handler.ResourceCreateHandler,
                 'BadRequest', resource='port',
                 msg="'tenant_id' and 'network_id' are mandatory")
 
-        apply_subnet_host_routes = self._kwargs.get(
-            'apply_subnet_host_routes', False)
-
         net_id = port_q['network_id']
         try:
             vn_obj = self._vnc_lib.virtual_network_read(id=net_id)
@@ -754,14 +751,6 @@ class VMInterfaceCreateHandler(res_handler.ResourceCreateHandler,
         vmi_obj = self._resource_get(id=port_id,
                                      fields=['instance_ip_back_refs'])
         ret_port_q = self._vmi_to_neutron_port(vmi_obj)
-
-        # create interface route table for the port if
-        # subnet has a host route for this port ip.
-        if apply_subnet_host_routes:
-            subnet_host_handler = subnet_handler.SubnetHostRoutesHandler(
-                self._vnc_lib)
-            subnet_host_handler.port_check_and_add_iface_route_table(
-                ret_port_q['fixed_ips'], vn_obj, vmi_obj)
 
         return ret_port_q
 

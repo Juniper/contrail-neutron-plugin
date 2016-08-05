@@ -54,6 +54,8 @@ VIF_TYPE_VROUTER = 'vrouter'
 
 LOG = logging.getLogger(__name__)
 
+NEUTRON_CONTRAIL_PREFIX = 'NEUTRON'
+
 vnc_opts = [
     cfg.StrOpt('api_server_ip', default='127.0.0.1',
                help='IP address to connect to VNC controller'),
