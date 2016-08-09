@@ -12,22 +12,57 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cfgm_common import exceptions as vnc_exc
-import contrail_res_handler as res_handler
 import netaddr
+
 from neutron.common import constants as n_constants
+
+from cfgm_common import exceptions as vnc_exc
+from vnc_api import vnc_api
+
+import contrail_res_handler as res_handler
 import subnet_res_handler as subnet_handler
 import vmi_res_handler as vmi_handler
-from vnc_api import vnc_api
 
 
 class LogicalRouterMixin(object):
 
-    @staticmethod
-    def _get_external_gateway_info(rtr_obj):
+    def _get_external_gateway_info(self, rtr_obj):
         vn_refs = rtr_obj.get_virtual_network_refs()
-        if vn_refs:
-            return vn_refs[0]['uuid']
+        if vn_refs is None:
+            return None
+
+        ext_gw_info = {
+            'enable_snat': True,
+            'network_id': vn_refs[0]['uuid']
+        }
+
+        si_refs = rtr_obj.get_service_instance_refs()
+        if si_refs is None:
+            return ext_gw_info
+
+        # avoid making a lot of calls to get SI right IP
+        try:
+            iip_obj = self._vnc_lib.instance_ip_read(fq_name=["__".join(si_refs[0]['to']) + '-right'])
+            ip_addr = iip_obj.get_instance_ip_address()
+        except vnc_exc.NoIdError:
+            return ext_gw_info
+
+        if ip_addr is None:
+            return ext_gw_info
+
+        vn_obj = self._vnc_lib.virtual_network_read(id=vn_refs[0]['uuid'])
+        ipam_subnets = vn_obj.get_network_ipam_refs()[0]['attr']
+        ext_gw_info['external_fixed_ips'] = []
+        for subnet_type in ipam_subnets.get_ipam_subnets():
+            if (netaddr.IPAddress(ip_addr) in
+                    netaddr.IPNetwork("%s/%s" % (subnet_type.subnet.ip_prefix,
+                                                 subnet_type.subnet.ip_prefix_len))):
+                ext_gw_info['external_fixed_ips'].append({
+                    'subnet_id': subnet_type.subnet_uuid,
+                    'ip_address': ip_addr
+                })
+
+        return ext_gw_info
 
     def _neutron_dict_to_rtr_obj(self, router_q, rtr_obj):
         rtr_name = router_q.get('name')
@@ -57,13 +92,7 @@ class LogicalRouterMixin(object):
         rtr_q_dict['shared'] = False
         rtr_q_dict['status'] = n_constants.NET_STATUS_ACTIVE
         rtr_q_dict['gw_port_id'] = None
-
-        ext_net_uuid = self._get_external_gateway_info(rtr_obj)
-        if not ext_net_uuid:
-            rtr_q_dict['external_gateway_info'] = None
-        else:
-            rtr_q_dict['external_gateway_info'] = {'network_id': ext_net_uuid,
-                                                   'enable_snat': True}
+        rtr_q_dict['external_gateway_info'] = self._get_external_gateway_info(rtr_obj)
 
         if contrail_extensions_enabled:
             rtr_q_dict.update({'contrail:fq_name': rtr_obj.get_fq_name()})
