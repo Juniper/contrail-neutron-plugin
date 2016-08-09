@@ -673,7 +673,6 @@ class VMInterfaceCreateHandler(res_handler.ResourceCreateHandler,
             vmi_name = vmi_uuid
         vmi_obj = vnc_api.VirtualMachineInterface(vmi_name, proj_obj,
                                                   id_perms=id_perms)
-        vmi_obj.uuid = vmi_uuid
         vmi_obj.set_virtual_network(vn_obj)
         vmi_obj.set_security_group_list([])
         if ('security_groups' not in port_q or
