@@ -58,10 +58,12 @@ class LoadbalancerPoolManager(ResourceManager):
 
     def _get_listeners(self, pool):
         ll_list = []
+        ll = {}
         ll_back_refs = pool.get_loadbalancer_listener_refs()
-        if ll_back_refs:
-            for ll_back_ref in ll_back_refs:
-                ll_list.append(ll_back_ref['uuid'])
+        if ll_back_refs is None:
+            return None
+        ll['id'] = ll_back_refs[0]['uuid']
+        ll_list.append(ll)
         return ll_list
 
     def make_dict(self, pool, fields=None):
@@ -74,6 +76,8 @@ class LoadbalancerPoolManager(ResourceManager):
             'listeners': self._get_listeners(pool),
             'session_persistence': None,
         }
+        if res['listeners']:
+            res['listener_id'] = res['listeners'][0]['id']
 
         props = pool.get_loadbalancer_pool_properties()
         for key, mapping in self._loadbalancer_pool_type_mapping.iteritems():
