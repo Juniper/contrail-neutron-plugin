@@ -65,7 +65,9 @@ class ListenerManager(ResourceManager):
                'protocol': props.protocol,
                'protocol_port': props.protocol_port,
                'admin_state_up': props.admin_state,
-               'loadbalancers': self._get_loadbalancers(ll)}
+               'loadbalancers' : self._get_loadbalancers(ll)}
+        if res['loadbalancers']:
+            res['loadbalancer_id'] = res['loadbalancers'][0]['id']
 
         return self._fields(res, fields)
 
