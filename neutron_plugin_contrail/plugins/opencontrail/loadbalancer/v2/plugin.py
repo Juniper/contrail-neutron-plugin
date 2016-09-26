@@ -16,11 +16,3 @@ class LoadBalancerPluginV2(LoadBalancerPluginDbV2):
 
     def get_plugin_description(self):
         return "OpenContrail LoadBalancerV2 Service Plugin"
-
-    def _pool_update_provider(self, context, pool):
-        if 'provider' not in pool or not pool['provider'] or pool['provider'].__class__ is object:
-            pool['provider'] = "opencontrail"
-
-    def create_pool(self, context, pool):
-        self._pool_update_provider(context, pool['pool'])
-        return super(LoadBalancerPluginV2, self).create_pool(context, pool)

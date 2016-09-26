@@ -6,8 +6,6 @@ import uuid
 
 from neutron_lbaas.extensions import loadbalancerv2
 from neutron.api.v2 import attributes as attr
-from neutron.plugins.common import constants
-from neutron.services import provider_configuration as pconf
 
 try:
     from neutron.openstack.common import uuidutils
@@ -98,8 +96,6 @@ class LoadbalancerPoolManager(ResourceManager):
                 sp['cookie_name'] = props.persistence_cookie_name
             res['session_persistence'] = sp
 
-        res['provider'] = pool.get_loadbalancer_pool_provider()
-
         # members
         res['members'] = []
         members = pool.get_loadbalancer_members()
@@ -155,14 +151,6 @@ class LoadbalancerPoolManager(ResourceManager):
         Create a loadbalancer_pool object.
         """
         p = pool['pool']
-        try:
-            sas_fq_name = ["default-global-system-config"]
-            sas_fq_name.append(p['provider'])
-            sas_obj = self._api.service_appliance_set_read(fq_name=sas_fq_name)
-        except NoIdError:
-            raise pconf.ServiceProviderNotFound(
-                provider=p['provider'], service_type=constants.LOADBALANCER)
-
         tenant_id = self._get_tenant_id_for_create(context, p)
         project = self._project_read(project_id=tenant_id)
 
@@ -184,14 +172,9 @@ class LoadbalancerPoolManager(ResourceManager):
         props = self.make_properties(p)
         id_perms = IdPermsType(enable=True,
                                description=p['description'])
-        pool = LoadbalancerPool(name, project,
+        pool = LoadbalancerPool(name, project, uuid=pool_uuid,
                                 loadbalancer_pool_properties=props,
-                                loadbalancer_pool_provider=p['provider'],
                                 id_perms=id_perms, display_name=p['name'])
-        pool.uuid = pool_uuid
-
-        pool.set_service_appliance_set(sas_obj)
-
 
         if ll:
             pool_exists = ll.get_loadbalancer_pool_back_refs()
