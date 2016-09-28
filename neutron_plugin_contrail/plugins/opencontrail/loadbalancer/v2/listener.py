@@ -119,8 +119,8 @@ class ListenerManager(ResourceManager):
             lb = None
 
         obj_uuid = uuidutils.generate_uuid()
-        name = self._get_resource_name('listener', project,
-                                       l['name'], obj_uuid)
+        name = self._get_resource_name('loadbalancer-listener',
+                                       project, l['name'], obj_uuid)
         id_perms = IdPermsType(enable=True, description=l['description'])
         ll = LoadbalancerListener(name, project, id_perms=id_perms,
                                   display_name=l['name'])
