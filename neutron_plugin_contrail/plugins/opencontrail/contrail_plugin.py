@@ -103,9 +103,15 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
             kscafile=cfg.CONF.keystone_authtoken.cafile
 
             self._use_ks_certs=False
-            if kscertfile and kskeyfile and kscafile \
-               and cfg.CONF.keystone_authtoken.auth_protocol == _DEFAULT_SECURE_SERVER_CONNECT:
-                   certs=[kscertfile, kskeyfile, kscafile]
+            if cfg.CONF.keystone_authtoken.auth_protocol == _DEFAULT_SECURE_SERVER_CONNECT:
+                certs = []
+                if kscafile:
+                    certs.append(kscafile)
+                if kscertfile:
+                    certs.append(kscertfile)
+                if kskeyfile:
+                    certs.append(kskeyfile)
+                if certs:
                    self._kscertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_KS_CERT_BUNDLE,certs)
                    self._use_ks_certs=True
 
@@ -122,8 +128,15 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
             self._apiserverconnect=_DEFAULT_SERVER_CONNECT
 
         self._use_api_certs=False
-        if apicertfile and apikeyfile and apicafile and self._apiusessl:
-               certs=[apicertfile, apikeyfile, apicafile]
+        if self._apiusessl:
+            certs = []
+            if apicafile:
+                certs.append(apicafile)
+            if apicertfile:
+                certs.append(apicertfile)
+            if apikeyfile:
+                certs.append(apikeyfile)
+            if certs:
                self._apicertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_API_CERT_BUNDLE,certs)
                self._use_api_certs=True
 
