@@ -66,6 +66,12 @@ class QuotaDriver(object):
         if vnc_conn:
             return vnc_conn
         # Retry till a api-server is up
+
+        try:
+            auth_token_url= cfg.CONF.APISERVER.auth_token_url
+        except cfg.NoSuchOptError:
+            auth_token_url = None
+
         while True:
             try:
                 vnc_conn = vnc_api.VncApi(
@@ -77,7 +83,8 @@ class QuotaDriver(object):
                     auth_host=cfg.CONF.keystone_authtoken.auth_host,
                     auth_port=cfg.CONF.keystone_authtoken.auth_port,
                     auth_protocol=cfg.CONF.keystone_authtoken.auth_protocol,
-                    api_server_use_ssl=cfg.CONF.APISERVER.use_ssl)
+                    api_server_use_ssl=cfg.CONF.APISERVER.use_ssl,
+                    auth_token_url=auth_token_url)
                 return vnc_conn
             except requests.exceptions.RequestException as e:
                 time.sleep(3)
