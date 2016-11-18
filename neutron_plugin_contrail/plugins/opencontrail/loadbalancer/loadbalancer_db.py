@@ -75,6 +75,11 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         except cfg.NoSuchOptError:
             self.api_server_url = "/"
 
+        try:
+            self.auth_token_url= cfg.CONF.APISERVER.auth_token_url
+        except cfg.NoSuchOptError:
+            self.auth_token_url = None
+
     @property
     def api(self):
         if hasattr(self, '_api'):
@@ -91,7 +96,8 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
                         auth_protocol=self.auth_protocol,
                         auth_url=self.auth_url, auth_type=self.auth_type,
                         wait_for_connect=True,
-                        api_server_use_ssl=self.api_srvr_use_ssl)
+                        api_server_use_ssl=self.api_srvr_use_ssl,
+                        auth_token_url=self.auth_token_url)
                 connected = True
             except requests.exceptions.RequestException:
                 time.sleep(3)
