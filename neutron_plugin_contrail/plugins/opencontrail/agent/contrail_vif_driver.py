@@ -56,6 +56,8 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
                                          'api_server_port', '8082')
         cls._api_server_use_ssl  = _read_cfg(cfg_parser, 'APISERVER',
                                          'use_ssl', False)
+        cls._auth_token_url  = _read_cfg(cfg_parser, 'APISERVER',
+                                         'auth_token_url', None)
 
     def __init__(self, conf):
         super(ContrailInterfaceDriver, self).__init__(conf)
@@ -71,7 +73,8 @@ class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
         try:
             client = VncApi(api_server_host=self._api_server_ip,
                             api_server_port=self._api_server_port,
-                            api_server_use_ssl=self._api_server_use_ssl)
+                            api_server_use_ssl=self._api_server_use_ssl,
+                            auth_token_url=self._auth_token_url)
             return client
         except:
             pass
