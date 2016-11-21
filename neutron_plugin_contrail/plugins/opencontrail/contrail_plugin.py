@@ -102,12 +102,15 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
             kskeyfile=cfg.CONF.keystone_authtoken.keyfile
             kscafile=cfg.CONF.keystone_authtoken.cafile
 
-            self._use_ks_certs=False
-            if kscertfile and kskeyfile and kscafile \
-               and cfg.CONF.keystone_authtoken.auth_protocol == _DEFAULT_SECURE_SERVER_CONNECT:
-                   certs=[kscertfile, kskeyfile, kscafile]
-                   self._kscertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_KS_CERT_BUNDLE,certs)
-                   self._use_ks_certs=True
+            self._use_ks_certs = False
+            if (cfg.CONF.keystone_authtoken.auth_protocol ==
+                    _DEFAULT_SECURE_SERVER_CONNECT and kscafile):
+                certs = [kscafile]
+                if kscertfile and kskeyfile:
+                    certs = [kscertfile, kskeyfile, kscafile]
+                self._kscertbundle = cfgmutils.getCertKeyCaBundle(
+                        _DEFAULT_KS_CERT_BUNDLE,certs)
+                self._use_ks_certs = True
 
         #API Server SSL support
         self._apiusessl=cfg.CONF.APISERVER.use_ssl
@@ -121,12 +124,14 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         else:
             self._apiserverconnect=_DEFAULT_SERVER_CONNECT
 
-        self._use_api_certs=False
-        if apicertfile and apikeyfile and apicafile and self._apiusessl:
-               certs=[apicertfile, apikeyfile, apicafile]
-               self._apicertbundle=cfgmutils.getCertKeyCaBundle(_DEFAULT_API_CERT_BUNDLE,certs)
-               self._use_api_certs=True
-
+        self._use_api_certs = False
+        if self._apiusessl and apicafile:
+            certs = [apicafile]
+            if apicertfile and apikeyfile:
+                certs = [apicertfile, apikeyfile, apicafile]
+            self._apicertbundle = cfgmutils.getCertKeyCaBundle(
+                    _DEFAULT_API_CERT_BUNDLE,certs)
+            self._use_api_certs = True
 
     def _request_api_server(self, url, data=None, headers=None):
         # Attempt to post to Api-Server
