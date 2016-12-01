@@ -1,5 +1,7 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
+import time
+
 import ConfigParser
 from pprint import pformat
 
