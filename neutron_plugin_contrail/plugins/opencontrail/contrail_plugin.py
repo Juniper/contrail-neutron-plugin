@@ -90,11 +90,19 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
 
             self._authn_body = body
             self._authn_token = cfg.CONF.keystone_authtoken.admin_token
-            self._keystone_url = "%s://%s:%s%s" % (
-                cfg.CONF.keystone_authtoken.auth_protocol,
-                cfg.CONF.keystone_authtoken.auth_host,
-                cfg.CONF.keystone_authtoken.auth_port,
-                "/v2.0/tokens")
+            try:
+                auth_token_url = cfg.CONF.APISERVER.auth_token_url
+            except cfg.NoSuchOptError:
+                auth_token_url = None
+
+            if auth_token_url:
+                self._keystone_url = auth_token_url
+            else:
+                self._keystone_url = "%s://%s:%s%s" % (
+                    cfg.CONF.keystone_authtoken.auth_protocol,
+                    cfg.CONF.keystone_authtoken.auth_host,
+                    cfg.CONF.keystone_authtoken.auth_port,
+                    "/v2.0/tokens")
 
             #Keystone SSL Support
             self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
