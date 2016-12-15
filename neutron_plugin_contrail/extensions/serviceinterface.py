@@ -1,11 +1,18 @@
-from neutron.api.v2 import attributes as attr
-from neutron.api import extensions
+#from neutron.api.v2 import attributes as attr
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.api.v2 import attributes as constants
+try:
+    from neutron_lib.api import extensions
+except ImportError:
+    from neutron.api import extensions
 
 EXTENDED_ATTRIBUTES_2_0 = {
     'ports': {
         'binding:service_interface_type': {'allow_post': True,
                              'allow_put': False,
-                             'default': attr.ATTR_NOT_SPECIFIED,
+                             'default': constants.ATTR_NOT_SPECIFIED,
                              'is_visible': True},
     },
 }

@@ -23,10 +23,16 @@ try:
 except ImportError:
     from oslo_config import cfg
 
-from neutron.api import extensions
+try:
+    from neutron_lib.api import extensions
+except ImportError:
+    from neutron.api import extensions
 from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
-from neutron.common import exceptions as qexception
+try:
+    from neutron_lib import exceptions as exc
+except ImportError:
+    from neutron.common import exceptions as exc
 from neutron import manager
 try:
     from neutron.quota import resource_registry as quota
@@ -39,7 +45,7 @@ except ImportError:
     from oslo_utils import uuidutils
 
 # Route table Exceptions
-class RouteTableNotFound(qexception.NotFound):
+class RouteTableNotFound(exc.NotFound):
     message = _("Route table %(id)s does not exist")
 
 # Attribute Map

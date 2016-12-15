@@ -1,5 +1,7 @@
-from neutron.api.v2 import attributes as attr
-from neutron.api import extensions
+try:
+    from neutron_lib.api import extensions
+except ImportError:
+    from neutron.api import extensions
 
 def _validate_custom_attributes(data, valid_values=None):
     if not isinstance(data, list):
@@ -9,14 +11,28 @@ def _validate_custom_attributes(data, valid_values=None):
 def convert_none_to_empty_list(value):
     return [] if value is None else value
 
-attr.validators['type:customattributes'] = _validate_custom_attributes
+try:
+    from neutron_lib import constants
+    ATTR_NOT_SPECIFIED = constants.ATTR_NOT_SPECIFIED
+except ImportError:
+    from neutron.api.v2 import attributes
+    ATTR_NOT_SPECIFIED = attributes.ATTR_NOT_SPECIFIED
+
+try:
+    from neutron_lib.api import validators
+    from neutron.api.v2 import attributes as attr
+    validators.add_validator('type:customattributes',
+                             _validate_custom_attributes)
+except ImportError:
+    from neutron.api.v2 import attributes as attr
+    attr.validators['type:customattributes'] = _validate_custom_attributes
 
 # Extended_Attribute MAP
 EXTENDED_ATTRIBUTES_2_0 = {
     'pools': {
         'custom_attributes': {'allow_post': True, 'allow_put': True,
                               'convert_to': convert_none_to_empty_list,
-                              'default': attr.ATTR_NOT_SPECIFIED,
+                              'default': ATTR_NOT_SPECIFIED,
                               'validate': {'type:customattributes': None},
                               'is_visible': True},
     }

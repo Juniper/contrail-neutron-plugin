@@ -18,7 +18,10 @@
 import os.path as path
 
 from neutron.api.v2 import attributes as attr
-from neutron.common import exceptions as exc
+try:
+    from neutron_lib import exceptions as exc
+except ImportError:
+    from neutron.common import exceptions as exc
 from neutron.common.config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
@@ -40,10 +43,6 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
-try:
-    from neutron_lib import exceptions as libexc
-except ImportError:
-    libexc = None
 
 # Constant for max length of network interface names
 # eg 'bridge' in the Network class or 'devname' in
@@ -106,8 +105,6 @@ def _raise_contrail_error(info, obj_name):
                 raise getattr(securitygroup, exc_name)(**info)
             if hasattr(allowedaddresspairs, exc_name):
                 raise getattr(allowedaddresspairs, exc_name)(**info)
-            if libexc and hasattr(libexc, exc_name):
-                raise getattr(libexc, exc_name)(**info)
         raise exc.NeutronException(**info)
 
 
