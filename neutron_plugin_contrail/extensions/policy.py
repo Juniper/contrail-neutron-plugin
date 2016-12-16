@@ -1,9 +1,18 @@
 from abc import abstractmethod
 
-from neutron.api.v2 import attributes as attr
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.api.v2 import attributes as constants
 from neutron.api.v2 import base
-from neutron.common import exceptions as qexception
-from neutron.api import extensions
+try:
+    from neutron_lib import exceptions as exc
+except ImportError:
+    from neutron.common import exceptions as exc
+try:
+    from neutron_lib.api import extensions
+except ImportError:
+    from neutron.api import extensions
 from neutron import manager
 
 try:
@@ -13,14 +22,14 @@ except ImportError:
 
 
 # Policy Exceptions
-class PolicyNotFound(qexception.NotFound):
+class PolicyNotFound(exc.NotFound):
     message = _("Policy %(id)s could not be found")
 
 # Attribute Map
 RESOURCE_ATTRIBUTE_MAP = {
     'policys': {
         'id': {'allow_post': False, 'allow_put': False,
-               'validate': {'type:regex': attr.UUID_PATTERN},
+               'validate': {'type:regex': constants.UUID_PATTERN},
                'is_visible': True},
         'name': {'allow_post': True, 'allow_put': False,
                  'is_visible': True, 'default': ''},

@@ -16,7 +16,10 @@
 import requests
 
 from neutron.api.v2 import attributes as attr
-from neutron.common import exceptions as exc
+try:
+    from neutron_lib import exceptions as exc
+except ImportError:
+    from neutron.common import exceptions as exc
 from neutron.common.config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
