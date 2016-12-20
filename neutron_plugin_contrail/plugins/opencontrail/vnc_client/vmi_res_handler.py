@@ -17,7 +17,22 @@ import uuid
 from cfgm_common import exceptions as vnc_exc
 import eventlet
 import netaddr
-from neutron.common import constants as n_constants
+try:
+    from neutron.common.constants import PORT_STATUS_ACTIVE
+except:
+    from neutron_lib.constants import PORT_STATUS_ACTIVE
+try:
+    from neutron.common.constants import PORT_STATUS_DOWN
+except:
+    from neutron_lib.constants import PORT_STATUS_DOWN
+try:
+    from neutron.common.constants import DEVICE_OWNER_ROUTER_INTF
+except:
+    from neutron_lib.constants import DEVICE_OWNER_ROUTER_INTF
+try:
+    from neutron.common.constants import DEVICE_OWNER_ROUTER_GW
+except:
+    from neutron_lib.constants import DEVICE_OWNER_ROUTER_GW
 from neutron.common.config import cfg
 from vnc_api import vnc_api
 
@@ -216,7 +231,7 @@ class VMInterfaceMixin(object):
                 rtr_uuid = self.get_port_gw_id(vm_ref, port_req_memo)
                 if rtr_uuid:
                     device_id = rtr_uuid
-                    device_owner = n_constants.DEVICE_OWNER_ROUTER_GW
+                    device_owner = DEVICE_OWNER_ROUTER_GW
 
         return device_id, device_owner
 
@@ -337,9 +352,9 @@ class VMInterfaceMixin(object):
                 vmi_obj.get_virtual_machine_interface_device_owner() or '')
 
         if port_q_dict['device_id']:
-            port_q_dict['status'] = n_constants.PORT_STATUS_ACTIVE
+            port_q_dict['status'] = PORT_STATUS_ACTIVE
         else:
-            port_q_dict['status'] = n_constants.PORT_STATUS_DOWN
+            port_q_dict['status'] = PORT_STATUS_DOWN
 
         if extensions_enabled:
             extra_dict = {'contrail:fq_name': vmi_obj.get_fq_name()}
@@ -479,8 +494,7 @@ class VMInterfaceMixin(object):
 
         device_owner = port_q.get('device_owner')
 
-        if (device_owner not in [n_constants.DEVICE_OWNER_ROUTER_INTF,
-                                 n_constants.DEVICE_OWNER_ROUTER_GW]
+        if (device_owner not in [DEVICE_OWNER_ROUTER_INTF, DEVICE_OWNER_ROUTER_GW]
                 and 'device_id' in port_q):
             self._set_vm_instance_for_vmi(vmi_obj, port_q.get('device_id'))
 

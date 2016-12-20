@@ -1,18 +1,18 @@
 from abc import abstractmethod
 
 try:
-    from neutron_lib import constants
-except ImportError:
-    from neutron.api.v2 import attributes as constants
+    from neutron.api.v2.attributes import UUID_PATTERN
+except:
+    from neutron_lib.constants import UUID_PATTERN
 from neutron.api.v2 import base
 try:
-    from neutron_lib import exceptions as exc
+    from neutron.common.exceptions import NotFound
 except ImportError:
-    from neutron.common import exceptions as exc
+    from neutron_lib.exceptions import NotFound
 try:
-    from neutron_lib.api import extensions
+    from neutron.api.extensions import ExtensionDescriptor
 except ImportError:
-    from neutron.api import extensions
+    from neutron_lib.api.extensions import ExtensionDescriptor
 from neutron import manager
 
 try:
@@ -22,7 +22,7 @@ except ImportError:
 
 
 # Policy Exceptions
-class PolicyNotFound(exc.NotFound):
+class PolicyNotFound(NotFound):
     message = _("Policy %(id)s could not be found")
 
 # Attribute Map
@@ -46,7 +46,7 @@ RESOURCE_ATTRIBUTE_MAP = {
 }
 
 
-class Policy(extensions.ExtensionDescriptor):
+class Policy(ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):

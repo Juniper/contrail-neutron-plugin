@@ -5,7 +5,10 @@
 import uuid
 
 from neutron_lbaas.extensions import loadbalancerv2
-from neutron.api.v2 import attributes as attr
+try:
+    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
+except:
+    from neutron_lib.constants import ATTR_NOT_SPECIFIED
 
 try:
     from neutron.openstack.common import uuidutils
@@ -162,7 +165,7 @@ class LoadbalancerPoolManager(ResourceManager):
                                                     id=p['listener_id'])
             project_id = ll.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
-                raise n_exc.NotAuthorized()
+                raise exc.NotAuthorized()
         else:
             ll = None
 
@@ -185,7 +188,7 @@ class LoadbalancerPoolManager(ResourceManager):
             pool.set_loadbalancer_listener(ll)
 
         # Custom attributes
-        if p['custom_attributes'] != attr.ATTR_NOT_SPECIFIED:
+        if p['custom_attributes'] != ATTR_NOT_SPECIFIED:
             custom_attributes = KeyValuePairs()
             self.create_update_custom_attributes(p['custom_attributes'],
                                                  custom_attributes)
