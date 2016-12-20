@@ -24,15 +24,15 @@ except ImportError:
     from oslo_config import cfg
 
 try:
-    from neutron_lib.api import extensions
-except ImportError:
     from neutron.api import extensions
+except ImportError:
+    from neutron_lib.api import extensions
 from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
 try:
-    from neutron_lib import exceptions as exc
-except ImportError:
     from neutron.common import exceptions as exc
+except ImportError:
+    from neutron_lib import exceptions as exc
 from neutron import manager
 try:
     from neutron.quota import resource_registry as quota

@@ -1,9 +1,17 @@
 #
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
-from neutron.api.v2 import attributes
-from neutron.common import exceptions as n_exc
-from neutron.common import constants as n_constants
+try:
+    from neutron.api.v2 import attributes
+    from neutron.common import constants
+    ATTR_NOT_SPECIFIED = attributes.ATTR_NOT_SPECIFIED
+except ImportError:
+    from neutron_lib import constants
+    ATTR_NOT_SPECIFIED = constants.ATTR_NOT_SPECIFIED
+try:
+    from neutron.common import exceptions as exc
+except ImportError:
+    from neutron_lib import exceptions as exc
 
 try:
     from neutron.extensions import loadbalancer
@@ -49,7 +57,7 @@ class VirtualIpManager(ResourceManager):
     def make_properties(self, vip):
         props = VirtualIpType()
         for key, mapping in self._virtual_ip_type_mapping.iteritems():
-            if mapping in vip and vip[mapping] != attributes.ATTR_NOT_SPECIFIED:
+            if mapping in vip and vip[mapping] != ATTR_NOT_SPECIFIED:
                 setattr(props, key, vip[mapping])
 
         sp = vip['session_persistence']
@@ -72,7 +80,7 @@ class VirtualIpManager(ResourceManager):
             return None
 
         port_id = vmi_list[0]['uuid']
-        if not props.address or props.address == attributes.ATTR_NOT_SPECIFIED:
+        if not props.address or props.address == ATTR_NOT_SPECIFIED:
             try:
                 vmi = self._api.virtual_machine_interface_read(id=port_id)
             except NoIdError as ex:
@@ -153,12 +161,12 @@ class VirtualIpManager(ResourceManager):
         try:
             vnet = self._api.virtual_network_read(id=network_id)
         except NoIdError:
-            raise n_exc.NetworkNotFound(net_id=network_id)
+            raise exc.NetworkNotFound(net_id=network_id)
 
         vmi = VirtualMachineInterface(vip_id, project)
         vmi.set_virtual_network(vnet)
         try:
-            vmi.set_virtual_machine_interface_device_owner(n_constants.DEVICE_OWNER_LOADBALANCER)
+            vmi.set_virtual_machine_interface_device_owner(constants.DEVICE_OWNER_LOADBALANCER)
         except AttributeError:
             # DEVICE_OWNER_LOADBALANCER is only supported from JUNO onwards
             pass
@@ -170,7 +178,7 @@ class VirtualIpManager(ResourceManager):
         iip_obj = InstanceIp(name=vip_id)
         iip_obj.set_virtual_network(vnet)
         iip_obj.set_virtual_machine_interface(vmi)
-        if ip_address and ip_address != attributes.ATTR_NOT_SPECIFIED:
+        if ip_address and ip_address != ATTR_NOT_SPECIFIED:
             iip_obj.set_instance_ip_address(ip_address)
         self._api.instance_ip_create(iip_obj)
         iip = self._api.instance_ip_read(id=iip_obj.uuid)
@@ -223,7 +231,7 @@ class VirtualIpManager(ResourceManager):
                 raise loadbalancer.PoolNotFound(pool_id=v['pool_id'])
             project_id = pool.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
-                raise n_exc.NotAuthorized()
+                raise exc.NotAuthorized()
             protocol = pool.get_loadbalancer_pool_properties().get_protocol()
             if protocol != v['protocol']:
                 raise loadbalancer.ProtocolMismatch(
@@ -278,7 +286,7 @@ class VirtualIpManager(ResourceManager):
                 continue
             if getattr(props, field) != vip[field]:
                 msg = 'Attribute %s in vip %s is immutable' % (field, id)
-                raise n_exc.BadRequest(resource='vip', msg=msg)
+                raise exc.BadRequest(resource='vip', msg=msg)
 
         # update
         change = self.update_properties_subr(props, vip)
@@ -312,7 +320,7 @@ class VirtualIpManager(ResourceManager):
             except NoIdError:
                 raise loadbalancer.PoolNotFound(pool_id=v['pool_id'])
             if vip_db.parent_uuid != pool.parent_uuid:
-                raise n_exc.NotAuthorized()
+                raise exc.NotAuthorized()
 
             # check that the pool has no vip configured
             if pool.get_virtual_ip_back_refs():

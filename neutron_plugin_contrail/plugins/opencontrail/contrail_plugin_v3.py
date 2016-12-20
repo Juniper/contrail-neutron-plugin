@@ -14,7 +14,10 @@
 
 import time
 
-from neutron.api.v2 import attributes as attr
+try:
+    from neutron.api.v2 import attributes as constants
+except ImportError:
+    from neutron_lib import constants
 from neutron.common import exceptions as exc
 from neutron.common.config import cfg
 import requests
@@ -170,7 +173,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
 
     def _create_resource(self, res_type, context, res_data):
         for key, value in res_data[res_type].items():
-            if value == attr.ATTR_NOT_SPECIFIED:
+            if value == constants.ATTR_NOT_SPECIFIED:
                 del res_data[res_type][key]
 
         self._set_user_auth_token()

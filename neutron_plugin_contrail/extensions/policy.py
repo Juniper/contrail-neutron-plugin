@@ -1,18 +1,18 @@
 from abc import abstractmethod
 
 try:
-    from neutron_lib import constants
-except ImportError:
     from neutron.api.v2 import attributes as constants
+except ImportError:
+    from neutron_lib import constants
 from neutron.api.v2 import base
 try:
-    from neutron_lib import exceptions as exc
-except ImportError:
     from neutron.common import exceptions as exc
-try:
-    from neutron_lib.api import extensions
 except ImportError:
+    from neutron_lib import exceptions as exc
+try:
     from neutron.api import extensions
+except ImportError:
+    from neutron_lib.api import extensions
 from neutron import manager
 
 try:

@@ -1,12 +1,11 @@
-#from neutron.api.v2 import attributes as attr
 try:
-    from neutron_lib import constants
-except ImportError:
     from neutron.api.v2 import attributes as constants
-try:
-    from neutron_lib.api import extensions
 except ImportError:
+    from neutron_lib import constants
+try:
     from neutron.api import extensions
+except ImportError:
+    from neutron_lib.api import extensions
 
 EXTENDED_ATTRIBUTES_2_0 = {
     'ports': {

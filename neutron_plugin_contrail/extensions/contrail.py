@@ -1,7 +1,7 @@
 try:
-    from neutron_lib.api import extensions
-except ImportError:
     from neutron.api import extensions
+except ImportError:
+    from neutron_lib.api import extensions
 
 
 EXTENDED_ATTRIBUTES_2_0 = {
