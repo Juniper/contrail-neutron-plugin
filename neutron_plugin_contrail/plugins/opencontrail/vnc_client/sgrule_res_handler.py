@@ -15,7 +15,30 @@
 import uuid
 
 from cfgm_common import exceptions as vnc_exc
-from neutron.common import constants
+try:
+    from neutron.common.constants import PROTO_NUM_ICMP
+except:
+    from neutron_lib.constants import PROTO_NUM_ICMP
+try:
+    from neutron.common.constants import PROTO_NUM_UDP
+except:
+    from neutron_lib.constants import PROTO_NUM_UDP
+try:
+    from neutron.common.constants import PROTO_NUM_TCP
+except:
+    from neutron_lib.constants import PROTO_NUM_TCP
+try:
+    from neutron.common.constants import PROTO_NAME_ICMP
+except:
+    from neutron_lib.constants import PROTO_NAME_ICMP
+try:
+    from neutron.common.constants import PROTO_NAME_UDP
+except:
+    from neutron_lib.constants import PROTO_NAME_UDP
+try:
+    from neutron.common.constants import PROTO_NAME_TCP
+except:
+    from neutron_lib.constants import PROTO_NAME_TCP
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler
@@ -83,8 +106,7 @@ class SecurityGroupRuleMixin(object):
         proto = sg_rule.get_protocol()
         sgr_q_dict['protocol'] = None if proto == 'any' else proto
         port_min = sg_rule.get_dst_ports()[0].get_start_port()
-        if sgr_q_dict['protocol'] in (constants.PROTO_NAME_ICMP,
-                                      str(constants.PROTO_NUM_ICMP)):
+        if sgr_q_dict['protocol'] in (PROTO_NAME_ICMP, str(PROTO_NUM_ICMP)):
             sgr_q_dict['port_range_min'] = port_min
         else:
             sgr_q_dict['port_range_min'] = None if port_min == 0 else port_min
@@ -229,9 +251,9 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
     resource_create_method = "security_group_rule_create"
 
     def _convert_protocol(self, value):
-        IP_PROTOCOL_MAP = {constants.PROTO_NUM_TCP: constants.PROTO_NAME_TCP,
-                           constants.PROTO_NUM_UDP: constants.PROTO_NAME_UDP,
-                           constants.PROTO_NUM_ICMP: constants.PROTO_NAME_ICMP}
+        IP_PROTOCOL_MAP = {PROTO_NUM_TCP: PROTO_NAME_TCP,
+                           PROTO_NUM_UDP: PROTO_NAME_UDP,
+                           PROTO_NUM_ICMP: PROTO_NAME_ICMP}
 
         if value is None:
             return
@@ -265,8 +287,7 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
             self._raise_contrail_exception(
                 'SecurityGroupProtocolRequiredWithPorts',
                 resource='security_group_rule')
-        if rule['protocol'] in [constants.PROTO_NAME_TCP,
-                                constants.PROTO_NAME_UDP]:
+        if rule['protocol'] in [PROTO_NAME_TCP, PROTO_NAME_UDP]:
             if (rule['port_range_min'] is not None and
                     rule['port_range_min'] <= rule['port_range_max']):
                 pass
@@ -274,7 +295,7 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
                 self._raise_contrail_exception(
                     'SecurityGroupInvalidPortRange',
                     resource='security_group_rule')
-        elif rule['protocol'] == constants.PROTO_NAME_ICMP:
+        elif rule['protocol'] == PROTO_NAME_ICMP:
             for attr, field in [('port_range_min', 'type'),
                                 ('port_range_max', 'code')]:
                 if rule[attr] > 255:
@@ -291,8 +312,7 @@ class SecurityGroupRuleCreateHandler(res_handler.ResourceCreateHandler,
 
     def _security_group_rule_neutron_to_vnc(self, sgr_q):
         # default port values
-        if sgr_q['protocol'] in (constants.PROTO_NAME_ICMP,
-                                 str(constants.PROTO_NUM_ICMP)):
+        if sgr_q['protocol'] in (PROTO_NAME_ICMP, str(PROTO_NUM_ICMP)):
             port_min = None
             port_max = None
         else:
