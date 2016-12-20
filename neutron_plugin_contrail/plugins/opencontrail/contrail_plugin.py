@@ -15,7 +15,10 @@
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 import requests
 
-from neutron.api.v2 import attributes as attr
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.api.v2 import attributes as constants
 try:
     from neutron_lib import exceptions as exc
 except ImportError:
@@ -262,7 +265,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         """
 
         for key, value in res_data[res_type].items():
-            if value == attr.ATTR_NOT_SPECIFIED:
+            if value == constants.ATTR_NOT_SPECIFIED:
                 del res_data[res_type][key]
 
         res_dict = self._encode_resource(resource=res_data[res_type])

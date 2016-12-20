@@ -1,4 +1,3 @@
-#from neutron.api.v2 import attributes as attr
 try:
     from neutron_lib import constants
 except ImportError:

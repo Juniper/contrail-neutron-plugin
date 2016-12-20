@@ -17,7 +17,10 @@
 
 import os.path as path
 
-from neutron.api.v2 import attributes as attr
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.api.v2 import attributes as constants
 try:
     from neutron_lib import exceptions as exc
 except ImportError:
@@ -263,7 +266,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 gateway = '::'
             subnet['subnet']['gateway_ip'] = gateway
 
-        if subnet['subnet']['host_routes'] != attr.ATTR_NOT_SPECIFIED:
+        if subnet['subnet']['host_routes'] != constants.ATTR_NOT_SPECIFIED:
             if (len(subnet['subnet']['host_routes']) >
                     cfg.CONF.max_subnet_host_routes):
                 raise exc.HostRoutesExhausted(subnet_id=subnet[
@@ -439,7 +442,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # For example when port is created by hand using neutron port-create
         # command, which does not bind the port to any given host.
         if 'binding:host_id' in port and port['binding:host_id'] and \
-                port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
+                port['binding:host_id'] is not constants.ATTR_NOT_SPECIFIED:
             try:
                 vrouter = self._get_vrouter_config(context,
                                                ['default-global-system-config',

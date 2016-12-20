@@ -7,7 +7,10 @@ import uuid
 from abc import ABCMeta, abstractmethod, abstractproperty
 from eventlet import greenthread
 
-from neutron.common import exceptions as n_exc
+try:
+    from neutron_lib import exceptions as exc
+except ImportError:
+    from neutron.common import exceptions as exc
 try:
     from neutron.extensions import loadbalancer
 except ImportError:
@@ -18,10 +21,10 @@ from neutron.services import provider_configuration as pconf
 from vnc_api.vnc_api import NoIdError, RefsExistError
 
 
-class LoadbalancerMethodInvalid(n_exc.BadRequest):
+class LoadbalancerMethodInvalid(exc.BadRequest):
     message = "Method %(lb_method)s not supported for pool %(pool_id)s"
 
-class EntityInUse(n_exc.InUse):
+class EntityInUse(exc.InUse):
     message = "%(name)s %(id)s is in use"
 
 @six.add_metaclass(ABCMeta)
@@ -134,7 +137,7 @@ class ResourceManager(object):
         elif ('tenant_id' in resource and
               resource['tenant_id'] != context.tenant_id):
             reason = 'Cannot create resource for another tenant'
-            raise n_exc.AdminRequired(reason=reason)
+            raise exc.AdminRequired(reason=reason)
         else:
             tenant_id = context.tenant_id
         return tenant_id
@@ -165,7 +168,7 @@ class ResourceManager(object):
             except NoIdError:
                 pass
             greenthread.sleep(1)
-        raise n_exc.TenantNetworksDisabled()
+        raise exc.TenantNetworksDisabled()
 
     def _fields(self, resource, fields):
         if fields:
@@ -264,7 +267,7 @@ class ResourceManager(object):
             tenant_id = str(uuid.UUID(context.tenant_id))
             project_id = self._get_object_tenant_id(obj)
             if tenant_id != project_id:
-                raise n_exc.NotAuthorized()
+                raise exc.NotAuthorized()
 
         try:
             self.resource_delete(id=id)
