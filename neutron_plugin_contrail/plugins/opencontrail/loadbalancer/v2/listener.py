@@ -1,8 +1,18 @@
 #
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
-from neutron.api.v2 import attributes
-from neutron.common import exceptions as n_exc
+try:
+    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
+except:
+    from neutron_lib.constants import ATTR_NOT_SPECIFIED
+try:
+    from neutron.common.exceptions import NotAuthorized
+except ImportError:
+    from neutron_lib.exceptions import NotAuthorized
+try:
+    from neutron.common.exceptions import BadRequest
+except ImportError:
+    from neutron_lib.exceptions import BadRequest
 from neutron_lbaas.extensions import loadbalancerv2
 
 try:
@@ -42,7 +52,7 @@ class ListenerManager(ResourceManager):
     def make_properties(self, lb):
         props = LoadbalancerListenerType()
         for key, mapping in self._listener_type_mapping.iteritems():
-            if mapping in lb and lb[mapping] != attributes.ATTR_NOT_SPECIFIED:
+            if mapping in lb and lb[mapping] != ATTR_NOT_SPECIFIED:
                 setattr(props, key, lb[mapping])
         return props
 
@@ -114,7 +124,7 @@ class ListenerManager(ResourceManager):
                                                     id=v['loadbalancer_id'])
             project_id = lb.parent_uuid
             if str(uuid.UUID(tenant_id)) != project_id:
-                raise n_exc.NotAuthorized()
+                raise NotAuthorized()
         else:
             lb = None
 
@@ -156,7 +166,7 @@ class ListenerManager(ResourceManager):
                 continue
             if getattr(props, field) != ll[field]:
                 msg = 'Attribute %s in listener %s is immutable' % (field, id)
-                raise n_exc.BadRequest(resource='listener', msg=msg)
+                raise BadRequest(resource='listener', msg=msg)
 
         # update
         change = self.update_properties_subr(props, ll)

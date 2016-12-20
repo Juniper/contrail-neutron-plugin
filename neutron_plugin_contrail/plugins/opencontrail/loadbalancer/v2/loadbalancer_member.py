@@ -10,7 +10,10 @@ try:
 except ImportError:
     from oslo_utils import uuidutils
 
-from neutron.common import exceptions as n_exc
+try:
+    from neutron.common.exceptions import NotAuthorized
+except ImportError:
+    from neutron_lib.exceptions import NotAuthorized
 
 from vnc_api.vnc_api import IdPermsType, NoIdError
 from vnc_api.vnc_api import LoadbalancerMember, LoadbalancerMemberType
@@ -141,7 +144,7 @@ class LoadbalancerMemberManager(ResourceManager):
 
         tenant_id = self._get_tenant_id_for_create(context, m)
         if str(uuid.UUID(tenant_id)) != pool.parent_uuid:
-            raise n_exc.NotAuthorized()
+            raise NotAuthorized()
 
         obj_uuid = uuidutils.generate_uuid()
         props = self.make_properties(m)

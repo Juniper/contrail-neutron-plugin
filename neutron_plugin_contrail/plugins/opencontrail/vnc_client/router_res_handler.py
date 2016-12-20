@@ -15,7 +15,10 @@
 from cfgm_common import exceptions as vnc_exc
 import contrail_res_handler as res_handler
 import netaddr
-from neutron.common import constants as n_constants
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.plugins.common import constants
 import subnet_res_handler as subnet_handler
 import vmi_res_handler as vmi_handler
 from vnc_api import vnc_api
@@ -55,7 +58,7 @@ class LogicalRouterMixin(object):
             rtr_obj.parent_uuid)
         rtr_q_dict['admin_state_up'] = rtr_obj.get_id_perms().enable
         rtr_q_dict['shared'] = False
-        rtr_q_dict['status'] = n_constants.NET_STATUS_ACTIVE
+        rtr_q_dict['status'] = constants.NET_STATUS_ACTIVE
         rtr_q_dict['gw_port_id'] = None
 
         ext_net_uuid = self._get_external_gateway_info(rtr_obj)
@@ -405,7 +408,7 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
                 'fixed_ips': [fixed_ip],
                 'admin_state_up': True,
                 'device_id': router_obj.uuid,
-                'device_owner': n_constants.DEVICE_OWNER_ROUTER_INTF,
+                'device_owner': constants.DEVICE_OWNER_ROUTER_INTF,
                 'name': ''}
             port = self._vmi_handler.resource_create(context=context,
                                                      port_q=port_q)
@@ -450,7 +453,7 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
             context, router_obj, port_id=port_id, subnet_id=subnet_id)
 
         vmi_obj.set_virtual_machine_interface_device_owner(
-            n_constants.DEVICE_OWNER_ROUTER_INTF)
+            constants.DEVICE_OWNER_ROUTER_INTF)
         self._vnc_lib.virtual_machine_interface_update(vmi_obj)
         router_obj.add_virtual_machine_interface(vmi_obj)
         self._resource_update(router_obj)

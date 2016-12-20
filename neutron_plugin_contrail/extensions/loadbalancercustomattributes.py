@@ -1,7 +1,7 @@
 try:
-    from neutron_lib.api import extensions
+    from neutron.api.extensions import ExtensionDescriptor
 except ImportError:
-    from neutron.api import extensions
+    from neutron_lib.api.extensions import ExtensionDescriptor
 
 def _validate_custom_attributes(data, valid_values=None):
     if not isinstance(data, list):
@@ -12,20 +12,18 @@ def convert_none_to_empty_list(value):
     return [] if value is None else value
 
 try:
-    from neutron_lib import constants
-    ATTR_NOT_SPECIFIED = constants.ATTR_NOT_SPECIFIED
-except ImportError:
-    from neutron.api.v2 import attributes
-    ATTR_NOT_SPECIFIED = attributes.ATTR_NOT_SPECIFIED
+    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
+except:
+    from neutron_lib.constants import ATTR_NOT_SPECIFIED
 
-try:
+from neutron.api.v2 import attributes as attrs
+if hasattr(attrs, 'validators'):
+    attrs.validators['type:customattributes'] = _validate_custom_attributes
+else:
     from neutron_lib.api import validators
-    from neutron.api.v2 import attributes as attr
     validators.add_validator('type:customattributes',
                              _validate_custom_attributes)
-except ImportError:
-    from neutron.api.v2 import attributes as attr
-    attr.validators['type:customattributes'] = _validate_custom_attributes
+
 
 # Extended_Attribute MAP
 EXTENDED_ATTRIBUTES_2_0 = {
@@ -39,7 +37,7 @@ EXTENDED_ATTRIBUTES_2_0 = {
 }
 
 
-class Loadbalancercustomattributes(extensions.ExtensionDescriptor):
+class Loadbalancercustomattributes(ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):

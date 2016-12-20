@@ -1,18 +1,19 @@
 from abc import abstractmethod
 
 try:
-    from neutron_lib import constants
-except ImportError:
-    from neutron.api.v2 import attributes as constants
+    from neutron.api.v2.attributes import UUID_PATTERN
+except:
+    from neutron_lib.constants import UUID_PATTERN
 from neutron.api.v2 import base
 try:
-    from neutron_lib import exceptions as exc
+    from neutron.common.exceptions import NotFound
 except ImportError:
-    from neutron.common import exceptions as exc
+    from neutron_lib.exceptions import NotFound
 try:
-    from neutron_lib.api import extensions
+    from neutron.api.extensions import ExtensionDescriptor
 except ImportError:
-    from neutron.api import extensions
+    from neutron_lib.api.extensions import ExtensionDescriptor
+from neutron.api.extensions import ResourceExtension
 from neutron import manager
 
 try:
@@ -22,14 +23,14 @@ except ImportError:
 
 
 # Ipam Exceptions
-class IpamNotFound(exc.NotFound):
+class IpamNotFound(NotFound):
     message = _("IPAM %(id)s could not be found")
 
 # Attribute Map
 RESOURCE_ATTRIBUTE_MAP = {
     'ipams': {
         'id': {'allow_post': False, 'allow_put': False,
-               'validate': {'type:regex': constants.UUID_PATTERN},
+               'validate': {'type:regex': UUID_PATTERN},
                'is_visible': True},
         'name': {'allow_post': True, 'allow_put': False,
                  'is_visible': True, 'default': ''},
@@ -46,7 +47,7 @@ RESOURCE_ATTRIBUTE_MAP = {
 }
 
 
-class Ipam(extensions.ExtensionDescriptor):
+class Ipam(ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):
@@ -85,9 +86,8 @@ class Ipam(extensions.ExtensionDescriptor):
                                               plugin, params,
                                               member_actions=member_actions)
 
-            ex = extensions.ResourceExtension(collection_name,
-                                              controller,
-                                              member_actions=member_actions)
+            ex = ResourceExtension(collection_name, controller,
+                                   member_actions=member_actions)
             exts.append(ex)
 
         return exts
