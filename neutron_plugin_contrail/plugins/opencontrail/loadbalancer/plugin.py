@@ -8,7 +8,10 @@ try:
 except ImportError:
     from neutron_lbaas.extensions import loadbalancer
 from neutron.db import servicetype_db as sdb
-from neutron.plugins.common import constants
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.plugins.common import constants
 from neutron.services import provider_configuration as pconf
 
 

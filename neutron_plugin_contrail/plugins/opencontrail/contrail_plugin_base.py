@@ -17,11 +17,27 @@
 
 import os.path as path
 
-from neutron.api.v2 import attributes as attr
 try:
-    from neutron_lib import exceptions as exc
+    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
+except:
+    from neutron_lib.constants import ATTR_NOT_SPECIFIED
+try:
+    from neutron.common.exceptions import ServiceUnavailable
 except ImportError:
-    from neutron.common import exceptions as exc
+    from neutron_lib.exceptions import ServiceUnavailable
+try:
+    from neutron.common.exceptions import InvalidInput
+except ImportError:
+    from neutron_lib.exceptions import InvalidInput
+try:
+    from neutron.common.exceptions import NeutronException
+except ImportError:
+    from neutron_lib.exceptions import NeutronException
+from neutron.common import exceptions as neutron_exc
+try:
+    from neutron_lib import exceptions as neutron_lib_exc
+except ImportError:
+    neutron_lib_exc = None
 from neutron.common.config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
@@ -97,18 +113,20 @@ def _raise_contrail_error(info, obj_name):
                 info['resource'] = obj_name
             if exc_name == 'VirtualRouterNotFound':
                 raise HttpResponseError(info)
-            if hasattr(exc, exc_name):
-                raise getattr(exc, exc_name)(**info)
+            if hasattr(neutron_exc, exc_name):
+                raise getattr(neutron_exc, exc_name)(**info)
             if hasattr(l3, exc_name):
                 raise getattr(l3, exc_name)(**info)
             if hasattr(securitygroup, exc_name):
                 raise getattr(securitygroup, exc_name)(**info)
             if hasattr(allowedaddresspairs, exc_name):
                 raise getattr(allowedaddresspairs, exc_name)(**info)
-        raise exc.NeutronException(**info)
+            if neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
+                raise getattr(neutron_lib_exc, exc_name)(**info)
+        raise NeutronException(**info)
 
 
-class InvalidContrailExtensionError(exc.ServiceUnavailable):
+class InvalidContrailExtensionError(ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
 
 
@@ -219,7 +237,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
     def create_network(self, context, network):
         """Creates a new Virtual Network."""
-
         return self._create_resource('network', context, network)
 
     def get_network(self, context, network_id, fields=None):
@@ -263,10 +280,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 gateway = '::'
             subnet['subnet']['gateway_ip'] = gateway
 
-        if subnet['subnet']['host_routes'] != attr.ATTR_NOT_SPECIFIED:
+        if subnet['subnet']['host_routes'] != ATTR_NOT_SPECIFIED:
             if (len(subnet['subnet']['host_routes']) >
                     cfg.CONF.max_subnet_host_routes):
-                raise exc.HostRoutesExhausted(subnet_id=subnet[
+                raise neutron_exc.HostRoutesExhausted(subnet_id=subnet[
                     'subnet'].get('id', _('new subnet')),
                     quota=cfg.CONF.max_subnet_host_routes)
 
@@ -355,7 +372,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # the new_ips contain all of the fixed_ips that are to be updated
         if len(new_ips) > cfg.CONF.max_fixed_ips_per_port:
             msg = _('Exceeded maximim amount of fixed ips per port')
-            raise exc.InvalidInput(error_message=msg)
+            raise InvalidInput(error_message=msg)
 
         # Remove all of the intersecting elements
         for original_ip in original_ips[:]:
@@ -439,7 +456,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # For example when port is created by hand using neutron port-create
         # command, which does not bind the port to any given host.
         if 'binding:host_id' in port and port['binding:host_id'] and \
-                port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
+                port['binding:host_id'] is not ATTR_NOT_SPECIFIED:
             try:
                 vrouter = self._get_vrouter_config(context,
                                                ['default-global-system-config',

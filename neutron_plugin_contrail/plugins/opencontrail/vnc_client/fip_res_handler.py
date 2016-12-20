@@ -15,7 +15,10 @@
 import uuid
 
 from cfgm_common import exceptions as vnc_exc
-from neutron.common import constants as n_constants
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.plugins.common import constants
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler
@@ -121,7 +124,7 @@ class FloatingIpMixin(object):
         fip_q_dict['port_id'] = port_id
         fip_q_dict['fixed_ip_address'] = (
             fip_obj.get_floating_ip_fixed_ip_address())
-        fip_q_dict['status'] = n_constants.PORT_STATUS_ACTIVE
+        fip_q_dict['status'] = constants.PORT_STATUS_ACTIVE
 
         if fields:
             fip_q_dict = self._filter_res_dict(fip_q_dict, fields)

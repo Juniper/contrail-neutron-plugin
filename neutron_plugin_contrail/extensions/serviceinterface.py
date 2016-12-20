@@ -1,24 +1,23 @@
-#from neutron.api.v2 import attributes as attr
 try:
-    from neutron_lib import constants
-except ImportError:
-    from neutron.api.v2 import attributes as constants
+    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
+except:
+    from neutron_lib.constants import ATTR_NOT_SPECIFIED
 try:
-    from neutron_lib.api import extensions
+    from neutron.api.extensions import ExtensionDescriptor
 except ImportError:
-    from neutron.api import extensions
+    from neutron_lib.api.extensions import ExtensionDescriptor
 
 EXTENDED_ATTRIBUTES_2_0 = {
     'ports': {
         'binding:service_interface_type': {'allow_post': True,
                              'allow_put': False,
-                             'default': constants.ATTR_NOT_SPECIFIED,
+                             'default': ATTR_NOT_SPECIFIED,
                              'is_visible': True},
     },
 }
 
 
-class Serviceinterface(extensions.ExtensionDescriptor):
+class Serviceinterface(ExtensionDescriptor):
 
     @classmethod
     def get_name(cls):

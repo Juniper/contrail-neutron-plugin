@@ -13,7 +13,10 @@
 #    under the License.
 
 from cfgm_common import exceptions as vnc_exc
-from neutron.common import constants as n_constants
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.plugins.common import constants
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler
@@ -128,9 +131,9 @@ class VNetworkMixin(object):
             vn_obj.parent_uuid)
         net_q_dict['admin_state_up'] = id_perms.enable
         net_q_dict['shared'] = True if vn_obj.is_shared else False
-        net_q_dict['status'] = (n_constants.NET_STATUS_ACTIVE
+        net_q_dict['status'] = (constants.NET_STATUS_ACTIVE
                                 if id_perms.enable
-                                else n_constants.NET_STATUS_DOWN)
+                                else constants.NET_STATUS_DOWN)
         net_q_dict['router:external'] = (True if vn_obj.router_external
                                          else False)
         if contrail_extensions_enabled:
