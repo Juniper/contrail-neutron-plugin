@@ -13,7 +13,10 @@ except ImportError:
 
 from cfgm_common import analytics_client
 from cfgm_common import exceptions as vnc_exc
-from neutron.common import exceptions as n_exc
+try:
+    from neutron.common.exceptions import BadRequest
+except ImportError:
+    from neutron_lib.exceptions import BadRequest
 
 from neutron_lbaas.extensions import loadbalancerv2
 from neutron_lbaas.extensions.loadbalancerv2 import LoadBalancerPluginBaseV2
@@ -154,7 +157,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         try:
             return self.loadbalancer_manager.create(context, loadbalancer)
         except vnc_exc.PermissionDenied as ex:
-            raise n_exc.BadRequest(resource='loadbalancer', msg=str(ex))
+            raise BadRequest(resource='loadbalancer', msg=str(ex))
 
     def update_loadbalancer(self, context, id, loadbalancer):
         return self.loadbalancer_manager.update(context, id, loadbalancer)
@@ -166,7 +169,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         try:
             return self.listener_manager.create(context, listener)
         except vnc_exc.PermissionDenied as ex:
-            raise n_exc.BadRequest(resource='listener', msg=str(ex))
+            raise BadRequest(resource='listener', msg=str(ex))
 
     def get_listener(self, context, id, fields=None):
         return self.listener_manager.get_resource(context, id, fields)
@@ -190,7 +193,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         try:
             return self.pool_manager.create(context, pool)
         except vnc_exc.PermissionDenied as ex:
-            raise n_exc.BadRequest(resource='pool', msg=str(ex))
+            raise BadRequest(resource='pool', msg=str(ex))
 
     def update_pool(self, context, id, pool):
         return self.pool_manager.update(context, id, pool)
@@ -208,7 +211,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         try:
             return self.member_manager.create(context, pool_id, member)
         except vnc_exc.PermissionDenied as ex:
-            raise n_exc.BadRequest(resource='member', msg=str(ex))
+            raise BadRequest(resource='member', msg=str(ex))
 
     def update_pool_member(self, context, id, pool_id, member):
         return self.member_manager.update(context, id, member)
@@ -232,7 +235,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
         try:
             return self.monitor_manager.create(context, healthmonitor)
         except vnc_exc.PermissionDenied as ex:
-            raise n_exc.BadRequest(resource='healthmonitor', msg=str(ex))
+            raise BadRequest(resource='healthmonitor', msg=str(ex))
 
     def update_healthmonitor(self, context, id, healthmonitor):
         return self.monitor_manager.update(context, id, healthmonitor)

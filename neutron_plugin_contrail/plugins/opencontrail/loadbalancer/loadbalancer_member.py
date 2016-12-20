@@ -22,8 +22,14 @@ except ImportError:
     except ImportError:
         from oslo_config import cfg
 
-from neutron.common import exceptions as n_exc
-from neutron.plugins.common import constants
+try:
+    from neutron.common.exceptions import NotAuthorized
+except ImportError:
+    from neutron_lib.exceptions import NotAuthorized
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.plugins.common import constants
 
 from cfgm_common import analytics_client
 
@@ -178,7 +184,7 @@ class LoadbalancerMemberManager(ResourceManager):
 
         tenant_id = self._get_tenant_id_for_create(context, m)
         if str(uuid.UUID(tenant_id)) != pool.parent_uuid:
-            raise n_exc.NotAuthorized()
+            raise NotAuthorized()
 
         obj_uuid = uuidutils.generate_uuid()
         props = self.make_properties(m)

@@ -15,7 +15,10 @@
 import uuid
 
 from cfgm_common import exceptions as vnc_exc
-from neutron.common import constants
+try:
+    from neutron_lib import constants
+except ImportError:
+    from neutron.plugins.common import constants
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler

@@ -24,15 +24,15 @@ except ImportError:
     from oslo_config import cfg
 
 try:
-    from neutron_lib.api import extensions
+    from neutron.api.extensions import ExtensionDescriptor
 except ImportError:
-    from neutron.api import extensions
+    from neutron_lib.api.extensions import ExtensionDescriptor
 from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
 try:
-    from neutron_lib import exceptions as exc
+    from neutron.common.exceptions import NotFound
 except ImportError:
-    from neutron.common import exceptions as exc
+    from neutron_lib.exceptions import NotFound
 from neutron import manager
 try:
     from neutron.quota import resource_registry as quota
@@ -45,7 +45,7 @@ except ImportError:
     from oslo_utils import uuidutils
 
 # Route table Exceptions
-class RouteTableNotFound(exc.NotFound):
+class RouteTableNotFound(NotFound):
     message = _("Route table %(id)s does not exist")
 
 # Attribute Map
@@ -102,7 +102,7 @@ EXTENDED_ATTRIBUTES_2_0 = {
 }
 
 
-class Vpcroutetable(extensions.ExtensionDescriptor):
+class Vpcroutetable(ExtensionDescriptor):
     """ Route table extension"""
 
     @classmethod
