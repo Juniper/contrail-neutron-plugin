@@ -248,6 +248,13 @@ class QuotaDriver(object):
         rather than counting resources and checking limits - as this
         routine ultimately does.
         """
+        for resource in deltas.keys():
+            count = plugin._count_resource(resource, context,
+                                           {'tenant_id': tenant_id})['count']
+            total_use = deltas.get(resource, 0) + count
+            deltas[resource] = total_use
+        self.limit_check(context, tenant_id, resources, deltas)
+
         return quota_api.ReservationInfo('fake', None, None, None)
 
     def commit_reservation(self, context, reservation_id):
