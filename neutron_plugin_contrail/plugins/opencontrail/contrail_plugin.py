@@ -217,6 +217,12 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
 
     def _encode_resource(self, resource_id=None, resource=None, fields=None,
                          filters=None):
+        # New OpenStack release replace the 'tenant' term by 'project' and
+        # all tools which call OpenStack APIs also did the moved and use
+        # 'project_id' instead of 'tenant_id' to query resources for a project
+        if (filters is not None and 'project_id' in filters and
+                'tenant_id' not in filters):
+            filters['tenant_id'] = filters['project_id']
         resource_dict = {}
         if resource_id:
             resource_dict['id'] = resource_id
