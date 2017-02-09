@@ -350,6 +350,28 @@ class SubnetMixin(object):
             sn_q_dict = self._filter_res_dict(sn_q_dict, fields)
         return sn_q_dict
 
+    def _build_subnet_host_routes(self, subnet_q, cidr_version):
+        host_routes = []
+        if subnet_q.get('host_routes') is not None:
+            for host_route in subnet_q['host_routes']:
+                self._check_ip_matches_version(
+                    [host_route['destination'], host_route['nexthop']],
+                    cidr_version)
+                host_routes.append(vnc_api.RouteType(
+                    prefix=host_route['destination'],
+                    next_hop=host_route['nexthop']))
+        return host_routes
+
+    def _apply_subnet_host_routes(self, subnet_q, subnet_vnc, subnet_cidr, cidr_version, vn_obj):
+        host_routes = self._build_subnet_host_routes(subnet_q, cidr_version)
+        if host_routes:
+            subnet_vnc.set_host_routes(vnc_api.RouteTableType(host_routes))
+        else:
+            subnet_vnc.set_host_routes(None)
+        if self._kwargs.get('apply_subnet_host_routes', False):
+            subnet_hr_handler = SubnetHostRoutesHandler(self._vnc_lib)
+            subnet_hr_handler.sync_routes(vn_obj, subnet_vnc.subnet_uuid, subnet_cidr, host_routes)
+
 
 class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
 
@@ -383,6 +405,9 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
 
         subnet_vnc = self._subnet_neutron_to_vnc(subnet_q)
         subnet_key = self._subnet_vnc_get_key(subnet_vnc, net_id)
+        subnet_cidr = '%s/%s' % (subnet_vnc.subnet.get_ip_prefix(),
+                                 subnet_vnc.subnet.get_ip_prefix_len())
+        cidr_version = netaddr.IPNetwork(subnet_cidr).version
 
         # Locate list of subnets to which this subnet has to be appended
         net_ipam_ref = None
@@ -414,6 +439,8 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
 
         # Read in subnet from server to get updated values for gw etc.
         subnet_vnc = self._subnet_read(subnet_key)
+        self._apply_subnet_host_routes(subnet_q, subnet_vnc, subnet_cidr,
+                                       cidr_version, vn_obj)
         subnet_info = self._subnet_vnc_to_neutron(subnet_vnc, vn_obj,
                                                   ipam_fq_name)
 
@@ -583,23 +610,8 @@ class SubnetUpdateHandler(res_handler.ResourceUpdateHandler, SubnetMixin):
             else:
                 subnet_vnc.set_dhcp_option_list(None)
 
-        if subnet_q.get('host_routes') is not None:
-            host_routes = []
-            for host_route in subnet_q['host_routes']:
-                self._check_ip_matches_version(
-                    [host_route['destination'], host_route['nexthop']],
-                    cidr_version)
-                host_routes.append(vnc_api.RouteType(
-                    prefix=host_route['destination'],
-                    next_hop=host_route['nexthop']))
-
-            if apply_subnet_host_routes:
-                subnet_hr_handler = SubnetHostRoutesHandler(self._vnc_lib)
-                subnet_hr_handler.sync_routes(vn_obj, subnet_id, subnet_cidr, host_routes)
-            if host_routes:
-                subnet_vnc.set_host_routes(vnc_api.RouteTableType(host_routes))
-            else:
-                subnet_vnc.set_host_routes(None)
+        self._apply_subnet_host_routes(subnet_q, subnet_vnc, subnet_cidr,
+                                       cidr_version, vn_obj)
 
         vn_obj._pending_field_updates.add('network_ipam_refs')
         self._resource_update(vn_obj)
