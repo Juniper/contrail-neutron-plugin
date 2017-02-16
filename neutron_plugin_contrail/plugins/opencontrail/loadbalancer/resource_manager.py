@@ -24,10 +24,15 @@ try:
 except ImportError:
     from neutron_lib.exceptions import NotAuthorized
 from neutron.common.exceptions import TenantNetworksDisabled
+
 try:
-    from neutron.extensions import loadbalancer
+    from neutron.extensions.loadbalancer import StateInvalid
 except ImportError:
-    from neutron_lbaas.extensions import loadbalancer
+    try:
+        from neutron_lbaas.extensions.loadbalancerv2 import StateInvalid
+    except ImportError:
+        from neutron_lbaas.extensions.loadbalancer import StateInvalid
+
 try:
     from neutron_lib import constants
 except ImportError:
@@ -315,8 +320,7 @@ class ResourceManager(object):
 
         id_perms = obj.get_id_perms()
         if not id_perms or not id_perms.enable:
-            raise loadbalancer.StateInvalid(id=id,
-                                            state=constants.PENDING_DELETE)
+            raise StateInvalid(id=id, state=constants.PENDING_DELETE)
         r = resource[self.neutron_name]
         if r:
             update = False

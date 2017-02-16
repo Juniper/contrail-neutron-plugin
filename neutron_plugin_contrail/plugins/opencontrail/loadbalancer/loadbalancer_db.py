@@ -73,7 +73,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             self.auth_url = "/v2.0/tokens"
 
         try:
-            self.auth_type = cfg.CONF.keystone_authtoken.auth_type
+            self.auth_type = cfg.CONF.auth_strategy
         except cfg.NoSuchOptError:
             self.auth_type = "keystone"
 
