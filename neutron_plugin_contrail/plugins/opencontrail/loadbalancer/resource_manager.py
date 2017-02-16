@@ -9,9 +9,12 @@ from eventlet import greenthread
 
 from neutron.common import exceptions as n_exc
 try:
-    from neutron.extensions import loadbalancer
+    from neutron.extensions.loadbalancer import StateInvalid
 except ImportError:
-    from neutron_lbaas.extensions import loadbalancer
+    try:
+        from neutron_lbaas.extensions.loadbalancerv2 import StateInvalid
+    except ImportError:
+        from neutron_lbaas.extensions.loadbalancer import StateInvalid
 from neutron.plugins.common import constants
 from neutron.services import provider_configuration as pconf
 
@@ -296,8 +299,7 @@ class ResourceManager(object):
 
         id_perms = obj.get_id_perms()
         if not id_perms or not id_perms.enable:
-            raise loadbalancer.StateInvalid(id=id,
-                                            state=constants.PENDING_DELETE)
+            raise StateInvalid(id=id, state=constants.PENDING_DELETE)
         r = resource[self.neutron_name]
         if r:
             update = False

@@ -57,7 +57,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
             self.auth_url = "/v2.0/tokens"
 
         try:
-            self.auth_type = cfg.CONF.keystone_authtoken.auth_type
+            self.auth_type = cfg.CONF.auth_strategy
         except cfg.NoSuchOptError:
             self.auth_type = "keystone"
 
@@ -277,3 +277,5 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
     def delete_l7policy_rule(self, context, id, l7policy_id):
         pass
 
+    def create_graph(self, context, graph):
+        pass
