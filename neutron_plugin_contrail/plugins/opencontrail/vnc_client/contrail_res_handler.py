@@ -20,6 +20,22 @@ from neutron_plugin_contrail.plugins.opencontrail import contrail_plugin_base
 from vnc_api import vnc_api
 
 
+neutron_to_contrail_type = {
+    'subnet': 'subnet',
+    'network': 'virtual_network',
+    'floatingip': 'floating_ip',
+    'route_table': 'logical_router',
+    'security_group': 'security_group',
+    'security_group_rule': 'security_group_rule',
+    'router': 'logical_router',
+    'port': 'virtual_machine_interface',
+    'pool': 'loadbalancer_pool',
+    'vip': 'virtual_ip',
+    'member': 'loadbalancer_member',
+    'health_monitor': 'loadbalancer_healthmonitor'
+}
+
+
 class ContrailResourceHandler(object):
 
     def __init__(self, vnc_lib, **kwargs):
@@ -124,6 +140,10 @@ class ResourceCreateHandler(ContrailResourceHandler):
                                            resource=res_type)
         except vnc_exc.OverQuota as e:
             res_type = obj.get_type()
+            for n, c in neutron_to_contrail_type.items():
+                if c.replace("_", "-") == res_type:
+                    res_type = n
+
             self._raise_contrail_exception('OverQuota',
                                            overs=[res_type],
                                            msg=str(e))

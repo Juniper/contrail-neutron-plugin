@@ -36,6 +36,8 @@ try:
 except ImportError:
     pass
 
+from ..vnc_client.contrail_res_handler import neutron_to_contrail_type
+
 LOG = logging.getLogger(__name__)
 
 vnc_conn = None
@@ -47,20 +49,6 @@ class QuotaDriver(object):
     quota information. The default driver utilizes the default values
     in neutron.conf.
     """
-    quota_neutron_to_contrail_type = {
-            'subnet': 'subnet',
-            'network': 'virtual_network',
-            'floatingip': 'floating_ip',
-            'route_table': 'logical_router',
-            'security_group': 'security_group',
-            'security_group_rule': 'security_group_rule',
-            'router': 'logical_router',
-            'port': 'virtual_machine_interface',
-            'pool': 'loadbalancer_pool',
-            'vip': 'virtual_ip',
-            'member': 'loadbalancer_member',
-            'health_monitor': 'loadbalancer_healthmonitor'
-            };
 
     @classmethod
     def _get_vnc_conn(cls):
@@ -159,17 +147,17 @@ class QuotaDriver(object):
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        qn2c = cls.quota_neutron_to_contrail_type
+        n2c = neutron_to_contrail_type
         quotas = {}
         has_non_default = False
         for resource in resources:
             quota_res = None
-            if quota and resource in qn2c:
-                quota_res = getattr(quota, qn2c[resource], None)
+            if quota and resource in n2c:
+                quota_res = getattr(quota, n2c[resource], None)
                 if quota_res is not None:
                     has_non_default = True
-            if quota_res is None and default_quota and resource in qn2c:
-                quota_res = getattr(default_quota, qn2c[resource], None)
+            if quota_res is None and default_quota and resource in n2c:
+                quota_res = getattr(default_quota, n2c[resource], None)
                 if quota_res is None:
                     quota_res = default_quota.get_defaults()
             if quota_res is None:
@@ -232,9 +220,9 @@ class QuotaDriver(object):
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
 
-        qn2c = cls.quota_neutron_to_contrail_type
-        if resource in qn2c:
-            quota_method = 'set_' + qn2c[resource]
+        n2c = neutron_to_contrail_type
+        if resource in n2c:
+            quota_method = 'set_' + n2c[resource]
             set_quota = getattr(quota, quota_method)
             set_quota(limit)
             proj_obj.set_quota(quota)
