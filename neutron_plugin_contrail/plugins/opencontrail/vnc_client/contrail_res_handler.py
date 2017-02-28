@@ -19,6 +19,7 @@ from cfgm_common import SG_NO_RULE_NAME, SG_NO_RULE_FQ_NAME
 from neutron_plugin_contrail.plugins.opencontrail import contrail_plugin_base
 from vnc_api import vnc_api
 
+from neutron_plugin_contrail.plugins.opencontrail.quota.driver import QuotaDriver
 
 class ContrailResourceHandler(object):
 
@@ -124,6 +125,10 @@ class ResourceCreateHandler(ContrailResourceHandler):
                                            resource=res_type)
         except vnc_exc.OverQuota as e:
             res_type = obj.get_type()
+            for n, c in QuotaDriver.quota_neutron_to_contrail_type.items():
+                if c.replace("_", "-") == res_type:
+                    res_type = n
+
             self._raise_contrail_exception('OverQuota',
                                            overs=[res_type],
                                            msg=str(e))
