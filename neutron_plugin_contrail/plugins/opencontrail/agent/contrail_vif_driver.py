@@ -12,6 +12,7 @@
 # under the License.
 
 import ConfigParser
+import time
 import uuid
 
 from neutron.agent.linux import interface
@@ -23,7 +24,11 @@ except ImportError:
     from oslo_log import log as logging
 
 from neutron.openstack.common import loopingcall
-from oslo.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
+import requests
 
 from contrail_vrouter_api.vrouter_api import ContrailVRouterApi
 from vnc_api.vnc_api import *
@@ -47,37 +52,65 @@ def _read_cfg(cfg_parser, section, option, default):
 class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
     """ Opencontrail VIF driver for neutron."""
 
-    @classmethod
-    def _parse_class_args(cls, cfg_parser):
-        cfg_parser.read(CONTRAIL_CFG_FILE)
-        cls._api_server_ip = _read_cfg(cfg_parser, 'APISERVER',
-                                       'api_server_ip', '127.0.0.1')
-        cls._api_server_port = _read_cfg(cfg_parser, 'APISERVER',
-                                         'api_server_port', '8082')
-        cls._api_server_use_ssl  = _read_cfg(cfg_parser, 'APISERVER',
-                                         'use_ssl', False)
-        cls._auth_token_url  = _read_cfg(cfg_parser, 'APISERVER',
-                                         'auth_token_url', None)
-
     def __init__(self, conf):
         super(ContrailInterfaceDriver, self).__init__(conf)
         self._port_dict = {}
-        self._client = self._connect_to_api_server()
+        self._connected = self._connect_to_vnc_server()
         self._vrouter_client = ContrailVRouterApi()
         timer = loopingcall.FixedIntervalLoopingCall(self._keep_alive)
         timer.start(interval=2)
 
-    def _connect_to_api_server(self):
-        cfg_parser = ConfigParser.ConfigParser()
-        ContrailInterfaceDriver._parse_class_args(cfg_parser)
+    def _connect_to_vnc_server(self):
+        admin_user = cfg.CONF.keystone_authtoken.admin_user
+        admin_password = cfg.CONF.keystone_authtoken.admin_password
+        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+        api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
+        api_srvr_port = cfg.CONF.APISERVER.api_server_port
+        api_srvr_use_ssl = cfg.CONF.APISERVER.use_ssl
         try:
-            client = VncApi(api_server_host=self._api_server_ip,
-                            api_server_port=self._api_server_port,
-                            api_server_use_ssl=self._api_server_use_ssl,
-                            auth_token_url=self._auth_token_url)
-            return client
-        except:
-            pass
+            auth_host = cfg.CONF.keystone_authtoken.auth_host
+        except cfg.NoSuchOptError:
+            auth_host = "127.0.0.1"
+
+        try:
+            auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
+        except cfg.NoSuchOptError:
+            auth_protocol = "http"
+
+        try:
+            auth_port = cfg.CONF.keystone_authtoken.auth_port
+        except cfg.NoSuchOptError:
+            auth_port = "35357"
+
+        try:
+            auth_url = cfg.CONF.keystone_authtoken.auth_url
+        except cfg.NoSuchOptError:
+            auth_url = "/v2.0/tokens"
+
+        try:
+            auth_type = cfg.CONF.auth_strategy
+        except cfg.NoSuchOptError:
+            auth_type = "keystone"
+
+        try:
+            api_server_url = cfg.CONF.APISERVER.api_server_url
+        except cfg.NoSuchOptError:
+            api_server_url = "/"
+
+        # Retry till a api-server is up
+        connected = False
+        while not connected:
+            try:
+                self._client = vnc_api.VncApi(
+                    admin_user, admin_password, admin_tenant_name,
+                    api_srvr_ip, api_srvr_port, api_server_url,
+                    auth_host=auth_host, auth_port=auth_port,
+                    auth_protocol=auth_protocol, auth_url=auth_url,
+                    auth_type=auth_type, api_server_use_ssl=api_srvr_use_ssl)
+                connected = True
+            except requests.exceptions.RequestException:
+                time.sleep(3)
+        return connected
 
     def _keep_alive(self):
         self._vrouter_client.periodic_connection_check()

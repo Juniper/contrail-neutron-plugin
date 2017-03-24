@@ -22,7 +22,10 @@ try:
     from neutron.common.exceptions import BadRequest
 except ImportError:
     from neutron_lib.exceptions import BadRequest
-from neutron.common.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 import requests
 
 try:
@@ -53,7 +56,9 @@ from vnc_client import vn_res_handler as vn_handler
 LOG = logging.getLogger(__name__)
 
 vnc_extra_opts = [
-    cfg.BoolOpt('apply_subnet_host_routes', default=False),
+    cfg.BoolOpt('apply_subnet_host_routes', default=False,
+                help="Apply Neutron subnet host routes to Contrail virtual "
+                     "network with a route table"),
     cfg.BoolOpt('multi_tenancy', default=False)
 ]
 
@@ -106,11 +111,6 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
         except cfg.NoSuchOptError:
             api_server_url = "/"
 
-        try:
-            auth_token_url = cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            auth_token_url = None
-
         # Retry till a api-server is up
         connected = False
         while not connected:
@@ -120,7 +120,7 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
                     api_srvr_ip, api_srvr_port, api_server_url,
                     auth_host=auth_host, auth_port=auth_port,
                     auth_protocol=auth_protocol, auth_url=auth_url,
-                    auth_type=auth_type, auth_token_url=auth_token_url)
+                    auth_type=auth_type)
                 connected = True
             except requests.exceptions.RequestException:
                 time.sleep(3)

@@ -38,7 +38,10 @@ try:
     from neutron_lib import exceptions as neutron_lib_exc
 except ImportError:
     neutron_lib_exc = None
-from neutron.common.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
@@ -80,17 +83,17 @@ vnc_opts = [
                 default={'contrail': None,
                          'service-interface': None,
                          'vf-binding': None},
-                help='Enable Contrail extensions(policy, ipam)'),
+                help='Enable Contrail extensions (default: %(default)s)'),
     cfg.BoolOpt('use_ssl', default=False,
                help='Use SSL to connect with VNC controller'),
     cfg.BoolOpt('insecure', default=False,
                help='Insecurely connect to VNC controller'),
     cfg.StrOpt('certfile', default='',
-               help='certfile to connect securely to VNC controller'),
+               help='Certfile to connect securely to VNC controller'),
     cfg.StrOpt('keyfile', default='',
-               help='keyfile to connect securely to  VNC controller'),
+               help='Keyfile to connect securely to  VNC controller'),
     cfg.StrOpt('cafile', default='',
-               help='cafile to connect securely to VNC controller'),
+               help='Cafile to connect securely to VNC controller'),
 ]
 
 analytics_opts = [

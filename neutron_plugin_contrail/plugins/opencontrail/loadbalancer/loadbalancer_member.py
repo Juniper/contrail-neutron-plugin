@@ -15,12 +15,9 @@ except ImportError:
     from oslo_utils import uuidutils
 
 try:
-    from neutron.common.config import cfg
+    from oslo.config import cfg
 except ImportError:
-    try:
-        from oslo.config import cfg
-    except ImportError:
-        from oslo_config import cfg
+    from oslo_config import cfg
 
 try:
     from neutron.common.exceptions import NotAuthorized

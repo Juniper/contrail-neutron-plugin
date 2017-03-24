@@ -13,12 +13,9 @@ except ImportError:
 from neutron.common import exceptions
 
 try:
-    from neutron.common.config import cfg
+    from oslo.config import cfg
 except ImportError:
-    try:
-        from oslo.config import cfg
-    except ImportError:
-        from oslo_config import cfg
+    from oslo_config import cfg
 
 from httplib2 import Http
 import re
@@ -67,13 +64,8 @@ class QuotaDriver(object):
         global vnc_conn
         if vnc_conn:
             return vnc_conn
+
         # Retry till a api-server is up
-
-        try:
-            auth_token_url= cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            auth_token_url = None
-
         while True:
             try:
                 vnc_conn = vnc_api.VncApi(
@@ -86,7 +78,8 @@ class QuotaDriver(object):
                     auth_port=cfg.CONF.keystone_authtoken.auth_port,
                     auth_protocol=cfg.CONF.keystone_authtoken.auth_protocol,
                     api_server_use_ssl=cfg.CONF.APISERVER.use_ssl,
-                    auth_token_url=auth_token_url)
+                    auth_url=cfg.CONF.keystone_authtoken.auth_url,
+                    auth_type=cfg.CONF.auth_strategy)
                 return vnc_conn
             except requests.exceptions.RequestException as e:
                 time.sleep(3)

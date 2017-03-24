@@ -24,7 +24,10 @@ from networking_bgpvpn.neutron.extensions import bgpvpn as bgpvpn_ext
 from networking_bgpvpn.neutron.services.service_drivers import driver_api\
     as bgpvpn_driver_api
 from networking_bgpvpn.neutron.services.common import utils as bgpvpn_utils
-from neutron.common.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 from neutron_lib import exceptions as neutron_exc
 from neutron.extensions import l3 as neutron_l3_ext
 from oslo_log import log as logging
@@ -79,11 +82,6 @@ class ContrailBGPVPNDriver(bgpvpn_driver_api.BGPVPNDriverBase):
         except cfg.NoSuchOptError:
             api_server_url = "/"
 
-        try:
-            auth_token_url = cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            auth_token_url = None
-
         # Retry till a api-server is up
         connected = False
         while not connected:
@@ -93,7 +91,7 @@ class ContrailBGPVPNDriver(bgpvpn_driver_api.BGPVPNDriverBase):
                     api_srvr_ip, api_srvr_port, api_server_url,
                     auth_host=auth_host, auth_port=auth_port,
                     auth_protocol=auth_protocol, auth_url=auth_url,
-                    auth_type=auth_type, auth_token_url=auth_token_url)
+                    auth_type=auth_type)
                 connected = True
             except requests.exceptions.RequestException:
                 time.sleep(3)
