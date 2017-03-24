@@ -21,7 +21,10 @@ try:
     from neutron_lib import constants
 except ImportError:
     from neutron.plugins.common import constants
-from neutron.common.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 from vnc_api import vnc_api
 
 import contrail_res_handler as res_handler

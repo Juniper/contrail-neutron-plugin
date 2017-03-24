@@ -13,8 +13,6 @@
 #    under the License.
 #
 
-import requests
-import time
 import uuid
 
 from cfgm_common import exceptions as vnc_exc
@@ -24,13 +22,14 @@ from networking_bgpvpn.neutron.extensions import bgpvpn as bgpvpn_ext
 from networking_bgpvpn.neutron.services.service_drivers import driver_api\
     as bgpvpn_driver_api
 from networking_bgpvpn.neutron.services.common import utils as bgpvpn_utils
-from neutron.common.config import cfg
 from neutron_lib import exceptions as neutron_exc
 from neutron.extensions import l3 as neutron_l3_ext
 from oslo_log import log as logging
 
-CONTRAIL_BGPVPN_DRIVER_NAME = 'Contrail'
+from neutron_plugin_contrail.common import utils
 
+
+CONTRAIL_BGPVPN_DRIVER_NAME = 'Contrail'
 LOG = logging.getLogger(__name__)
 
 
@@ -40,64 +39,7 @@ class ContrailBGPVPNDriver(bgpvpn_driver_api.BGPVPNDriverBase):
     def __init__(self, service_plugin):
         super(ContrailBGPVPNDriver, self).__init__(service_plugin)
         LOG.debug("ContrailBGPVPNDriver service_plugin : %s", service_plugin)
-        self._vnc_lib = None
-        self.connected = self._connect_to_vnc_server()
-
-    def _connect_to_vnc_server(self):
-        admin_user = cfg.CONF.keystone_authtoken.admin_user
-        admin_password = cfg.CONF.keystone_authtoken.admin_password
-        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
-        api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
-        api_srvr_port = cfg.CONF.APISERVER.api_server_port
-        try:
-            auth_host = cfg.CONF.keystone_authtoken.auth_host
-        except cfg.NoSuchOptError:
-            auth_host = "127.0.0.1"
-
-        try:
-            auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
-        except cfg.NoSuchOptError:
-            auth_protocol = "http"
-
-        try:
-            auth_port = cfg.CONF.keystone_authtoken.auth_port
-        except cfg.NoSuchOptError:
-            auth_port = "35357"
-
-        try:
-            auth_url = cfg.CONF.keystone_authtoken.auth_url
-        except cfg.NoSuchOptError:
-            auth_url = "/v2.0/tokens"
-
-        try:
-            auth_type = cfg.CONF.auth_strategy
-        except cfg.NoSuchOptError:
-            auth_type = "keystone"
-
-        try:
-            api_server_url = cfg.CONF.APISERVER.api_server_url
-        except cfg.NoSuchOptError:
-            api_server_url = "/"
-
-        try:
-            auth_token_url = cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            auth_token_url = None
-
-        # Retry till a api-server is up
-        connected = False
-        while not connected:
-            try:
-                self._vnc_api = vnc_api.VncApi(
-                    admin_user, admin_password, admin_tenant_name,
-                    api_srvr_ip, api_srvr_port, api_server_url,
-                    auth_host=auth_host, auth_port=auth_port,
-                    auth_protocol=auth_protocol, auth_url=auth_url,
-                    auth_type=auth_type, auth_token_url=auth_token_url)
-                connected = True
-            except requests.exceptions.RequestException:
-                time.sleep(3)
-        return True
+        self._vnc_api = utils.get_vnc_api_instance()
 
     @staticmethod
     def _project_id_neutron_to_vnc(proj_id):

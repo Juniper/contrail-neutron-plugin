@@ -38,7 +38,10 @@ try:
     from neutron_lib import exceptions as neutron_lib_exc
 except ImportError:
     neutron_lib_exc = None
-from neutron.common.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
@@ -59,6 +62,7 @@ try:
 except ImportError:
     from oslo_log import log as logging
 
+from neutron_plugin_contrail.common import utils
 
 # Constant for max length of network interface names
 # eg 'bridge' in the Network class or 'devname' in
@@ -70,40 +74,6 @@ VIF_TYPE_VROUTER = 'vrouter'
 LOG = logging.getLogger(__name__)
 
 NEUTRON_CONTRAIL_PREFIX = 'NEUTRON'
-
-vnc_opts = [
-    cfg.StrOpt('api_server_ip', default='127.0.0.1',
-               help='IP address to connect to VNC controller'),
-    cfg.StrOpt('api_server_port', default='8082',
-               help='Port to connect to VNC controller'),
-    cfg.DictOpt('contrail_extensions',
-                default={'contrail': None,
-                         'service-interface': None,
-                         'vf-binding': None},
-                help='Enable Contrail extensions(policy, ipam)'),
-    cfg.BoolOpt('use_ssl', default=False,
-               help='Use SSL to connect with VNC controller'),
-    cfg.BoolOpt('insecure', default=False,
-               help='Insecurely connect to VNC controller'),
-    cfg.StrOpt('certfile', default='',
-               help='certfile to connect securely to VNC controller'),
-    cfg.StrOpt('keyfile', default='',
-               help='keyfile to connect securely to  VNC controller'),
-    cfg.StrOpt('cafile', default='',
-               help='cafile to connect securely to VNC controller'),
-]
-
-analytics_opts = [
-    cfg.StrOpt('analytics_api_ip', default='127.0.0.1',
-               help='IP address to connect to VNC collector'),
-    cfg.StrOpt('analytics_api_port', default='8081',
-               help='Port to connect to VNC collector'),
-]
-
-vrouter_opts = [
-    cfg.StrOpt('vhostuser_sockets_dir', default='/var/run/vrouter',
-               help='Path to dir where vhostuser socket are placed'),
-]
 
 
 def _raise_contrail_error(info, obj_name):
@@ -205,9 +175,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def __init__(self):
         super(NeutronPluginContrailCoreBase, self).__init__()
         portbindings_base.register_port_dict_function()
-        cfg.CONF.register_opts(vnc_opts, 'APISERVER')
-        cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
-        cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
+        utils.register_vnc_api_options()
         self._parse_class_args()
 
     def get_agents(self, context, filters=None, fields=None):

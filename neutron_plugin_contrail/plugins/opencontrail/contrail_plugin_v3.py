@@ -12,7 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import time
 
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
@@ -22,8 +21,10 @@ try:
     from neutron.common.exceptions import BadRequest
 except ImportError:
     from neutron_lib.exceptions import BadRequest
-from neutron.common.config import cfg
-import requests
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 
 try:
     from neutron.openstack.common import log as logging
@@ -32,9 +33,8 @@ except ImportError:
 
 from eventlet import greenthread
 
+from neutron_plugin_contrail.common import utils
 import contrail_plugin_base as plugin_base
-
-from vnc_api import vnc_api
 
 from vnc_client import fip_res_handler as fip_handler
 from vnc_client import ipam_res_handler as ipam_handler
@@ -52,11 +52,6 @@ from vnc_client import vn_res_handler as vn_handler
 
 LOG = logging.getLogger(__name__)
 
-vnc_extra_opts = [
-    cfg.BoolOpt('apply_subnet_host_routes', default=False),
-    cfg.BoolOpt('multi_tenancy', default=False)
-]
-
 
 class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
 
@@ -64,70 +59,14 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
 
     def __init__(self):
         super(NeutronPluginContrailCoreV3, self).__init__()
-        cfg.CONF.register_opts(vnc_extra_opts, 'APISERVER')
         self._vnc_lib = None
-        self.connected = self._connect_to_vnc_server()
+        utils.register_vnc_api_extra_options()
+        self._vnc_lib = utils.get_vnc_api_instance()
         self._res_handlers = {}
         self._prepare_res_handlers()
 
-    def _connect_to_vnc_server(self):
-        admin_user = cfg.CONF.keystone_authtoken.admin_user
-        admin_password = cfg.CONF.keystone_authtoken.admin_password
-        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
-        api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
-        api_srvr_port = cfg.CONF.APISERVER.api_server_port
-        try:
-            auth_host = cfg.CONF.keystone_authtoken.auth_host
-        except cfg.NoSuchOptError:
-            auth_host = "127.0.0.1"
-
-        try:
-            auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
-        except cfg.NoSuchOptError:
-            auth_protocol = "http"
-
-        try:
-            auth_port = cfg.CONF.keystone_authtoken.auth_port
-        except cfg.NoSuchOptError:
-            auth_port = "35357"
-
-        try:
-            auth_url = cfg.CONF.keystone_authtoken.auth_url
-        except cfg.NoSuchOptError:
-            auth_url = "/v2.0/tokens"
-
-        try:
-            auth_type = cfg.CONF.auth_strategy
-        except cfg.NoSuchOptError:
-            auth_type = "keystone"
-
-        try:
-            api_server_url = cfg.CONF.APISERVER.api_server_url
-        except cfg.NoSuchOptError:
-            api_server_url = "/"
-
-        try:
-            auth_token_url = cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            auth_token_url = None
-
-        # Retry till a api-server is up
-        connected = False
-        while not connected:
-            try:
-                self._vnc_lib = vnc_api.VncApi(
-                    admin_user, admin_password, admin_tenant_name,
-                    api_srvr_ip, api_srvr_port, api_server_url,
-                    auth_host=auth_host, auth_port=auth_port,
-                    auth_protocol=auth_protocol, auth_url=auth_url,
-                    auth_type=auth_type, auth_token_url=auth_token_url)
-                connected = True
-            except requests.exceptions.RequestException:
-                time.sleep(3)
-        return True
-
     def _set_user_auth_token(self):
-        if not cfg.CONF.APISERVER.multi_tenancy:
+        if not utils.vnc_api_is_authenticated():
             return
 
         # forward user token to API server for RBAC

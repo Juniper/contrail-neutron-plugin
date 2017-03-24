@@ -12,6 +12,7 @@
 # under the License.
 
 import ConfigParser
+import time
 import uuid
 
 from neutron.agent.linux import interface
@@ -23,61 +24,25 @@ except ImportError:
     from oslo_log import log as logging
 
 from neutron.openstack.common import loopingcall
-from oslo.config import cfg
 
 from contrail_vrouter_api.vrouter_api import ContrailVRouterApi
 from vnc_api.vnc_api import *
 
+from neutron_plugin_contrail.common import utils
+
 LOG = logging.getLogger(__name__)
-
-CONTRAIL_CFG_FILE = '/etc/neutron/plugins/juniper/contrail/ContrailPlugin.ini'
-
-
-def _read_cfg(cfg_parser, section, option, default):
-    try:
-        val = cfg_parser.get(section, option)
-    except (AttributeError,
-            ConfigParser.NoOptionError,
-            ConfigParser.NoSectionError):
-        val = default
-
-    return val
 
 
 class ContrailInterfaceDriver(interface.LinuxInterfaceDriver):
     """ Opencontrail VIF driver for neutron."""
 
-    @classmethod
-    def _parse_class_args(cls, cfg_parser):
-        cfg_parser.read(CONTRAIL_CFG_FILE)
-        cls._api_server_ip = _read_cfg(cfg_parser, 'APISERVER',
-                                       'api_server_ip', '127.0.0.1')
-        cls._api_server_port = _read_cfg(cfg_parser, 'APISERVER',
-                                         'api_server_port', '8082')
-        cls._api_server_use_ssl  = _read_cfg(cfg_parser, 'APISERVER',
-                                         'use_ssl', False)
-        cls._auth_token_url  = _read_cfg(cfg_parser, 'APISERVER',
-                                         'auth_token_url', None)
-
     def __init__(self, conf):
         super(ContrailInterfaceDriver, self).__init__(conf)
         self._port_dict = {}
-        self._client = self._connect_to_api_server()
+        self._client = utils.get_vnc_api_instance()
         self._vrouter_client = ContrailVRouterApi()
         timer = loopingcall.FixedIntervalLoopingCall(self._keep_alive)
         timer.start(interval=2)
-
-    def _connect_to_api_server(self):
-        cfg_parser = ConfigParser.ConfigParser()
-        ContrailInterfaceDriver._parse_class_args(cfg_parser)
-        try:
-            client = VncApi(api_server_host=self._api_server_ip,
-                            api_server_port=self._api_server_port,
-                            api_server_use_ssl=self._api_server_use_ssl,
-                            auth_token_url=self._auth_token_url)
-            return client
-        except:
-            pass
 
     def _keep_alive(self):
         self._vrouter_client.periodic_connection_check()
