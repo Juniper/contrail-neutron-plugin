@@ -12,7 +12,6 @@ try:
     from neutron_lib import constants
 except ImportError:
     from neutron.plugins.common import constants
-from neutron.services import provider_configuration as pconf
 
 
 class LoadBalancerPlugin(LoadBalancerPluginDb):

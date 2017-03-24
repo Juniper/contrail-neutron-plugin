@@ -1,44 +1,31 @@
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
-import time
+import cgitb
+import sys
+import uuid
 
-import ConfigParser
-from pprint import pformat
-
+from cfgm_common import exceptions as vnc_exc
 try:
     from neutron.openstack.common import log as logging
 except ImportError:
     from oslo_log import log as logging
-
-from neutron.common import exceptions
-
+from neutron.common.exceptions import InvalidQuotaValue
 try:
-    from neutron.common.config import cfg
+    from neutron.common.exceptions import OverQuota
 except ImportError:
-    try:
-        from oslo.config import cfg
-    except ImportError:
-        from oslo_config import cfg
-
-from httplib2 import Http
-import re
-import string
-import sys
-import cgitb
-import uuid
-import requests
-
-from cfgm_common import exceptions as vnc_exc
+    from neutron_lib.exceptions import OverQuota
 from vnc_api import vnc_api
-
 try:
     from neutron.db.quota import api as quota_api
 except ImportError:
     pass
 
+from neutron_plugin_contrail.common import utils
+
 LOG = logging.getLogger(__name__)
 
 vnc_conn = None
+
 
 class QuotaDriver(object):
     """Configuration driver.
@@ -60,36 +47,16 @@ class QuotaDriver(object):
             'vip': 'virtual_ip',
             'member': 'loadbalancer_member',
             'health_monitor': 'loadbalancer_healthmonitor'
-            };
+            }
 
     @classmethod
     def _get_vnc_conn(cls):
         global vnc_conn
         if vnc_conn:
             return vnc_conn
-        # Retry till a api-server is up
 
-        try:
-            auth_token_url= cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            auth_token_url = None
-
-        while True:
-            try:
-                vnc_conn = vnc_api.VncApi(
-                    cfg.CONF.keystone_authtoken.admin_user,
-                    cfg.CONF.keystone_authtoken.admin_password,
-                    cfg.CONF.keystone_authtoken.admin_tenant_name,
-                    cfg.CONF.APISERVER.api_server_ip,
-                    cfg.CONF.APISERVER.api_server_port,
-                    auth_host=cfg.CONF.keystone_authtoken.auth_host,
-                    auth_port=cfg.CONF.keystone_authtoken.auth_port,
-                    auth_protocol=cfg.CONF.keystone_authtoken.auth_protocol,
-                    api_server_use_ssl=cfg.CONF.APISERVER.use_ssl,
-                    auth_token_url=auth_token_url)
-                return vnc_conn
-            except requests.exceptions.RequestException as e:
-                time.sleep(3)
+        vnc_conn = utils.get_vnc_api_instance()
+        return vnc_conn
     # end _get_vnc_conn
 
     def limit_check(self, context, tenant_id, resources, values):
@@ -117,7 +84,7 @@ class QuotaDriver(object):
         # Ensure no value is less than zero
         unders = [key for key, val in values.items() if val < 0]
         if unders:
-            raise exceptions.InvalidQuotaValue(unders=sorted(unders))
+            raise InvalidQuotaValue(unders=sorted(unders))
 
         # Get the applicable quotas
         quotas = self.__class__.get_tenant_quotas(
@@ -128,7 +95,7 @@ class QuotaDriver(object):
         overs = [key for key, val in values.items()
                  if quotas[key] >= 0 and quotas[key] < val]
         if overs:
-            raise exceptions.OverQuota(overs=sorted(overs))
+            raise OverQuota(overs=sorted(overs))
 
     @classmethod
     def get_tenant_quotas(cls, context, resources, tenant_id):
@@ -194,8 +161,9 @@ class QuotaDriver(object):
         for project in project_list:
             if default_quota and (project['uuid'] == default_project.uuid):
                 continue
-            quotas = cls._get_tenant_quotas(context, resources, project['uuid'],
-                                            default_quota, get_default=False)
+            quotas = cls._get_tenant_quotas(context, resources,
+                                            project['uuid'], default_quota,
+                                            get_default=False)
             if quotas != {}:
                 quotas['tenant_id'] = project['uuid'].replace('-', '')
                 ret_list.append(quotas)
@@ -214,7 +182,7 @@ class QuotaDriver(object):
             raise e
 
         if quota is not None:
-            for k,v in quota.__dict__.items():
+            for k, v in quota.__dict__.items():
                 if k != 'defaults':
                     quota.__dict__[k] = None
             proj_obj.set_quota(quota)

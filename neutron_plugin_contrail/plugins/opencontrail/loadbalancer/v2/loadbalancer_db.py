@@ -2,15 +2,6 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
-import requests
-import time
-import uuid
-
-try:
-    from oslo.config import cfg
-except ImportError:
-    from oslo_config import cfg
-
 from cfgm_common import analytics_client
 from cfgm_common import exceptions as vnc_exc
 try:
@@ -21,8 +12,8 @@ except ImportError:
 from neutron_lbaas.extensions import loadbalancerv2
 from neutron_lbaas.extensions.loadbalancerv2 import LoadBalancerPluginBaseV2
 
-from vnc_api.vnc_api import VncApi
 
+from neutron_plugin_contrail.common import utils
 import loadbalancer_healthmonitor
 import loadbalancer_member
 import loadbalancer_pool
@@ -31,70 +22,13 @@ import listener
 
 
 class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
-
-    def __init__(self):
-        self.admin_user = cfg.CONF.keystone_authtoken.admin_user
-        self.admin_password = cfg.CONF.keystone_authtoken.admin_password
-        self.admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
-        self.api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
-        self.api_srvr_port = cfg.CONF.APISERVER.api_server_port
-        self.api_srvr_use_ssl= cfg.CONF.APISERVER.use_ssl
-        try:
-            self.auth_host = cfg.CONF.keystone_authtoken.auth_host
-        except cfg.NoSuchOptError:
-            self.auth_host = "127.0.0.1"
-
-        try:
-            self.auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
-        except cfg.NoSuchOptError:
-            self.auth_protocol = "http"
-
-        try:
-            self.auth_port = cfg.CONF.keystone_authtoken.auth_port
-        except cfg.NoSuchOptError:
-            self.auth_port = "35357"
-
-        try:
-            self.auth_url = cfg.CONF.keystone_authtoken.auth_url
-        except cfg.NoSuchOptError:
-            self.auth_url = "/v2.0/tokens"
-
-        try:
-            self.auth_type = cfg.CONF.auth_strategy
-        except cfg.NoSuchOptError:
-            self.auth_type = "keystone"
-
-        try:
-            self.api_server_url = cfg.CONF.APISERVER.api_server_url
-        except cfg.NoSuchOptError:
-            self.api_server_url = "/"
-
-        try:
-            self.auth_token_url = cfg.CONF.APISERVER.auth_token_url
-        except cfg.NoSuchOptError:
-            self.auth_token_url = None
-
     @property
     def api(self):
         if hasattr(self, '_api'):
             return self._api
 
-        # Retry till a api-server is up
-        connected = False
-        while not connected:
-            try:
-                self._api = VncApi(self.admin_user, self.admin_password,
-                        self.admin_tenant_name, self.api_srvr_ip,
-                        self.api_srvr_port, self.api_server_url,
-                        auth_host=self.auth_host, auth_port=self.auth_port,
-                        auth_protocol=self.auth_protocol,
-                        auth_url=self.auth_url, auth_type=self.auth_type,
-                        wait_for_connect=True,
-                        api_server_use_ssl=self.api_srvr_use_ssl,
-                        auth_token_url=self.auth_token_url)
-                connected = True
-            except requests.exceptions.RequestException:
-                time.sleep(3)
+        self._api = utils.get_vnc_api_instance()
+
         return self._api
 
     @property
