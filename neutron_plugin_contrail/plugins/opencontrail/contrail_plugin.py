@@ -27,7 +27,10 @@ try:
     from neutron.common.exceptions import BadRequest
 except ImportError:
     from neutron_lib.exceptions import BadRequest
-from neutron.common.config import cfg
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
@@ -65,21 +68,6 @@ _DEFAULT_SECURE_SERVER_CONNECT="https"
 
 LOG = logging.getLogger(__name__)
 
-vnc_opts = [
-    cfg.StrOpt('api_server_ip', default='127.0.0.1',
-               help='IP address to connect to VNC controller'),
-    cfg.StrOpt('api_server_port', default='8082',
-               help='Port to connect to VNC controller'),
-    cfg.DictOpt('contrail_extensions', default={},
-                help='Enable Contrail extensions(policy, ipam)'),
-]
-
-analytics_opts = [
-    cfg.StrOpt('analytics_api_ip', default='127.0.0.1',
-               help='IP address to connect to VNC collector'),
-    cfg.StrOpt('analytics_api_port', default='8081',
-               help='Port to connect to VNC collector'),
-]
 
 class InvalidContrailExtensionError(ServiceUnavailable):
     message = _("Invalid Contrail Extension: %(ext_name) %(ext_class)")
@@ -100,19 +88,11 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
 
             self._authn_body = body
             self._authn_token = cfg.CONF.keystone_authtoken.admin_token
-            try:
-                auth_token_url = cfg.CONF.APISERVER.auth_token_url
-            except cfg.NoSuchOptError:
-                auth_token_url = None
-
-            if auth_token_url:
-                self._keystone_url = auth_token_url
-            else:
-                self._keystone_url = "%s://%s:%s%s" % (
-                    cfg.CONF.keystone_authtoken.auth_protocol,
-                    cfg.CONF.keystone_authtoken.auth_host,
-                    cfg.CONF.keystone_authtoken.auth_port,
-                    "/v2.0/tokens")
+            self._keystone_url = "%s://%s:%s%s" % (
+                cfg.CONF.keystone_authtoken.auth_protocol,
+                cfg.CONF.keystone_authtoken.auth_host,
+                cfg.CONF.keystone_authtoken.auth_port,
+                "/v2.0/tokens")
 
             #Keystone SSL Support
             self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
