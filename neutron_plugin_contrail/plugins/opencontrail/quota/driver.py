@@ -51,7 +51,7 @@ class QuotaDriver(object):
             'subnet': 'subnet',
             'network': 'virtual_network',
             'floatingip': 'floating_ip',
-            'route_table': 'logical_router',
+            'route_table': 'route_table',
             'security_group': 'security_group',
             'security_group_rule': 'security_group_rule',
             'router': 'logical_router',
