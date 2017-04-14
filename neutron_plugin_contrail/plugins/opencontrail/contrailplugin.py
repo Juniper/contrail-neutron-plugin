@@ -162,7 +162,8 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
     def update_security_group(self, context, id, security_group):
         pass
 
-    def __init__(self):
+    @classmethod
+    def __init__static__(cls):
         cfg.CONF.register_opts(vnc_opts, 'APISERVER')
         cfg.CONF.register_opts(keystone_opts, 'KEYSTONE')
 
@@ -170,9 +171,9 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         ContrailPlugin._parse_class_args(cfg_parser)
 
         ContrailPlugin._connect_to_db()
-        self._cfgdb = ContrailPlugin._cfgdb
-
         ContrailPlugin._tenant_list_from_keystone()
+
+    def __init__(self):
         self.base_binding_dict = self._get_base_binding_dict()
         portbindings_base.register_port_dict_function()
         self.register_dict_extend_funcs('networks', ['_extend_network_dict_l3'])
@@ -1474,3 +1475,5 @@ class ContrailPlugin(db_base_plugin_v2.NeutronDbPluginV2,
         except Exception as e:
             cgitb.Hook(format="text").handle(sys.exc_info())
             raise e
+
+ContrailPlugin.__init__static__()
