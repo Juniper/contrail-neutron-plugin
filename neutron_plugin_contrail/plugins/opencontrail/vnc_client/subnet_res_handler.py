@@ -397,7 +397,7 @@ class SubnetCreateHandler(res_handler.ResourceCreateHandler, SubnetMixin):
     def resource_create(self, context, subnet_q):
         net_id = subnet_q['network_id']
         vn_obj = self._resource_get(id=net_id)
-        ipam_fq_name = subnet_q.get('contrail:ipam_fq_name')
+        ipam_fq_name = subnet_q.get('ipam_fq_name')
         netipam_obj = self._get_netipam_obj(ipam_fq_name,
                                             vn_obj)
         if not ipam_fq_name:

@@ -348,7 +348,7 @@ class VMInterfaceMixin(object):
             port_q_dict['status'] = constants.PORT_STATUS_DOWN
 
         if extensions_enabled:
-            extra_dict = {'contrail:fq_name': vmi_obj.get_fq_name()}
+            extra_dict = {'fq_name': vmi_obj.get_fq_name()}
             port_q_dict.update(extra_dict)
 
         bindings_dict = self._get_port_bindings(vmi_obj)
