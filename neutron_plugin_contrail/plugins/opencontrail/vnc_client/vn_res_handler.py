@@ -35,8 +35,8 @@ class VNetworkMixin(object):
             id_perms.enable = network_q['admin_state_up']
             vn_obj.set_id_perms(id_perms)
 
-        if 'contrail:policys' in network_q:
-            policy_fq_names = network_q['contrail:policys']
+        if 'policys' in network_q:
+            policy_fq_names = network_q['policys']
             # reset and add with newly specified list
             vn_obj.set_network_policy_list([], [])
             seq = 0
@@ -53,8 +53,8 @@ class VNetworkMixin(object):
                         sequence=vnc_api.SequenceType(seq, 0)))
                 seq = seq + 1
 
-        if 'contrail:route_table' in network_q:
-            rt_fq_name = network_q['contrail:route_table']
+        if 'route_table' in network_q:
+            rt_fq_name = network_q['route_table']
             if rt_fq_name:
                 try:
                     rt_obj = self._vnc_lib.route_table_read(fq_name=rt_fq_name)
@@ -69,8 +69,8 @@ class VNetworkMixin(object):
 
     def _get_vn_extra_dict(self, vn_obj):
         extra_dict = {}
-        extra_dict['contrail:fq_name'] = vn_obj.get_fq_name()
-        extra_dict['contrail:instance_count'] = 0
+        extra_dict['fq_name'] = vn_obj.get_fq_name()
+        extra_dict['instance_count'] = 0
 
         net_policy_refs = vn_obj.get_network_policy_refs()
         if net_policy_refs:
@@ -78,12 +78,12 @@ class VNetworkMixin(object):
                 net_policy_refs,
                 key=lambda t: (t['attr'].sequence.major,
                                t['attr'].sequence.minor))
-            extra_dict['contrail:policys'] = [np_ref['to'] for np_ref in
+            extra_dict['policys'] = [np_ref['to'] for np_ref in
                                               sorted_refs]
 
         rt_refs = vn_obj.get_route_table_refs()
         if rt_refs:
-            extra_dict['contrail:route_table'] = [rt_ref['to'] for rt_ref in
+            extra_dict['route_table'] = [rt_ref['to'] for rt_ref in
                                                   rt_refs]
 
         return extra_dict
@@ -95,7 +95,7 @@ class VNetworkMixin(object):
             return
 
         if extra_dict:
-            extra_dict['contrail:subnet_ipam'] = []
+            extra_dict['subnet_ipam'] = []
 
         for ipam_ref in ipam_refs:
             subnets = ipam_ref['attr'].get_ipam_subnets()
@@ -111,7 +111,7 @@ class VNetworkMixin(object):
                 sn_ipam = {}
                 sn_ipam['subnet_cidr'] = sn_cidr
                 sn_ipam['ipam_fq_name'] = ipam_ref['to']
-                extra_dict['contrail:subnet_ipam'].append(sn_ipam)
+                extra_dict['subnet_ipam'].append(sn_ipam)
 
     def vn_to_neutron_dict(self, vn_obj, contrail_extensions_enabled=False,
                            fields=None):
@@ -421,7 +421,7 @@ class VNetworkGetHandler(res_handler.ResourceGetHandler, VNetworkMixin):
                 continue
             net_fq_name = unicode(net_obj.get_fq_name())
             if not self._filters_is_present(
-                    filters, 'contrail:fq_name', net_fq_name):
+                    filters, 'fq_name', net_fq_name):
                 continue
             if not self._filters_is_present(
                     filters, 'name',

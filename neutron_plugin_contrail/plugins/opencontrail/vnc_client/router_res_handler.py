@@ -69,7 +69,7 @@ class LogicalRouterMixin(object):
                                                    'enable_snat': True}
 
         if contrail_extensions_enabled:
-            rtr_q_dict.update({'contrail:fq_name': rtr_obj.get_fq_name()})
+            rtr_q_dict.update({'fq_name': rtr_obj.get_fq_name()})
 
         if fields:
             rtr_q_dict = self._filter_res_dict(rtr_q_dict, fields)
@@ -275,7 +275,7 @@ class LogicalRouterGetHandler(res_handler.ResourceGetHandler,
                     continue
 
                 proj_rtr_fq_name = unicode(proj_rtr['fq_name'])
-                if not self._filters_is_present(filters, 'contrail:fq_name',
+                if not self._filters_is_present(filters, 'fq_name',
                                                 proj_rtr_fq_name):
                     continue
                 try:
