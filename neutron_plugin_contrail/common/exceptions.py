@@ -12,10 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron_lib import exceptions as n_exc
+try:
+    from neutron_lib import exceptions as n_exc
+except ImportError:
+    from neutron.common import exceptions as n_exc
 
-from neutron._i18n import _
-
+try:
+    from neutron._i18n import _
+except ImportError:
+    from neutron.i18n import _
 
 class AuthStrategyNotSupported(n_exc.NeutronException):
         message = _("Authentication strategy %(auth_strategy)s is not "
