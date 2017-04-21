@@ -45,6 +45,14 @@ try:
 except ImportError:
     from oslo_utils import uuidutils
 
+# Ocata compatibility
+_use_plugins_directory = False
+try:
+    from neutron_lib.plugins import directory
+    _use_plugins_directory = True
+except ImportError:
+    pass
+
 # Route table Exceptions
 class RouteTableNotFound(NotFound):
     message = _("Route table %(id)s does not exist")
@@ -130,10 +138,18 @@ class Vpcroutetable(ExtensionDescriptor):
     @classmethod
     def get_resources(cls):
         """ Returns Ext Resources """
-        my_plurals = [(key, key[:-1]) for key in RESOURCE_ATTRIBUTE_MAP.keys()]
-        attr.PLURALS.update(dict(my_plurals))
+        # PLURALS were removed in Ocata
+        _plurals_present = getattr(attr, 'PLURALS', None)
+        if _plurals_present is not None:
+            my_plurals = [(key, key[:-1]) for key in RESOURCE_ATTRIBUTE_MAP.keys()]
+            attr.PLURALS.update(dict(my_plurals))
+
         exts = []
-        plugin = manager.NeutronManager.get_plugin()
+        if _use_plugins_directory:
+            plugin = directory.get_plugin()
+        else:
+            plugin = manager.NeutronManager.get_plugin()
+
         for resource_name in ['route_table', 'nat_instance']:
             collection_name = resource_name.replace('_', '-') + "s"
             params = RESOURCE_ATTRIBUTE_MAP.get(resource_name + "s", dict())

@@ -21,6 +21,13 @@ try:
 except ImportError:
     from oslo_config import cfg
 
+# Ocata compatibility
+_use_plugins_directory = False
+try:
+    from neutron_lib.plugins import directory
+    _use_plugins_directory = True
+except ImportError:
+    pass
 
 # Policy Exceptions
 class PolicyNotFound(NotFound):
@@ -73,7 +80,11 @@ class Policy(ExtensionDescriptor):
     def get_resources(cls):
         """ Returns Ext Resources """
         exts = []
-        plugin = manager.NeutronManager.get_plugin()
+        if _use_plugins_directory:
+            plugin = directory.get_plugin()
+        else:
+            plugin = manager.NeutronManager.get_plugin()
+
         for resource_name in ['policy']:
             collection_name = resource_name + "s"
             params = RESOURCE_ATTRIBUTE_MAP.get(collection_name, dict())
