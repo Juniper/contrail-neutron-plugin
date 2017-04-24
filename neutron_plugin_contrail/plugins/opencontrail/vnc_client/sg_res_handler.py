@@ -27,7 +27,7 @@ class SecurityGroupMixin(object):
                                        fields=None):
         sg_q_dict = {}
         extra_dict = {}
-        extra_dict['contrail:fq_name'] = sg_obj.get_fq_name()
+        extra_dict['fq_name'] = sg_obj.get_fq_name()
 
         # replace field names
         sg_q_dict['id'] = sg_obj.uuid
