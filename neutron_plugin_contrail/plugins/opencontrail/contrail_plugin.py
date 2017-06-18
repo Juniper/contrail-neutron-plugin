@@ -251,6 +251,8 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                 return self._prune(info, fields)
             else:
                 return [self._prune(items, fields) for items in info]
+        elif status_code == requests.codes.forbidden:
+            info['exception'] = 'NotAuthorized'
 
         plugin_base._raise_contrail_error(info, obj_name)
 
