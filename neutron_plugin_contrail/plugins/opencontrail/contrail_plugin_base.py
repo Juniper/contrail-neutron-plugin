@@ -33,6 +33,10 @@ try:
     from neutron.common.exceptions import NeutronException
 except ImportError:
     from neutron_lib.exceptions import NeutronException
+try:
+    from neutron.common.exceptions import NotAuthorized
+except ImportError:
+    from neutron_lib.exceptions import NotAuthorized
 from neutron.common import exceptions as neutron_exc
 try:
     from neutron_lib import exceptions as neutron_lib_exc
@@ -83,6 +87,8 @@ def _raise_contrail_error(info, obj_name):
                 info['resource'] = obj_name
             if exc_name == 'VirtualRouterNotFound':
                 raise HttpResponseError(info)
+            if exc_name == 'NotAuthorized':
+                raise NotAuthorized(**info)
             if hasattr(neutron_exc, exc_name):
                 raise getattr(neutron_exc, exc_name)(**info)
             if hasattr(l3, exc_name):
