@@ -180,7 +180,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
     def __init__(self):
         super(NeutronPluginContrailCoreBase, self).__init__()
-        portbindings_base.register_port_dict_function()
+        if hasattr(portbindings_base, 'register_port_dict_function'):
+            portbindings_base.register_port_dict_function()
         utils.register_vnc_api_options()
         self._parse_class_args()
 
