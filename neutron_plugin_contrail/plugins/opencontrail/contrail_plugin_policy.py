@@ -25,6 +25,10 @@ import cgitb
 
 LOG = logging.getLogger(__name__)
 
+try:
+    from oslo.config import cfg
+except ImportError:
+    from oslo_config import cfg
 
 class NeutronPluginContrailPolicy(object):
     def set_core(self, core_instance):
@@ -78,6 +82,9 @@ class NeutronPluginContrailPolicy(object):
         """
         Retrieves all policies identifiers.
         """
+        if not context.is_admin and cfg.CONF.APISERVER.multi_tenancy:
+           filters['tenant_id'] = context.project_id
+
         policy_dicts = self._core._list_resource('policy', context, filters,
                                                  fields)
 
