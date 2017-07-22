@@ -52,6 +52,9 @@ vnc_opts = [
                help='Full URL path to request Keystone tokens. This should '
                     'not be use and determined from keystone_authtoken '
                     'configuration section.'),
+    cfg.BoolOpt('multi_tenancy',
+                default=constants.VNC_API_DEFAULT_MULTI_TENANCY,
+                help='Enable multi tenancy'),
 ]
 
 analytics_opts = [
