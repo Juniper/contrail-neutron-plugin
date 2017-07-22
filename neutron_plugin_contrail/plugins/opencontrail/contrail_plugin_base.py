@@ -74,6 +74,9 @@ vnc_opts = [
                help='keyfile to connect securely to  VNC controller'),
     cfg.StrOpt('cafile', default='',
                help='cafile to connect securely to VNC controller'),
+    cfg.BoolOpt('multi_tenancy',
+                default=False,
+                help='Enable multi tenancy'),
 ]
 
 analytics_opts = [
