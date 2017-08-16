@@ -110,7 +110,7 @@ class LoadbalancerMemberManager(ResourceManager):
         if tenant_id is None:
             return self._api.loadbalancer_members_list()
 
-        pool_list = self._api.loadbalancer_pools_list(tenant_id)
+        pool_list = self._api.loadbalancer_pools_list(str(uuid.UUID(tenant_id)))
         if 'loadbalancer-pools' not in pool_list:
             return {}
 
