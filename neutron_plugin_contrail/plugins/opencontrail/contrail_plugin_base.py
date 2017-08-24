@@ -81,25 +81,35 @@ NEUTRON_CONTRAIL_PREFIX = 'NEUTRON'
 
 
 def _raise_contrail_error(info, obj_name):
-        exc_name = info.get('exception')
-        if exc_name:
-            if exc_name == 'BadRequest' and 'resource' not in info:
-                info['resource'] = obj_name
-            if exc_name == 'VirtualRouterNotFound':
-                raise HttpResponseError(info)
-            if exc_name == 'NotAuthorized':
-                raise NotAuthorized(**info)
-            if hasattr(neutron_exc, exc_name):
-                raise getattr(neutron_exc, exc_name)(**info)
-            if hasattr(l3, exc_name):
-                raise getattr(l3, exc_name)(**info)
-            if hasattr(securitygroup, exc_name):
-                raise getattr(securitygroup, exc_name)(**info)
-            if hasattr(allowedaddresspairs, exc_name):
-                raise getattr(allowedaddresspairs, exc_name)(**info)
-            if neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
-                raise getattr(neutron_lib_exc, exc_name)(**info)
-        raise NeutronException(**info)
+    exc_name = info.get('exception')
+
+    if exc_name:
+        str(exc_name) == 'OverQuota':
+        temp_info = info
+        info = {}
+        info['exception'] = str(temp_info['exception'])
+        if 'msg' in info:
+            info['msg'] = str(temp_info['msg'])
+        if 'overs' in temp_info:
+            info['overs'] = []
+            info['overs'].append(str(temp_info['overs'][0]))
+        if exc_name == 'BadRequest' and 'resource' not in info:
+            info['resource'] = obj_name
+        if exc_name == 'VirtualRouterNotFound':
+            raise HttpResponseError(info)
+        if exc_name == 'NotAuthorized':
+            raise NotAuthorized(**info)
+        if hasattr(neutron_exc, exc_name):
+            raise getattr(neutron_exc, exc_name)(**info)
+        if hasattr(l3, exc_name):
+            raise getattr(l3, exc_name)(**info)
+        if hasattr(securitygroup, exc_name):
+            raise getattr(securitygroup, exc_name)(**info)
+        if hasattr(allowedaddresspairs, exc_name):
+            raise getattr(allowedaddresspairs, exc_name)(**info)
+        if neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
+            raise getattr(neutron_lib_exc, exc_name)(**info)
+    raise NeutronException(**info)
 
 
 class InvalidContrailExtensionError(ServiceUnavailable):
