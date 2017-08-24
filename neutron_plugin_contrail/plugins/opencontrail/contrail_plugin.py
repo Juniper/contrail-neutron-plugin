@@ -270,7 +270,19 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         res_dict = self._encode_resource(resource=res_data[res_type])
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'CREATE')
-        res_dicts = self._transform_response(status_code, info=res_info,
+        if ('exception' in res_info and
+            str(res_info['exception']) == 'OverQuota'):
+            new_res_info = {}
+            new_res_info['exception'] = str(res_info['exception'])
+            if 'msg' in res_info:
+                new_res_info['msg'] = str(res_info['msg'])
+            if 'overs' in res_info:
+                new_res_info['overs'] = []
+                new_res_info['overs'].append(str(res_info['overs'][0]))
+        else:
+            new_res_info = res_info
+
+        res_dicts = self._transform_response(status_code, info=new_res_info,
                                              obj_name=res_type)
         LOG.debug("create_%(res_type)s(): %(res_dicts)s",
                   {'res_type': res_type, 'res_dicts': res_dicts})
