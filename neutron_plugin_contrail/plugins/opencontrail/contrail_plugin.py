@@ -271,6 +271,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         res_dict = self._encode_resource(resource=res_data[res_type])
         status_code, res_info = self._request_backend(context, res_dict,
                                                       res_type, 'CREATE')
+
         res_dicts = self._transform_response(status_code, info=res_info,
                                              obj_name=res_type)
         LOG.debug("create_%(res_type)s(): %(res_dicts)s",
