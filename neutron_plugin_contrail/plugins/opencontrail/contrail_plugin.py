@@ -81,26 +81,92 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         self._authn_token = None
         if cfg.CONF.auth_strategy == 'keystone':
             kcfg = cfg.CONF.keystone_authtoken
-            body = '{"auth":{"passwordCredentials":{'
-            body += ' "username": "%s",' % (kcfg.admin_user)
-            body += ' "password": "%s"},' % (kcfg.admin_password)
-            body += ' "tenantName":"%s"}}' % (kcfg.admin_tenant_name)
+            try:
+                # Get the domain_id for keystone v3
+                self._domain_id = kcfg.admin_domain_id
+            except cfg.NoSuchOptError:
+                self._domain_id = None
+            try:
+                # Get the user_domain_name for keystone v3
+                self._user_domain_name = kcfg.admin_user_domain_name
+            except cfg.NoSuchOptError:
+                self._user_domain_name = 'Default'
+            try:
+                # Get the project_domain_name for keystone v3
+                self._project_domain_name = kcfg.project_domain_name
+            except cfg.NoSuchOptError:
+                self._project_domain_name = 'Default'
+            try:
+                # Get the project_name for keystone v3
+                self._project_name = kcfg.project_name
+            except cfg.NoSuchOptError:
+                self._project_name = kcfg.admin_tenant_name
 
-            self._authn_body = body
             self._authn_token = cfg.CONF.keystone_authtoken.admin_token
             try:
                 auth_token_url = cfg.CONF.APISERVER.auth_token_url
             except cfg.NoSuchOptError:
                 auth_token_url = None
 
+            self._keystone_url = None
             if auth_token_url:
                 self._keystone_url = auth_token_url
-            else:
+            elif kcfg.auth_uri:
+                _auth_uri = kcfg.auth_uri.split('/')
+                if 'v3' in _auth_uri:
+                    self._keystone_url = "%s/auth/tokens" % kcfg.auth_uri
+                elif 'v2.0' in _auth_uri:
+                    self._keystone_url = "%s/tokens" % kcfg.auth_uri
+            if not self._keystone_url:
+                # Default to keystone v2.0
                 self._keystone_url = "%s://%s:%s%s" % (
                     cfg.CONF.keystone_authtoken.auth_protocol,
                     cfg.CONF.keystone_authtoken.auth_host,
                     cfg.CONF.keystone_authtoken.auth_port,
                     "/v2.0/tokens")
+
+            if 'v3' in self._keystone_url.split('/'):
+                body = {'auth': {
+                            'identity': {
+                                'password': {
+                                    'user': {
+                                        'domain': {'name': self._user_domain_name},
+                                        'password': kcfg.admin_password,
+                                        'name': kcfg.admin_user
+                                    }
+                                },
+                            'methods': ['password']
+                            }
+                         }
+                       }
+                if self._domain_id:
+                    scope = {'scope': {
+                                 'domain': {'id': self._domain_id}
+                             }
+                            }
+                    body['auth'].update(**scope)
+                else:
+                    scope = {'scope': {
+                                 'project': {
+                                     'name': self._project_name,
+                                     'domain': {
+                                         'name': self._project_domain_name
+                                     }
+                                 }
+                             }
+                            }
+                    body['auth'].update(**scope)
+            else:
+                body = {'auth': {
+                            'passwordCredentials': {
+                                'username': kcfg.admin_user,
+                                'password': kcfg.admin_password
+                            },
+                            'tenantName': kcfg.admin_tenant_name
+                        }
+                       }
+
+            self._authn_body = json.dumps(body)
 
             #Keystone SSL Support
             self._ksinsecure=cfg.CONF.keystone_authtoken.insecure
@@ -139,7 +205,6 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                     _DEFAULT_API_CERT_BUNDLE,certs)
             self._use_api_certs = True
 
-
     def _request_api_server(self, url, data=None, headers=None):
         # Attempt to post to Api-Server
         if self._apiinsecure:
@@ -162,12 +227,15 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                response = requests.post(self._keystone_url,
                                         data=self._authn_body,
                                         headers={'Content-type': 'application/json'})
-            if (response.status_code == requests.codes.ok):
+            if (response.status_code in [requests.codes.ok, requests.codes.created]):
                 # plan is to re-issue original request with new token
                 auth_headers = headers or {}
-                authn_content = json.loads(response.text)
-                self._authn_token = authn_content['access']['token']['id']
-                auth_headers['X-AUTH-TOKEN'] = self._authn_token
+                if 'v3' in self._keystone_url.split('/'):
+                    auth_headers['X-AUTH-TOKEN'] = response.headers['x-subject-token']
+                else:
+                    authn_content = json.loads(response.text)
+                    self._authn_token = authn_content['access']['token']['id']
+                    auth_headers['X-AUTH-TOKEN'] = self._authn_token
                 response = self._request_api_server(url, data, auth_headers)
             else:
                 raise RuntimeError('Authentication Failure')
