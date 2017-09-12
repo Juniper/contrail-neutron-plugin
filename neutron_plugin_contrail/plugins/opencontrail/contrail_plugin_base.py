@@ -76,6 +76,9 @@ vnc_opts = [
                help='keyfile to connect securely to  VNC controller'),
     cfg.StrOpt('cafile', default='',
                help='cafile to connect securely to VNC controller'),
+    cfg.StrOpt('auth_token_url',
+               help='Full URL path to request Keystone tokens. This should '
+                    'not be use and determined from keystone_authtoken '
 ]
 
 analytics_opts = [
