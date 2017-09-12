@@ -29,6 +29,8 @@ import requests
 from cfgm_common import exceptions as vnc_exc
 from vnc_api import vnc_api
 
+import neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_base as plugin_base
+
 try:
     from neutron.db.quota import api as quota_api
 except ImportError:
@@ -71,18 +73,21 @@ class QuotaDriver(object):
             auth_token_url= cfg.CONF.APISERVER.auth_token_url
         except cfg.NoSuchOptError:
             auth_token_url = None
+        (admin_user, admin_password, admin_tenant_name) = \
+                plugin_base.get_keystone_auth_info()
+        (auth_protocol, auth_host, auth_port) = plugin_base.get_keystone_info()
 
         while True:
             try:
                 vnc_conn = vnc_api.VncApi(
-                    cfg.CONF.keystone_authtoken.admin_user,
-                    cfg.CONF.keystone_authtoken.admin_password,
-                    cfg.CONF.keystone_authtoken.admin_tenant_name,
+                    admin_user,
+                    admin_password,
+                    admin_tenant_name,
                     cfg.CONF.APISERVER.api_server_ip,
                     cfg.CONF.APISERVER.api_server_port,
-                    auth_host=cfg.CONF.keystone_authtoken.auth_host,
-                    auth_port=cfg.CONF.keystone_authtoken.auth_port,
-                    auth_protocol=cfg.CONF.keystone_authtoken.auth_protocol,
+                    auth_host=auth_host,
+                    auth_port=auth_port,
+                    auth_protocol=auth_protocol,
                     api_server_use_ssl=cfg.CONF.APISERVER.use_ssl,
                     auth_token_url=auth_token_url)
                 return vnc_conn
