@@ -109,6 +109,23 @@ def vnc_api_is_authenticated():
         response.raise_for_status()
 
 
+def get_keystone_auth_info():
+    try:
+        admin_user = cfg.CONF.keystone_authtoken.username
+    except cfg.NoSuchOptError:
+        admin_user = cfg.CONF.keystone_authtoken.admin_user
+    try:
+        admin_password = cfg.CONF.keystone_authtoken.password
+    except cfg.NoSuchOptError:
+        admin_password = cfg.CONF.keystone_authtoken.admin_password
+    try:
+        admin_tenant_name = cfg.CONF.keystone_authtoken.project_name
+    except cfg.NoSuchOptError:
+        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+
+    return (admin_user, admin_password, admin_tenant_name)
+
+
 def get_vnc_api_instance(wait_for_connect=True):
     """ Instantiates a VncApi object from configured parameters
 
@@ -153,6 +170,10 @@ def get_vnc_api_instance(wait_for_connect=True):
     admin_password = None
     admin_tenant_name = None
     if auth_strategy == constants.KEYSTONE_AUTH:
+        try:
+            ks_auth_url = cfg.CONF.keystone_authtoken.auth_url
+        except cfg.NoSuchOptError:
+            ks_auth_url = None
         # If APISERV.auth_token_url is define prefer it to keystone_authtoken
         # section
         auth_token_url = cfg.CONF.APISERVER.auth_token_url
@@ -162,6 +183,13 @@ def get_vnc_api_instance(wait_for_connect=True):
             auth_host = auth_token_url_parsed.hostname
             auth_port = auth_token_url_parsed.port
             auth_url = auth_token_url_parsed.path
+        elif ks_auth_url:
+            # If keystone_authtoken.auth_url is defined, prefer it to
+            # keystone_authtoken.identity_uri
+            auth_url_parsed = urlparse(ks_auth_url)
+            auth_protocol = auth_url_parsed.scheme
+            auth_host =  auth_url_parsed.hostname
+            auth_port = auth_url_parsed.port
         else:
             # If keystone_authtoken.identity_uri is define, prefer it to
             # specific authtoken parameters
@@ -196,9 +224,7 @@ def get_vnc_api_instance(wait_for_connect=True):
         auth_cafile = cfg.CONF.keystone_authtoken.cafile
         auth_certfile = cfg.CONF.keystone_authtoken.certfile
         auth_keyfile = cfg.CONF.keystone_authtoken.keyfile
-        admin_user = cfg.CONF.keystone_authtoken.admin_user
-        admin_password = cfg.CONF.keystone_authtoken.admin_password
-        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+        admin_user, admin_password, admin_tenant_name = get_keystone_auth_info()
 
     return VncApi(
         api_server_host=api_server_host,
