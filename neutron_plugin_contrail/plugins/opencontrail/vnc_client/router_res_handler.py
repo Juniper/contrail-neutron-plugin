@@ -492,8 +492,8 @@ class LogicalRouterInterfaceHandler(res_handler.ResourceGetHandler,
             else:
                 msg = ("Subnet %s not connected to router %s "
                        % (router_id, subnet_id))
-                self._raise_contrail_exception('BadRequest',
-                                               resource='router', msg=msg)
+                self._raise_contrail_exception('PortNotFound',
+                                               resource='port', msg=msg)
         tenant_id = self._project_id_vnc_to_neutron(vn_obj.parent_uuid)
         if not vmi_obj:
             vmi_obj = self._vnc_lib.virtual_machine_interface_read(id=port_id)
