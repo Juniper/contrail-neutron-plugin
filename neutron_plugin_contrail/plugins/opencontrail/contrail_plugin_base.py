@@ -436,24 +436,30 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             return True
 
     def _is_dpdk_enabled(self, context, port):
-        vrouter = {'dpdk_enabled': False}
-
         # There may be cases when 'binding:host_id' of a port is not specified.
         # For example when port is created by hand using neutron port-create
         # command, which does not bind the port to any given host.
         if 'binding:host_id' in port and port['binding:host_id'] and \
                 port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
+            host_id = port['binding:host_id']
+            vrouter = None
             try:
                 vrouter = self._get_vrouter_config(context,
-                                               ['default-global-system-config',
-                                               port['binding:host_id']])
+                    ['default-global-system-config', host_id])
             except HttpResponseError as e:
-              if e.response_info['exception'] == 'VirtualRouterNotFound':
-                  return False
-              else:
-                  raise e
+                if e.response_info['exception'] != 'VirtualRouterNotFound':
+                    raise
+            if not vrouter and '.' in host_id:
+                try:
+                    vrouter = self._get_vrouter_config(context,
+                        ['default-global-system-config', host_id.split('.')[0]])
+                except HttpResponseError as e:
+                    if e.response_info['exception'] != 'VirtualRouterNotFound':
+                        raise
+            if vrouter:
+                return vrouter['dpdk_enabled']
 
-        return vrouter['dpdk_enabled']
+        return False
 
 
     def create_port(self, context, port):
