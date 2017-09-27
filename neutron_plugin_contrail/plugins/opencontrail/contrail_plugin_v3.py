@@ -65,26 +65,12 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
         self._prepare_res_handlers()
 
     def _connect_to_vnc_server(self):
-        admin_user = cfg.CONF.keystone_authtoken.admin_user
-        admin_password = cfg.CONF.keystone_authtoken.admin_password
-        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+        (admin_user, admin_password, admin_tenant_name) = \
+                plugin_base.get_keystone_auth_info()
         api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
         api_srvr_port = cfg.CONF.APISERVER.api_server_port
-        try:
-            auth_host = cfg.CONF.keystone_authtoken.auth_host
-        except cfg.NoSuchOptError:
-            auth_host = "127.0.0.1"
 
-        try:
-            auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
-        except cfg.NoSuchOptError:
-            auth_protocol = "http"
-
-        try:
-            auth_port = cfg.CONF.keystone_authtoken.auth_port
-        except cfg.NoSuchOptError:
-            auth_port = "35357"
-
+        auth_protocol, auth_host, auth_port = plugin_base.get_keystone_info()
         try:
             auth_url = cfg.CONF.keystone_authtoken.auth_url
         except cfg.NoSuchOptError:

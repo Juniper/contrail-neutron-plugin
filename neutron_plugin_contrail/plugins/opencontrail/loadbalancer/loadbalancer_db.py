@@ -30,6 +30,8 @@ except ImportError:
 
 from vnc_api.vnc_api import VncApi
 
+import neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_base as\
+        plugin_base
 import loadbalancer_healthmonitor
 import loadbalancer_member
 import loadbalancer_pool
@@ -39,27 +41,13 @@ import virtual_ip
 class LoadBalancerPluginDb(LoadBalancerPluginBase):
 
     def __init__(self):
-        self.admin_user = cfg.CONF.keystone_authtoken.admin_user
-        self.admin_password = cfg.CONF.keystone_authtoken.admin_password
-        self.admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+        (admin_user, admin_password, admin_tenant_name) = \
+                plugin_base.get_keystone_auth_info()
         self.api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
         self.api_srvr_port = cfg.CONF.APISERVER.api_server_port
         self.api_srvr_use_ssl= cfg.CONF.APISERVER.use_ssl
-        try:
-            self.auth_host = cfg.CONF.keystone_authtoken.auth_host
-        except cfg.NoSuchOptError:
-            self.auth_host = "127.0.0.1"
 
-        try:
-            self.auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
-        except cfg.NoSuchOptError:
-            self.auth_protocol = "http"
-
-        try:
-            self.auth_port = cfg.CONF.keystone_authtoken.auth_port
-        except cfg.NoSuchOptError:
-            self.auth_port = "35357"
-
+        auth_protocol, auth_host, auth_port = plugin_base.get_keystone_info()
         try:
             self.auth_url = cfg.CONF.keystone_authtoken.auth_url
         except cfg.NoSuchOptError:

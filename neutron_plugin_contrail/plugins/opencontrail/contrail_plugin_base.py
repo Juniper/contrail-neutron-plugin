@@ -16,6 +16,7 @@
 
 
 import os.path as path
+from urlparse import urlparse
 
 from neutron.api.v2 import attributes as attr
 from neutron.common import exceptions as exc
@@ -76,6 +77,10 @@ vnc_opts = [
                help='keyfile to connect securely to  VNC controller'),
     cfg.StrOpt('cafile', default='',
                help='cafile to connect securely to VNC controller'),
+    cfg.StrOpt('auth_token_url',
+               help='Full URL path to request Keystone tokens. This should '
+                    'not be use and determined from keystone_authtoken '
+                    'configuration section.'),
 ]
 
 analytics_opts = [
@@ -109,6 +114,53 @@ def _raise_contrail_error(info, obj_name):
             if libexc and hasattr(libexc, exc_name):
                 raise getattr(libexc, exc_name)(**info)
         raise exc.NeutronException(**info)
+
+
+def get_keystone_info():
+    defaults = ("http", "127.0.0.1", "35357")
+    try:
+        urlparts = urlparse(cfg.CONF.keystone_authtoken.auth_url)
+        protocol = urlparts.scheme
+        try:
+            host, port = urlparts.netloc.split(':')
+        except ValueError:
+            host, port = urlparts.netloc.split(':') + [defaults[2]]
+    except cfg.NoSuchOptError:
+        protocol, host, port = defaults
+
+    try:
+        auth_host = cfg.CONF.keystone_authtoken.auth_host
+    except cfg.NoSuchOptError:
+        auth_host = host
+
+    try:
+        auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
+    except cfg.NoSuchOptError:
+        auth_protocol = protocol
+
+    try:
+        auth_port = cfg.CONF.keystone_authtoken.auth_port
+    except cfg.NoSuchOptError:
+        auth_port = port
+
+    return (auth_protocol, auth_host, auth_port)
+
+
+def get_keystone_auth_info():
+    try:
+        admin_user = cfg.CONF.keystone_authtoken.username
+    except cfg.NoSuchOptError:
+        admin_user = cfg.CONF.keystone_authtoken.admin_user
+    try:
+        admin_password = cfg.CONF.keystone_authtoken.password
+    except cfg.NoSuchOptError:
+        admin_password = cfg.CONF.keystone_authtoken.admin_password
+    try:
+        admin_tenant_name = cfg.CONF.keystone_authtoken.project_name
+    except cfg.NoSuchOptError:
+        admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+
+    return (admin_user, admin_password, admin_tenant_name)
 
 
 class InvalidContrailExtensionError(exc.ServiceUnavailable):
