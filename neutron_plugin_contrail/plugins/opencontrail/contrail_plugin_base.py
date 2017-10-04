@@ -372,6 +372,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _list_vrouters(self, context, filters=None, fields=None):
         return self._list_resource('virtual_router', context, filters, fields)
 
+<<<<<<< HEAD
     @staticmethod
     def _get_port_vhostuser_socket_name(port, port_id=None):
         name = 'tap' + (port_id if port_id else port['id'])
@@ -458,28 +459,12 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         LOG.debug("IS_DPDK_ENABLED: vrouter could not be found")
         return False
 
+=======
+>>>>>>> 6f7bbaf... Vhost user vif binding logic moved from neutron plugin to api server
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
 
-        if self._port_vnic_is_normal(port['port']):
-            dpdk_enabled = self._is_dpdk_enabled(context, port['port'])
-        else:
-            # DPDK vRouter can not be enabled for vnic_type other than normal
-            dpdk_enabled = False
-
-        if dpdk_enabled:
-            port['port'][portbindings.VIF_TYPE] = \
-                portbindings.VIF_TYPE_VHOST_USER
-
-        port = self._create_resource('port', context, port)
-
-        # For vhosuser we have to update the binding vif_details fields. We
-        # have to do this through update and not while creating the port above
-        # as we need the 'id' of the port that is not available prior to
-        # creation of the port.
-        if dpdk_enabled:
-            self._update_vhostuser_vif_details_for_port(port)
-            port = self._update_resource('port', context, port['id'],
+        port = self._update_resource('port', context, port['id'],
                                          {'port': port})
 
         return port
@@ -505,25 +490,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
 
         if 'binding:host_id' in port['port']:
             original['binding:host_id'] = port['port']['binding:host_id']
-
-        if self._port_vnic_is_normal(original):
-            # If the port vnic is normal we have two options. It is either
-            # kernel vRouter port or vhostuser (DPDK vRouter) one.
-            if self._is_dpdk_enabled(context, original):
-                port['port'][portbindings.VIF_TYPE] = \
-                        portbindings.VIF_TYPE_VHOST_USER
-                self._update_vhostuser_vif_details_for_port(port['port'],
-                                                            port_id)
-            else:
-                port['port'][portbindings.VIF_TYPE] = \
-                        VIF_TYPE_VROUTER
-                self._delete_vhostuser_vif_details_from_port(port['port'],
-                                                             original)
-        else:
-            # If the port vnic is not normal, it can not be of vhostuser (DPDK
-            # vRouter) type. Just delete any vhostuser related fields.
-            self._delete_vhostuser_vif_details_from_port(port['port'],
-                                                         original)
 
         return self._update_resource('port', context, port_id, port)
 
