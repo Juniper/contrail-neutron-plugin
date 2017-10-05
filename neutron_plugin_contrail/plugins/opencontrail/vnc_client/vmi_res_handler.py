@@ -1015,8 +1015,7 @@ class VMInterfaceGetHandler(res_handler.ResourceGetHandler, VMInterfaceMixin):
         contrail_extensions_enabled = self._kwargs.get(
             'contrail_extensions_enabled', False)
         try:
-            vmi_obj = self._resource_get(id=port_id,
-                                         fields=['instance_ip_back_refs'])
+            vmi_obj = self._resource_get(id=port_id, back_refs=True)
         except vnc_exc.NoIdError:
             self._raise_contrail_exception('PortNotFound', port_id=port_id,
                                            resource='port')
