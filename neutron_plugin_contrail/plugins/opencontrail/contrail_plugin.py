@@ -101,11 +101,15 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                 self._use_ks_certs = True
 
             auth_uri = kcfg.auth_uri or ''
+            try:
+                auth_type = kcfg.auth_type
+            except cfg.NoSuchOptError:
+                auth_type = None
             auth_version = kcfg.auth_version
             self.ks_sess = None
             if ('v2.0' in auth_uri.split('/') or
                     auth_version == 'v2.0' or
-                    not kcfg.auth_type):
+                    not auth_type):
                 body = '{"auth":{"passwordCredentials":{'
                 body += ' "username": "%s",' % (kcfg.admin_user)
                 body += ' "password": "%s"},' % (kcfg.admin_password)
