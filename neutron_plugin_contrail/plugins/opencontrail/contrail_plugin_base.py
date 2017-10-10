@@ -99,6 +99,7 @@ vrouter_opts = [
 def _raise_contrail_error(info, obj_name):
         exc_name = info.get('exception')
         if exc_name:
+            LOG.exception(str(exc_name) + str(info) + str(obj_name))
             if exc_name == 'BadRequest' and 'resource' not in info:
                 info['resource'] = obj_name
             if exc_name == 'VirtualRouterNotFound':
