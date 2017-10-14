@@ -41,13 +41,14 @@ import virtual_ip
 class LoadBalancerPluginDb(LoadBalancerPluginBase):
 
     def __init__(self):
-        (admin_user, admin_password, admin_tenant_name) = \
+        (self.admin_user, self.admin_password, self.admin_tenant_name) = \
                 plugin_base.get_keystone_auth_info()
         self.api_srvr_ip = cfg.CONF.APISERVER.api_server_ip
         self.api_srvr_port = cfg.CONF.APISERVER.api_server_port
         self.api_srvr_use_ssl= cfg.CONF.APISERVER.use_ssl
 
-        auth_protocol, auth_host, auth_port = plugin_base.get_keystone_info()
+        (self.auth_protocol, self.auth_host, self.auth_port) = \
+                plugin_base.get_keystone_info()
         try:
             self.auth_url = cfg.CONF.keystone_authtoken.auth_url
         except cfg.NoSuchOptError:
