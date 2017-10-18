@@ -74,8 +74,7 @@ class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
                         self.api_srvr_port, self.api_server_url,
                         auth_host=self.auth_host, auth_port=self.auth_port,
                         auth_protocol=self.auth_protocol,
-                        auth_url=self.auth_url, auth_type=self.auth_type,
-                        wait_for_connect=True,
+                        auth_type=self.auth_type, wait_for_connect=True,
                         api_server_use_ssl=self.api_srvr_use_ssl,
                         auth_token_url=self.auth_token_url)
                 connected = True
