@@ -63,6 +63,7 @@ except ImportError:
 from neutron.extensions import securitygroup
 from neutron_plugin_contrail.extensions import serviceinterface
 from neutron_plugin_contrail.extensions import vfbinding
+from neutron_plugin_contrail.extensions import baremetal_vif
 from neutron import neutron_plugin_base_v2
 try:
     from neutron.openstack.common import importutils
@@ -181,7 +182,8 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     portbindings_base.PortBindingBaseMixin,
                                     external_net.External_net,
                                     serviceinterface.Serviceinterface,
-                                    vfbinding.Vfbinding):
+                                    vfbinding.Vfbinding,
+                                    baremetal_vif.BaremetalVIF):
 
     supported_extension_aliases = [
         "security-group",
@@ -434,6 +436,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         """Creates a port on the specified Virtual Network."""
 
         port = self._create_resource('port', context, port)
+
+        if self.is_port_baremetal(port):
+            self.bind_baremetal_port(port)
+
         return port
 
     def get_port(self, context, port_id, fields=None):
@@ -455,6 +461,13 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
+        if self.is_port_baremetal(port['port']):
+            port['port']['id'] = port_id
+            if self.should_bind_port(port['port']):
+                self.bind_baremetal_port(port['port'])
+            else:
+                self.unbind_baremetal_port(port['port'])
+
         return self._update_resource('port', context, port_id, port)
 
     def delete_port(self, context, port_id):
@@ -465,6 +478,11 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         the remote interface is first un-plugged and then the port
         is deleted.
         """
+
+        original = self._get_port(context, port_id)
+
+        if self.is_port_baremetal(original):
+            self.unbind_baremetal_port(original)
 
         self._delete_resource('port', context, port_id)
 
