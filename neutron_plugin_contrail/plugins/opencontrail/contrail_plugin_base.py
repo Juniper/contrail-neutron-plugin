@@ -432,25 +432,32 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             return True
 
     def _is_dpdk_enabled(self, context, port):
-        vrouter = {'dpdk_enabled': False}
-
         # There may be cases when 'binding:host_id' of a port is not specified.
         # For example when port is created by hand using neutron port-create
         # command, which does not bind the port to any given host.
-        if 'binding:host_id' in port and port['binding:host_id'] and \
-                port['binding:host_id'] is not ATTR_NOT_SPECIFIED:
+        host_id = port.get('binding:host_id')
+        if not host_id or host_id == ATTR_NOT_SPECIFIED:
+            LOG.debug("IS_DPDK_ENABLED: host_id is not specified yet")
+            return False
+
+        names = [host_id]
+        if '.' in host_id:
+            names.append(host_id.split('.')[0])
+        for name in names:
             try:
+                LOG.debug("IS_DPDK_ENABLED: trying to get vrouter by name: {}"
+                          .format(name))
                 vrouter = self._get_vrouter_config(context,
-                                               ['default-global-system-config',
-                                               port['binding:host_id']])
+                    ['default-global-system-config', name])
+                result = vrouter['dpdk_enabled']
+                LOG.debug("IS_DPDK_ENABLED: dpdk_enabled = {}".format(result))
+                return result
             except HttpResponseError as e:
-              if e.response_info['exception'] == 'VirtualRouterNotFound':
-                  return False
-              else:
-                  raise e
+                if e.response_info['exception'] != 'VirtualRouterNotFound':
+                    raise
 
-        return vrouter['dpdk_enabled']
-
+        LOG.debug("IS_DPDK_ENABLED: vrouter could not be found")
+        return False
 
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
