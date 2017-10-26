@@ -1,0 +1,21 @@
+# Compiled files
+*.py[co]
+*.a
+*.o
+*.so
+
+# Packages/installer info
+*.egg
+*.egg-info
+dist
+build
+eggs
+.eggs
+parts
+var
+sdist
+develop-eggs
+.installed.cfg
+
+# Other
+.*.swp
