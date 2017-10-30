@@ -84,6 +84,7 @@ def _raise_contrail_error(info, obj_name):
     exc_name = info.get('exception')
 
     if exc_name:
+        LOG.exception(str(exc_name) + str(info) + str(obj_name))
         if str(exc_name) == 'OverQuota':
             info['exception'] = str(info['exception'])
             if 'msg' in info:
