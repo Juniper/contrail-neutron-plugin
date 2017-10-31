@@ -14,9 +14,14 @@
 #
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
-
 import os.path as path
 
+try:
+    from neutron_lib.plugins import directory
+except ImportError:
+    directory = None
+from neutron import manager as neutron_manager
+from neutron._i18n import _
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
 except:
@@ -51,7 +56,10 @@ from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
 from neutron.extensions import external_net
 from neutron.extensions import l3
-from neutron.extensions import portbindings
+try:
+    from neutron.extensions import portbindings
+except ImportError:
+    from neutron_lib.api.definitions import portbindings
 from neutron.extensions import securitygroup
 from neutron_plugin_contrail.extensions import serviceinterface
 from neutron_plugin_contrail.extensions import vfbinding
@@ -115,8 +123,9 @@ class InvalidContrailExtensionError(ServiceUnavailable):
 
 
 class HttpResponseError(Exception):
-      def __init__(self, resp_info):
-          self.response_info = resp_info
+    def __init__(self, resp_info):
+        self.response_info = resp_info
+
 
 class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     securitygroup.SecurityGroupPluginBase,
