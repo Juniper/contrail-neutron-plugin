@@ -185,7 +185,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
 
         return authn_token
 
-    def _request_api_server(self, url, data=None, headers=None):
+    def _request_api_server(self, url, data=None, headers=None, retry=True):
         # Attempt to post to Api-Server
         if self._apiinsecure:
              response = requests.post(url, data=data, headers=headers,verify=False)
@@ -193,7 +193,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
              response = requests.post(url, data=data, headers=headers,verify=self._apicertbundle)
         else:
              response = requests.post(url, data=data, headers=headers)
-        if (response.status_code == requests.codes.unauthorized):
+        if (response.status_code == requests.codes.unauthorized) and retry:
             # Get token from keystone and save it for next request
             authn_token = self.get_token()
             if authn_token:
@@ -201,7 +201,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                 auth_headers = headers or {}
                 self._authn_token = authn_token
                 auth_headers['X-AUTH-TOKEN'] = self._authn_token
-                response = self._request_api_server(url, data, auth_headers)
+                response = self._request_api_server(url, data, auth_headers, retry=False)
             else:
                 raise RuntimeError('Authentication Failure')
         return response
