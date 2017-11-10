@@ -197,6 +197,11 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     # extension) instead of patching it here. This constants are in newer
     # versions of neutron, but not in the Kilo verion.
     portbindings.__dict__['VIF_TYPE_VHOST_USER'] = 'vhostuser'
+    portbindings.__dict__['VHOST_USER_MODE'] = 'vhostuser_mode'
+    portbindings.__dict__['VHOST_USER_MODE_SERVER'] = 'server'
+    portbindings.__dict__['VHOST_USER_MODE_CLIENT'] = 'client'
+    portbindings.__dict__['VHOST_USER_SOCKET'] = 'vhostuser_socket'
+    portbindings.__dict__['VHOST_USER_VROUTER_PLUG'] = 'vhostuser_vrouter_plug'
 
     def _parse_class_args(self):
         """Parse the contrailplugin.ini file.
@@ -424,10 +429,115 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
     def _list_vrouters(self, context, filters=None, fields=None):
         return self._list_resource('virtual_router', context, filters, fields)
 
+    @staticmethod
+    def _get_port_vhostuser_socket_name(port, port_id=None):
+        name = 'tap' + (port_id if port_id else port['id'])
+        name = name[:NIC_NAME_LEN]
+        return path.join(cfg.CONF.VROUTER.vhostuser_sockets_dir,
+                         'uvh_vif_' + name)
+
+    def _update_vhostuser_vif_details_for_port(self, port, port_id=None):
+        vif_details = {
+            portbindings.VHOST_USER_MODE: \
+                portbindings.VHOST_USER_MODE_CLIENT,
+            portbindings.VHOST_USER_SOCKET: \
+                self._get_port_vhostuser_socket_name(port, port_id),
+            portbindings.VHOST_USER_VROUTER_PLUG: True
+        }
+
+        if portbindings.VIF_DETAILS not in port:
+            port[portbindings.VIF_DETAILS] = vif_details
+        else:
+            port[portbindings.VIF_DETAILS].update(vif_details)
+
+        return port
+
+    @staticmethod
+    def _delete_vhostuser_vif_details_from_port(port, original):
+        # Nothing to do if the original port (the one that is saved in the API
+        # server) does not contains any vif details.
+        if not portbindings.VIF_DETAILS in original:
+            return
+
+        # Copy vif details from the original port and delete all vhostuser
+        # related fields
+        vif_details = dict(original[portbindings.VIF_DETAILS])
+        to_delete = [portbindings.VHOST_USER_MODE,
+                portbindings.VHOST_USER_SOCKET,
+                portbindings.VHOST_USER_VROUTER_PLUG]
+        for item in to_delete:
+            if item in vif_details:
+                del vif_details[item]
+
+        # Since the API server does not support deletion of a particular filed
+        # from vif details, we use the original vif details with all the
+        # vhostuser fields removed + any updates that comes in the 'port'
+        # argument. Perhaps it would be better to introduce some kind of a
+        # 'unspecified' value, that would indicate that the value should be
+        # removed from the vif details by the API server?
+        if portbindings.VIF_DETAILS not in port:
+            port[portbindings.VIF_DETAILS] = vif_details
+        else:
+            vif_details.update(port[portbindings.VIF_DETAILS])
+            port[portbindings.VIF_DETAILS] = vif_details
+
+    @staticmethod
+    def _port_vnic_is_normal(port):
+        if portbindings.VNIC_TYPE in port and \
+                port[portbindings.VNIC_TYPE] == portbindings.VNIC_NORMAL:
+            return True
+
+    def _is_dpdk_enabled(self, context, port):
+        # There may be cases when 'binding:host_id' of a port is not specified.
+        # For example when port is created by hand using neutron port-create
+        # command, which does not bind the port to any given host.
+        if 'binding:host_id' in port and port['binding:host_id'] and \
+                port['binding:host_id'] is not attr.ATTR_NOT_SPECIFIED:
+            host_id = port['binding:host_id']
+            vrouter = None
+            try:
+                vrouter = self._get_vrouter_config(context,
+                    ['default-global-system-config', host_id])
+            except HttpResponseError as e:
+                if e.response_info['exception'] != 'VirtualRouterNotFound':
+                    raise
+            if not vrouter and '.' in host_id:
+                try:
+                    vrouter = self._get_vrouter_config(context,
+                        ['default-global-system-config', host_id.split('.')[0]])
+                except HttpResponseError as e:
+                    if e.response_info['exception'] != 'VirtualRouterNotFound':
+                        raise
+            if vrouter:
+                return vrouter['dpdk_enabled']
+
+        return False
+
+
     def create_port(self, context, port):
         """Creates a port on the specified Virtual Network."""
 
+        if self._port_vnic_is_normal(port['port']):
+            dpdk_enabled = self._is_dpdk_enabled(context, port['port'])
+        else:
+            # DPDK vRouter can not be enabled for vnic_type other than normal
+            dpdk_enabled = False
+
+        if dpdk_enabled:
+            port['port'][portbindings.VIF_TYPE] = \
+                portbindings.VIF_TYPE_VHOST_USER
+
         port = self._create_resource('port', context, port)
+
+        # For vhosuser we have to update the binding vif_details fields. We
+        # have to do this through update and not while creating the port above
+        # as we need the 'id' of the port that is not available prior to
+        # creation of the port.
+        if dpdk_enabled:
+            self._update_vhostuser_vif_details_for_port(port)
+            port = self._update_resource('port', context, port['id'],
+                                         {'port': port})
+
         return port
 
     def get_port(self, context, port_id, fields=None):
@@ -448,6 +558,28 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                 context, original['network_id'], port_id,
                 original['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
+
+        if 'binding:host_id' in port['port']:
+            original['binding:host_id'] = port['port']['binding:host_id']
+
+        if self._port_vnic_is_normal(original):
+            # If the port vnic is normal we have two options. It is either
+            # kernel vRouter port or vhostuser (DPDK vRouter) one.
+            if self._is_dpdk_enabled(context, original):
+                port['port'][portbindings.VIF_TYPE] = \
+                        portbindings.VIF_TYPE_VHOST_USER
+                self._update_vhostuser_vif_details_for_port(port['port'],
+                                                            port_id)
+            else:
+                port['port'][portbindings.VIF_TYPE] = \
+                        VIF_TYPE_VROUTER
+                self._delete_vhostuser_vif_details_from_port(port['port'],
+                                                             original)
+        else:
+            # If the port vnic is not normal, it can not be of vhostuser (DPDK
+            # vRouter) type. Just delete any vhostuser related fields.
+            self._delete_vhostuser_vif_details_from_port(port['port'],
+                                                         original)
 
         return self._update_resource('port', context, port_id, port)
 
