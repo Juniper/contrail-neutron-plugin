@@ -56,6 +56,12 @@ class ListenerManager(ResourceManager):
                 setattr(props, key, lb[mapping])
         return props
 
+    def _get_default_pool(self, ll):
+        pool_refs = ll.get_loadbalancer_pool_back_refs()
+        if pool_refs is None:
+            return None
+        return pool_refs[0]['uuid']
+
     def _get_loadbalancers(self, ll):
         loadbalancers = []
         lb = {}
@@ -75,6 +81,7 @@ class ListenerManager(ResourceManager):
                'protocol': props.protocol,
                'protocol_port': props.protocol_port,
                'admin_state_up': props.admin_state,
+               'default_pool_id': self._get_default_pool(ll),
                'loadbalancers' : self._get_loadbalancers(ll)}
         if res['loadbalancers']:
             res['loadbalancer_id'] = res['loadbalancers'][0]['id']
