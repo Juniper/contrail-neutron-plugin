@@ -67,7 +67,7 @@ class LoadbalancerManager(ResourceManager):
         ll_back_refs = lb.get_loadbalancer_listener_back_refs()
         if ll_back_refs:
             for ll_back_ref in ll_back_refs:
-                ll_list.append(ll_back_ref['uuid'])
+                ll_list.append({ 'id': ll_back_ref['uuid'] })
         return ll_list
 
     def _get_interface_params(self, lb, props):
@@ -107,6 +107,7 @@ class LoadbalancerManager(ResourceManager):
                'admin_state_up': props.admin_state,
                'provisioning_status': props.provisioning_status,
                'operating_status': props.operating_status,
+               'provider': lb.get_loadbalancer_provider(),
                'listeners': self._get_listeners(lb)}
 
         return self._fields(res, fields)
