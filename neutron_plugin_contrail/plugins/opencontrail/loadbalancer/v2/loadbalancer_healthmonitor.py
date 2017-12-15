@@ -49,7 +49,7 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
         props = healthmonitor.get_loadbalancer_healthmonitor_properties()
         monitor_type = getattr(props, 'monitor_type')
         for key, mapping in self._loadbalancer_health_type_mapping.iteritems():
-            value = getattr(props, key)
+            value = getattr(props, key, None)
             if value is not None:
                 if monitor_type not in ('HTTP', 'HTTPS'):
                     if mapping in ('http_method', 'url_path', 'expected_codes'):
