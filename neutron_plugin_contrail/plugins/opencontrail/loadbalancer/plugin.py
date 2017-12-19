@@ -9,9 +9,9 @@ except ImportError:
     from neutron_lbaas.extensions import loadbalancer
 from neutron.db import servicetype_db as sdb
 try:
-    from neutron_lib import constants
+    from neutron_lib.plugins.constants import LOADBALANCER
 except ImportError:
-    from neutron.plugins.common import constants
+    from neutron.plugins.common.constants import LOADBALANCER
 
 
 class LoadBalancerPlugin(LoadBalancerPluginDb):
@@ -30,7 +30,7 @@ class LoadBalancerPlugin(LoadBalancerPluginDb):
             service_type_manager = sdb.ServiceTypeManager.get_instance()
             provider = (service_type_manager.
                         get_default_service_provider(None,
-                                                     constants.LOADBALANCER))
+                                                     LOADBALANCER))
             self.pool_manager.check_provider_exists(provider['name'])
             self.default_provider = provider['name']
         except:
