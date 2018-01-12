@@ -131,16 +131,22 @@ def get_keystone_info():
 
     try:
         auth_host = cfg.CONF.keystone_authtoken.auth_host
+        if auth_host == defaults[1]:
+            auth_host = host
     except cfg.NoSuchOptError:
         auth_host = host
 
     try:
         auth_protocol = cfg.CONF.keystone_authtoken.auth_protocol
+        if auth_protocol == defaults[0]:
+            auth_protocol = protocol
     except cfg.NoSuchOptError:
         auth_protocol = protocol
 
     try:
         auth_port = cfg.CONF.keystone_authtoken.auth_port
+        if auth_port == defaults[2]:
+            auth_port = port
     except cfg.NoSuchOptError:
         auth_port = port
 
