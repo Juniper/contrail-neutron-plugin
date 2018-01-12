@@ -92,39 +92,49 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self.api
 
     def get_vips(self, context, filters=None, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.vip_manager.get_collection(context, filters, fields)
 
     def get_vip(self, context, id, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.vip_manager.get_resource(context, id, fields)
 
     def create_vip(self, context, vip):
+        self.api.set_auth_token(context.auth_token)
         try:
             return self.vip_manager.create(context, vip)
         except vnc_exc.PermissionDenied as ex:
             raise BadRequest(resource='vip', msg=str(ex))
 
     def update_vip(self, context, id, vip):
+        self.api.set_auth_token(context.auth_token)
         return self.vip_manager.update(context, id, vip)
 
     def delete_vip(self, context, id):
+        self.api.set_auth_token(context.auth_token)
         return self.vip_manager.delete(context, id)
 
     def get_pools(self, context, filters=None, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.pool_manager.get_collection(context, filters, fields)
 
     def get_pool(self, context, id, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.pool_manager.get_resource(context, id, fields)
 
     def create_pool(self, context, pool):
+        self.api.set_auth_token(context.auth_token)
         try:
             return self.pool_manager.create(context, pool)
         except vnc_exc.PermissionDenied as ex:
             raise BadRequest(resource='pool', msg=str(ex))
 
     def update_pool(self, context, id, pool):
+        self.api.set_auth_token(context.auth_token)
         return self.pool_manager.update(context, id, pool)
 
     def delete_pool(self, context, id):
+        self.api.set_auth_token(context.auth_token)
         return self.pool_manager.delete(context, id)
 
     def stats(self, context, pool_id):
@@ -157,6 +167,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         """ Associate an health monitor with a pool.
         """
         m = health_monitor['health_monitor']
+        self.api.set_auth_token(context.auth_token)
         try:
             pool = self.api.loadbalancer_pool_read(id=pool_id)
         except vnc_exc.NoIdError:
@@ -192,6 +203,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
     def get_pool_health_monitor(self, context, id, pool_id, fields=None):
         """ Query a specific pool, health_monitor association.
         """
+        self.api.set_auth_token(context.auth_token)
         try:
             pool = self.api.loadbalancer_pool_read(id=pool_id)
         except vnc_exc.NoIdError:
@@ -219,6 +231,7 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         return self.pool_manager._fields(res, fields)
 
     def delete_pool_health_monitor(self, context, id, pool_id):
+        self.api.set_auth_token(context.auth_token)
         try:
             pool = self.api.loadbalancer_pool_read(id=pool_id)
         except vnc_exc.NoIdError:
@@ -246,37 +259,47 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
         self.api.loadbalancer_pool_update(pool)
 
     def get_members(self, context, filters=None, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.member_manager.get_collection(context, filters, fields)
 
     def get_member(self, context, id, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.member_manager.get_resource(context, id, fields)
 
     def create_member(self, context, member):
+        self.api.set_auth_token(context.auth_token)
         try:
             return self.member_manager.create(context, member)
         except vnc_exc.PermissionDenied as ex:
             raise BadRequest(resource='member', msg=str(ex))
 
     def update_member(self, context, id, member):
+        self.api.set_auth_token(context.auth_token)
         return self.member_manager.update(context, id, member)
 
     def delete_member(self, context, id):
+        self.api.set_auth_token(context.auth_token)
         return self.member_manager.delete(context, id)
 
     def get_health_monitors(self, context, filters=None, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.monitor_manager.get_collection(context, filters, fields)
 
     def get_health_monitor(self, context, id, fields=None):
+        self.api.set_auth_token(context.auth_token)
         return self.monitor_manager.get_resource(context, id, fields)
 
     def create_health_monitor(self, context, health_monitor):
+        self.api.set_auth_token(context.auth_token)
         try:
             return self.monitor_manager.create(context, health_monitor)
         except vnc_exc.PermissionDenied as ex:
             raise BadRequest(resource='health_monitor', msg=str(ex))
 
     def update_health_monitor(self, context, id, health_monitor):
+        self.api.set_auth_token(context.auth_token)
         return self.monitor_manager.update(context, id, health_monitor)
 
     def delete_health_monitor(self, context, id):
+        self.api.set_auth_token(context.auth_token)
         return self.monitor_manager.delete(context, id)
