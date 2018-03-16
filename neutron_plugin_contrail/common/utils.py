@@ -77,6 +77,20 @@ vnc_extra_opts = [
 ]
 
 
+class RoundRobinApiServers(object):
+    def __init__(self):
+        self.api_servers = cfg.CONF.APISERVER.api_server_ip.split("")
+        self.index = -1
+
+    def get(self):
+        # use the next host in the list
+        self.index += 1
+        if self.index >= len(self.api_servers):
+            # reuse the first host from the list
+            self.index = 0
+        return self.api_servers[self.index]
+
+
 def register_vnc_api_options():
     """Register Contrail Neutron core plugin configuration flags"""
     cfg.CONF.register_opts(vnc_opts, 'APISERVER')
@@ -89,14 +103,14 @@ def register_vnc_api_extra_options():
     cfg.CONF.register_opts(vnc_extra_opts, 'APISERVER')
 
 
-def vnc_api_is_authenticated():
+def vnc_api_is_authenticated(api_server_ip):
     """ Determines if the VNC API needs credentials
 
     :returns: True if credentials are needed, False otherwise
     """
     url = "%s://%s:%s/aaa-mode" % (
         'https' if cfg.CONF.APISERVER.use_ssl else 'http',
-        cfg.CONF.APISERVER.api_server_ip,
+        api_server_ip,
         cfg.CONF.APISERVER.api_server_port
     )
     response = requests.get(url)
@@ -138,7 +152,7 @@ def get_vnc_api_instance(wait_for_connect=True):
         503
     :returns: VncApi object instance
     """
-    api_server_host = cfg.CONF.APISERVER.api_server_ip
+    api_server_host = cfg.CONF.APISERVER.api_server_ip.split("")
     api_server_port = cfg.CONF.APISERVER.api_server_port
     api_server_base_url = cfg.CONF.APISERVER.api_server_base_url
     api_server_use_ssl = cfg.CONF.APISERVER.use_ssl
@@ -188,7 +202,7 @@ def get_vnc_api_instance(wait_for_connect=True):
             # keystone_authtoken.identity_uri
             auth_url_parsed = urlparse(ks_auth_url)
             auth_protocol = auth_url_parsed.scheme
-            auth_host =  auth_url_parsed.hostname
+            auth_host = auth_url_parsed.hostname
             auth_port = auth_url_parsed.port
         else:
             # If keystone_authtoken.identity_uri is define, prefer it to
@@ -224,7 +238,9 @@ def get_vnc_api_instance(wait_for_connect=True):
         auth_cafile = cfg.CONF.keystone_authtoken.cafile
         auth_certfile = cfg.CONF.keystone_authtoken.certfile
         auth_keyfile = cfg.CONF.keystone_authtoken.keyfile
-        admin_user, admin_password, admin_tenant_name = get_keystone_auth_info()
+        (admin_user,
+         admin_password,
+         admin_tenant_name) = get_keystone_auth_info()
 
     return VncApi(
         api_server_host=api_server_host,
