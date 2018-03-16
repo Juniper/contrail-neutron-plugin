@@ -223,8 +223,9 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
     def _relay_request(self, url_path, data=None):
         """Send received request to api server."""
 
+        api_server_ip = self.api_servers.get()
         url = "%s://%s:%s%s" % (self._apiserverconnect,
-                                cfg.CONF.APISERVER.api_server_ip,
+                                api_server_ip,
                                 cfg.CONF.APISERVER.api_server_port,
                                 url_path)
 
