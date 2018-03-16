@@ -186,6 +186,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         portbindings_base.register_port_dict_function()
         utils.register_vnc_api_options()
         self._parse_class_args()
+        self.api_servers = utils.RoundRobinApiServers()
 
     def get_agents(self, context, filters=None, fields=None):
         # This method is implemented so that horizon is happy
