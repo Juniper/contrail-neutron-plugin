@@ -48,6 +48,10 @@ try:
 except ImportError:
     neutron_lib_exc = None
 try:
+    from neutron_lib.exceptions import l3 as neutron_lib_l3_exc
+except ImportError:
+    neutron_lib_l3_exc = None
+try:
     from oslo.config import cfg
 except ImportError:
     from oslo_config import cfg
@@ -115,6 +119,8 @@ def _raise_contrail_error(info, obj_name):
             raise getattr(allowedaddresspairs, exc_name)(**info)
         if neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
             raise getattr(neutron_lib_exc, exc_name)(**info)
+        if neutron_lib_l3_exc and hasattr(neutron_lib_l3_exc, exc_name):
+            raise getattr(neutron_lib_l3_exc, exc_name)(**info)
     raise NeutronException(**info)
 
 
