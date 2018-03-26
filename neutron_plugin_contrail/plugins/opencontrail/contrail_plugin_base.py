@@ -14,14 +14,9 @@
 #
 # @author: Hampapur Ajay, Praneet Bachheti, Rudra Rugge, Atul Moghe
 
+
 import os.path as path
 
-try:
-    from neutron_lib.plugins import directory
-except ImportError:
-    directory = None
-from neutron import manager as neutron_manager
-from neutron._i18n import _
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
 except:
@@ -56,10 +51,7 @@ from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
 from neutron.extensions import external_net
 from neutron.extensions import l3
-try:
-    from neutron_lib.api.definitions import portbindings
-except ImportError:
-    from neutron.extensions import portbindings
+from neutron.extensions import portbindings
 from neutron.extensions import securitygroup
 from neutron_plugin_contrail.extensions import serviceinterface
 from neutron_plugin_contrail.extensions import vfbinding
@@ -123,58 +115,8 @@ class InvalidContrailExtensionError(ServiceUnavailable):
 
 
 class HttpResponseError(Exception):
-    def __init__(self, resp_info):
-        self.response_info = resp_info
-
-
-# Monkey patch Neutron manager method to load extension
-def _monkey_patched_neutron_manager_load_service_plugins(n_manager):
-    """Loads service plugins.
-
-    Starts from the core plugin and checks if it supports
-    advanced services then loads classes provided in configuration.
-    """
-    plugin_providers = cfg.CONF.service_plugins
-    plugin_providers.extend(n_manager._get_default_service_plugins())
-    LOG.debug("Loading service plugins: %s", plugin_providers)
-    for provider in plugin_providers:
-        if provider == '':
-            continue
-
-        LOG.info("Loading Plugin: %s", provider)
-        if provider in n_manager._get_default_service_plugins():
-            try:
-                plugin_inst = n_manager._get_plugin_instance(
-                    'neutron.service_plugins.contrail', provider)
-            except ImportError:
-                continue
-        else:
-            plugin_inst = n_manager._get_plugin_instance(
-                'neutron.service_plugins', provider)
-        # only one implementation of svc_type allowed
-        # specifying more than one plugin
-        # for the same type is a fatal exception
-        # TODO(armax): simplify this by moving the conditional into the
-        # directory itself.
-        plugin_type = plugin_inst.get_plugin_type()
-        if directory.get_plugin(plugin_type):
-            raise ValueError(_("Multiple plugins for service "
-                               "%s were configured") % plugin_type)
-
-        directory.add_plugin(plugin_type, plugin_inst)
-
-        # search for possible agent notifiers declared in service plugin
-        # (needed by agent management extension)
-        plugin = directory.get_plugin()
-        if (hasattr(plugin, 'agent_notifiers') and
-                hasattr(plugin_inst, 'agent_notifiers')):
-            plugin.agent_notifiers.update(plugin_inst.agent_notifiers)
-
-        LOG.debug("Successfully loaded %(type)s plugin. "
-                  "Description: %(desc)s",
-                  {"type": plugin_type,
-                   "desc": plugin_inst.get_plugin_description()})
-
+      def __init__(self, resp_info):
+          self.response_info = resp_info
 
 class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                     securitygroup.SecurityGroupPluginBase,
@@ -240,9 +182,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         pass
 
     def __init__(self):
-        if directory is not None:
-            neutron_manager.NeutronManager._load_service_plugins =\
-                _monkey_patched_neutron_manager_load_service_plugins
         super(NeutronPluginContrailCoreBase, self).__init__()
         if hasattr(portbindings_base, 'register_port_dict_function'):
             portbindings_base.register_port_dict_function()
