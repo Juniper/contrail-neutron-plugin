@@ -2,6 +2,10 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 
+# License: Apache-2.0
+# Copyright (c) 2016 HUAWEI TECHNOLOGIES CO.,LTD and others.
+# https://github.com/openstack/compass-adapters/blob/master/ansible/roles/open-contrail/templates/neutron_plugin_contrail.tar.gz
+
 import uuid
 
 try:

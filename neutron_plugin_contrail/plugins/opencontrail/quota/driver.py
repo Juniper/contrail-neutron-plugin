@@ -1,3 +1,7 @@
+# License: Apache-2.0
+# Copyright (c) 2016 HUAWEI TECHNOLOGIES CO.,LTD and others.
+# https://github.com/openstack/compass-adapters/blob/master/ansible/roles/open-contrail/templates/neutron_plugin_contrail.tar.gz
+
 # vim: tabstop=4 shiftwidth=4 softtabstop=4
 
 import cgitb
