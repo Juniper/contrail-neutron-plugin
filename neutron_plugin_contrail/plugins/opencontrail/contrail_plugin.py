@@ -262,7 +262,8 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                  'is_admin': getattr(context, 'is_admin', False),
                  'operation': operation,
                  'type': apitype,
-                 'tenant_id': getattr(context, 'tenant_id', None)}
+                 'tenant_id': getattr(context, 'tenant_id', None),
+                 'request_id': getattr(context, 'request_id', None)}
         if context.roles:
             cdict['roles'] = context.roles
         if context.tenant:
