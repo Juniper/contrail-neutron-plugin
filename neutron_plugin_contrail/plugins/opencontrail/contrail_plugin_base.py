@@ -354,10 +354,11 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         # These ips are still on the port and haven't been removed
         prev_ips = []
 
-        # the new_ips contain all of the fixed_ips that are to be updated
-        if len(new_ips) > cfg.CONF.max_fixed_ips_per_port:
-            msg = _('Exceeded maximim amount of fixed ips per port')
-            raise InvalidInput(error_message=msg)
+        if hasattr(cfg.CONF, 'max_fixed_ips_per_port'):
+            # the new_ips contain all of the fixed_ips that are to be updated
+            if len(new_ips) > cfg.CONF.max_fixed_ips_per_port:
+                msg = _('Exceeded maximum amount of fixed ips per port')
+                raise InvalidInput(error_message=msg)
 
         # Remove all of the intersecting elements
         for original_ip in original_ips[:]:
