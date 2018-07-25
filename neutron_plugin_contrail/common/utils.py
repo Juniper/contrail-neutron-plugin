@@ -91,6 +91,20 @@ class RoundRobinApiServers(object):
         return self.api_servers[self.index]
 
 
+class RoundRobinAnalyticsApiServers(object):
+    def __init__(self):
+        self.analytics_api_servers = cfg.CONF.COLLECTOR.analytics_api_ip.split()
+        self.index = -1
+
+    def get(self):
+        # use the next host in the list
+        self.index += 1
+        if self.index >= len(self.analytics_api_servers):
+            # reuse the first host from the list
+            self.index = 0
+        return self.analytics_api_servers[self.index]
+
+
 def register_vnc_api_options():
     """Register Contrail Neutron core plugin configuration flags"""
     cfg.CONF.register_opts(vnc_opts, 'APISERVER')
