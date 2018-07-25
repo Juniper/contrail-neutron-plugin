@@ -54,6 +54,7 @@ class ResourceManager(object):
 
     def __init__(self, api):
         self._api = api
+        self.analytics_api_servers = utils.RoundRobinAnalyticsApiServers()
 
     @abstractproperty
     def property_type_mapping(self):

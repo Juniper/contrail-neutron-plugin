@@ -39,6 +39,11 @@ import virtual_ip
 
 
 class LoadBalancerPluginDb(LoadBalancerPluginBase):
+
+    def __init__(self):
+        super(LoadBalancerPluginBase, self).__init__()
+        self.analytics_api_servers = utils.RoundRobinAnalyticsApiServers()
+
     @property
     def api(self):
         if hasattr(self, '_api'):
@@ -145,7 +150,8 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             'total_connections': '0',
         }
 
-        endpoint = "http://%s:%s" % (cfg.CONF.COLLECTOR.analytics_api_ip,
+        analytics_api_ip = self.analytics_api_servers.get()
+        endpoint = "http://%s:%s" % (analytics_api_ip,
                                      cfg.CONF.COLLECTOR.analytics_api_port)
         analytics = analytics_client.Client(endpoint)
         path = "/analytics/uves/service-instance/"
