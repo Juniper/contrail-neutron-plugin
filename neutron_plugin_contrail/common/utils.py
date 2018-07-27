@@ -83,13 +83,14 @@ class RoundRobinApiServers(object):
         self.index = -1
 
     def get(self):
+        if not self.api_servers:
+            return None
         # use the next host in the list
         self.index += 1
         if self.index >= len(self.api_servers):
             # reuse the first host from the list
             self.index = 0
         return self.api_servers[self.index]
-
 
 def register_vnc_api_options():
     """Register Contrail Neutron core plugin configuration flags"""
