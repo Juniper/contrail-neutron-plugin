@@ -223,14 +223,28 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
     def _relay_request(self, url_path, data=None):
         """Send received request to api server."""
 
-        api_server_ip = self.api_servers.get()
-        url = "%s://%s:%s%s" % (self._apiserverconnect,
-                                api_server_ip,
-                                cfg.CONF.APISERVER.api_server_port,
-                                url_path)
+        while True:
+            api_server_ip = self.api_servers.get()
+            if not api_server_ip:
+                msg = ("All VNC API server(s) (%s) are down" %
+                       ', '.join(cfg.CONF.APISERVER.api_server_ip.split()))
+                LOG.critical(msg)
+                raise SystemExit(1)
+            url = "%s://%s:%s%s" % (self._apiserverconnect,
+                                    api_server_ip,
+                                    cfg.CONF.APISERVER.api_server_port,
+                                    url_path)
+            LOG.debug("Relay request to VNC API URL %s", url)
 
-        return self._request_api_server_authn(
-            url, data=data, headers={'Content-type': 'application/json'})
+            try:
+                return self._request_api_server_authn(
+                    url,
+                    data=data,
+                    headers={'Content-type': 'application/json'},
+                )
+            except Exception as requests.exceptions.ConnectionError:
+                LOG.warning("Failed to relay request to VNC API URL %s" % url)
+                self.api_servers.remove(api_server_ip)
 
     def _request_backend(self, context, data_dict, obj_name, action):
         context_dict = self._encode_context(context, action, obj_name)
