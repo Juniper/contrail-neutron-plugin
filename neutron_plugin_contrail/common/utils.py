@@ -90,6 +90,8 @@ class RoundRobinApiServers(object):
             self.index = 0
         return self.api_servers[self.index]
 
+    def len(self):
+        return len(self.api_servers)
 
 def register_vnc_api_options():
     """Register Contrail Neutron core plugin configuration flags"""
