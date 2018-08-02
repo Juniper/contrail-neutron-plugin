@@ -61,9 +61,8 @@ class LoadbalancerMemberManager(ResourceManager):
         return pool_uuid
 
     def _get_object_status(self, member):
-        endpoint = "http://%s:%s" % (cfg.CONF.COLLECTOR.analytics_api_ip,
+        analytics = analytics_client.Client(cfg.CONF.COLLECTOR.analytics_api_ip,
                                      cfg.CONF.COLLECTOR.analytics_api_port)
-        analytics = analytics_client.Client(endpoint)
         path = "/analytics/uves/service-instance/"
         fqdn_uuid = "%s?cfilt=UveLoadbalancer" % member.parent_uuid
         try:
