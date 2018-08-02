@@ -145,9 +145,8 @@ class LoadBalancerPluginDb(LoadBalancerPluginBase):
             'total_connections': '0',
         }
 
-        endpoint = "http://%s:%s" % (cfg.CONF.COLLECTOR.analytics_api_ip,
+        analytics = analytics_client.Client(cfg.CONF.COLLECTOR.analytics_api_ip,
                                      cfg.CONF.COLLECTOR.analytics_api_port)
-        analytics = analytics_client.Client(endpoint)
         path = "/analytics/uves/service-instance/"
         fqdn_uuid = "%s?cfilt=UveLoadbalancer" % pool_id
         try:
