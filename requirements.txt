@@ -1,3 +1,3 @@
 python-neutronclient
-vnc_api
+contrail-api-client
 cfgm_common
