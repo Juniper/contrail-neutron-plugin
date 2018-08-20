@@ -565,5 +565,11 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                  page_reverse=False):
         """Retrieves all security group rules."""
 
+        # Adapt the security group filters data model of the neutron contriil
+        # plugin and Contrail Condig API vnc_openstack.
+        # NOTE(fanguiju): The implementation of getting the security group ID
+        # is `obj_uuids = filters['id']` in Contrail Condig API vnc_openstack.
+        if filters and filters.get('security_group_id'):
+            filters['id'] = filters.pop('security_group_id')
         return self._list_resource('security_group_rule', context,
                                    filters, fields)
