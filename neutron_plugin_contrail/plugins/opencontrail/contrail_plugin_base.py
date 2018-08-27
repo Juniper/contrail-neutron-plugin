@@ -184,7 +184,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         "router",
         "port-security",
         "binding",
-        "agent",
         "quotas",
         "external-net",
         "allowed-address-pairs",
@@ -242,10 +241,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
         cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
         self._parse_class_args()
-
-    def get_agents(self, context, filters=None, fields=None):
-        # This method is implemented so that horizon is happy
-        return []
 
     def _create_resource(self, res_type, context, res_data):
         pass
