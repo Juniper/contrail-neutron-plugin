@@ -538,10 +538,13 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
                                    filters, fields)
 
     def get_security_groups_count(self, context, filters=None):
-        return 0
+        sg_count = self._count_resource('security_group', context, filters)
+        return sg_count['count']
 
     def get_security_group_rules_count(self, context, filters=None):
-        return 0
+        sgr_count = self._count_resource(
+            'security_group_rule', context, filters)
+        return sgr_count['count']
 
     def create_security_group_rule(self, context, security_group_rule):
         """Creates a security group rule."""
