@@ -137,7 +137,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         "router",
         "port-security",
         "binding",
-        "agent",
         "quotas",
         "external-net",
         "allowed-address-pairs",
@@ -195,10 +194,6 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         utils.register_vnc_api_options()
         self._parse_class_args()
         self.api_servers = utils.RoundRobinApiServers()
-
-    def get_agents(self, context, filters=None, fields=None):
-        # This method is implemented so that horizon is happy
-        return []
 
     def _create_resource(self, res_type, context, res_data):
         pass
