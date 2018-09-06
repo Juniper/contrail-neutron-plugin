@@ -25,6 +25,7 @@ setup(
     entry_points={
         'neutron.service_plugins': [
             'contrail-timestamp = neutron_plugin_contrail.plugins.opencontrail.services.timestamp.timestamp_plugin:TimeStampPlugin',
+            'contrail-dummy = neutron_plugin_contrail.plugins.opencontrail.services.dummy.dummy:DummyServicePlugin',
         ],
     },
 )
