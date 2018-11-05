@@ -223,3 +223,23 @@ class QuotaDriver(object):
 
     def cancel_reservation(self, context, reservation_id):
         """Tnis is a noop as this driver does not support reservations."""
+
+    @classmethod
+    def get_default_quotas(cls, context, resources, tenant_id):
+        try:
+            default_project = cls._get_vnc_conn().project_read(
+                fq_name=['default-domain', 'default-project'])
+            default_quota = default_project.get_quota()
+        except vnc_exc.NoIdError:
+            default_quota = None
+
+        qn2c = cls.quota_neutron_to_contrail_type
+        quotas = {}
+        for resource in resources:
+            quota_res = None
+            if default_quota and resource in qn2c:
+                quota_res = getattr(default_quota, qn2c[resource], None)
+                if quota_res is None:
+                    quota_res = default_quota.get_defaults()
+            quotas[resource] = quota_res
+        return quotas
