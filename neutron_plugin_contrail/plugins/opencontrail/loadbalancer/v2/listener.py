@@ -81,6 +81,7 @@ class ListenerManager(ResourceManager):
                'protocol': props.protocol,
                'protocol_port': props.protocol_port,
                'admin_state_up': props.admin_state,
+               'connection_limit': props.connection_limit,
                'default_pool_id': self._get_default_pool(ll),
                'loadbalancers' : self._get_loadbalancers(ll)}
         if res['loadbalancers']:
