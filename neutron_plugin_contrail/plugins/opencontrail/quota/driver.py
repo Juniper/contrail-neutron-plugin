@@ -2,6 +2,7 @@
 
 import ConfigParser
 from pprint import pformat
+import time
 
 try:
     from neutron.openstack.common import log as logging
