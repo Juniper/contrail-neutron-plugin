@@ -115,7 +115,7 @@ def vnc_api_is_authenticated(api_server_ip):
         api_server_ip,
         cfg.CONF.APISERVER.api_server_port
     )
-    response = requests.get(url)
+    response = requests.get(url, verify=cfg.CONF.APISERVER.get('cafile', False))
 
     if response.status_code == requests.codes.ok:
         return False
