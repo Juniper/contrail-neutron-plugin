@@ -16,10 +16,15 @@ try:
 except:
     from neutron_lib.constants import ATTR_NOT_SPECIFIED
 
-from neutron.api.v2 import attributes as attrs
-if hasattr(attrs, 'validators'):
-    attrs.validators['type:customattributes'] = _validate_custom_attributes
-else:
+try:
+    from neutron.api.v2 import attributes as attrs
+    if hasattr(attrs, 'validators'):
+        attrs.validators['type:customattributes'] = _validate_custom_attributes
+    else:
+        from neutron_lib.api import validators
+        validators.add_validator('type:customattributes',
+                                 _validate_custom_attributes)
+except ImportError:
     from neutron_lib.api import validators
     validators.add_validator('type:customattributes',
                              _validate_custom_attributes)

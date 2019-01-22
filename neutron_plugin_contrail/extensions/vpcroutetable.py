@@ -28,7 +28,6 @@ try:
 except ImportError:
     from neutron_lib.api.extensions import ExtensionDescriptor
 from neutron.api.extensions import ResourceExtension
-from neutron.api.v2 import attributes as attr
 from neutron.api.v2 import base
 try:
     from neutron.common.exceptions import NotFound
@@ -138,12 +137,6 @@ class Vpcroutetable(ExtensionDescriptor):
     @classmethod
     def get_resources(cls):
         """ Returns Ext Resources """
-        # PLURALS were removed in Ocata
-        _plurals_present = getattr(attr, 'PLURALS', None)
-        if _plurals_present is not None:
-            my_plurals = [(key, key[:-1]) for key in RESOURCE_ATTRIBUTE_MAP.keys()]
-            attr.PLURALS.update(dict(my_plurals))
-
         exts = []
         if _use_plugins_directory:
             plugin = directory.get_plugin()

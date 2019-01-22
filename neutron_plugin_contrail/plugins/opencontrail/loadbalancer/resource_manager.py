@@ -23,7 +23,7 @@ try:
     from neutron.common.exceptions import NotAuthorized
 except ImportError:
     from neutron_lib.exceptions import NotAuthorized
-from neutron.common.exceptions import TenantNetworksDisabled
+    from neutron_lib.exceptions import NotFound
 
 try:
     from neutron.extensions.loadbalancer import StateInvalid
@@ -189,7 +189,7 @@ class ResourceManager(object):
             except NoIdError:
                 pass
             greenthread.sleep(1)
-        raise TenantNetworksDisabled()
+        raise NotFound(project_id)
 
     def _fields(self, resource, fields):
         if fields:
