@@ -47,6 +47,10 @@ try:
 except ImportError:
     neutron_lib_l3_exc = None
 try:
+    from neutron_lib.exceptions import firewall_v2 as firewall_v2_exc
+except ImportError:
+    firewall_v2_exc = None
+try:
     from oslo.config import cfg
 except ImportError:
     from oslo_config import cfg
@@ -69,6 +73,9 @@ try:
     from neutron.openstack.common import log as logging
 except ImportError:
     from oslo_log import log as logging
+from neutron_lib.callbacks import events
+from neutron_lib.callbacks import registry
+from neutron_lib.callbacks import resources
 
 from neutron_plugin_contrail.common import utils
 
@@ -85,35 +92,39 @@ NEUTRON_CONTRAIL_PREFIX = 'NEUTRON'
 
 
 def _raise_contrail_error(info, obj_name):
-    exc_name = info.get('exception')
-
-    if exc_name:
-        LOG.exception(str(exc_name) + str(info) + str(obj_name))
-        if str(exc_name) == 'OverQuota':
-            info['exception'] = str(info['exception'])
-            if 'msg' in info:
-                info['msg'] = str(info['msg'])
-            if 'overs' in info:
-                info['overs'] = [str(info['overs'][0])]
-        if exc_name == 'BadRequest' and 'resource' not in info:
-            info['resource'] = obj_name
-        if exc_name == 'VirtualRouterNotFound':
-            raise HttpResponseError(info)
-        if exc_name == 'NotAuthorized':
-            raise NotAuthorized(**info)
-        if hasattr(neutron_exc, exc_name):
-            raise getattr(neutron_exc, exc_name)(**info)
-        if hasattr(l3, exc_name):
-            raise getattr(l3, exc_name)(**info)
-        if hasattr(securitygroup, exc_name):
-            raise getattr(securitygroup, exc_name)(**info)
-        if hasattr(allowedaddresspairs, exc_name):
-            raise getattr(allowedaddresspairs, exc_name)(**info)
-        if neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
-            raise getattr(neutron_lib_exc, exc_name)(**info)
-        if neutron_lib_l3_exc and hasattr(neutron_lib_l3_exc, exc_name):
-            raise getattr(neutron_lib_l3_exc, exc_name)(**info)
-    raise NeutronException(**info)
+    exc_name = info.get('exception', 'No exception name provided')
+    if str(exc_name) == 'OverQuota':
+        info['exception'] = str(info['exception'])
+        if 'msg' in info:
+            info['msg'] = str(info['msg'])
+        if 'overs' in info:
+            info['overs'] = [str(info['overs'][0])]
+    elif exc_name == 'BadRequest' and 'resource' not in info:
+        info['resource'] = obj_name
+    elif exc_name == 'VirtualRouterNotFound':
+        raise HttpResponseError(info)
+    elif exc_name == 'NotAuthorized':
+        raise NotAuthorized(**info)
+    elif hasattr(neutron_exc, exc_name):
+        raise getattr(neutron_exc, exc_name)(**info)
+    elif hasattr(l3, exc_name):
+        raise getattr(l3, exc_name)(**info)
+    elif hasattr(securitygroup, exc_name):
+        raise getattr(securitygroup, exc_name)(**info)
+    elif hasattr(allowedaddresspairs, exc_name):
+        raise getattr(allowedaddresspairs, exc_name)(**info)
+    elif neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
+        raise getattr(neutron_lib_exc, exc_name)(**info)
+    elif neutron_lib_l3_exc and hasattr(neutron_lib_l3_exc, exc_name):
+        raise getattr(neutron_lib_l3_exc, exc_name)(**info)
+    elif firewall_v2_exc and hasattr(firewall_v2_exc, exc_name):
+        raise getattr(firewall_v2_exc, exc_name)(**info)
+    else:
+        try:
+            raise NeutronException(**info)
+        except Exception:
+            LOG.exception("Contrail raised unknown exception '%s' with args: "
+                          "%s", exc_name, info)
 
 
 class InvalidContrailExtensionError(ServiceUnavailable):
@@ -378,10 +389,10 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         port = self._create_resource('port', context, port)
         return port
 
-    def get_port(self, context, port_id, fields=None):
+    def get_port(self, context, id, fields=None):
         """Get the attributes of a particular port."""
 
-        return self._get_port(context, port_id, fields)
+        return self._get_port(context, id, fields)
 
     def update_port(self, context, port_id, port):
         """Updates a port.
@@ -390,14 +401,21 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
         Network.
         """
 
-        original = self._get_port(context, port_id)
+        original_port = self._get_port(context, port_id)
         if 'fixed_ips' in port['port']:
             added_ips, prev_ips = self._update_ips_for_port(
-                context, original['network_id'], port_id,
-                original['fixed_ips'], port['port']['fixed_ips'])
+                context, original_port['network_id'], port_id,
+                original_port['fixed_ips'], port['port']['fixed_ips'])
             port['port']['fixed_ips'] = prev_ips + added_ips
 
-        return self._update_resource('port', context, port_id, port)
+        port = self._update_resource('port', context, port_id, port)
+        kwargs = {
+            'context': context,
+            'port': port,
+            'original_port': original_port,
+        }
+        registry.notify(resources.PORT, events.AFTER_UPDATE, self, **kwargs)
+        return port
 
     def delete_port(self, context, port_id):
         """Deletes a port.
