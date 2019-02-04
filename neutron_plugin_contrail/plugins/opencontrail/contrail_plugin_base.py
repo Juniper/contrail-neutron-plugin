@@ -73,9 +73,18 @@ try:
     from neutron.openstack.common import log as logging
 except ImportError:
     from oslo_log import log as logging
-from neutron_lib.callbacks import events
-from neutron_lib.callbacks import registry
-from neutron_lib.callbacks import resources
+try:
+    from neutron.callbacks import events
+except ImportError:
+    from neutron_lib.callbacks import events
+try:
+    from neutron.callbacks import registry
+except ImportError:
+    from neutron_lib.callbacks import registry
+try:
+    from neutron.callbacks import resources
+except ImportError:
+    from neutron_lib.callbacks import resources
 
 from neutron_plugin_contrail.common import utils
 
