@@ -37,7 +37,10 @@ try:
     from neutron.common.exceptions import NotAuthorized
 except ImportError:
     from neutron_lib.exceptions import NotAuthorized
-from neutron.common import exceptions as neutron_exc
+try:
+    from neutron.common import exceptions as neutron_exc
+except ImportError:
+    from neutron_lib import exceptions as neutron_exc
 try:
     from neutron_lib import exceptions as neutron_lib_exc
 except ImportError:
@@ -418,6 +421,7 @@ class NeutronPluginContrailCoreBase(neutron_plugin_base_v2.NeutronPluginBaseV2,
             port['port']['fixed_ips'] = prev_ips + added_ips
 
         port = self._update_resource('port', context, port_id, port)
+        port['project_id'] = port['tenant_id']
         kwargs = {
             'context': context,
             'port': port,
