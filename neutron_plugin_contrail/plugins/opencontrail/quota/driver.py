@@ -9,7 +9,10 @@ try:
     from neutron.openstack.common import log as logging
 except ImportError:
     from oslo_log import log as logging
-from neutron.common.exceptions import InvalidQuotaValue
+try:
+    from neutron.common.exceptions import InvalidQuotaValue
+except ImportError:
+    from neutron_lib.exceptions import InvalidQuotaValue
 try:
     from neutron.common.exceptions import OverQuota
 except ImportError:
