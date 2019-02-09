@@ -64,6 +64,14 @@ from neutron.extensions import securitygroup
 from neutron_plugin_contrail.extensions import serviceinterface
 from neutron_plugin_contrail.extensions import vfbinding
 from neutron import neutron_plugin_base_v2
+
+try:
+    from neutron.extensions.portsecurity import PortSecurityAndIPRequiredForSecurityGroups
+except ImportError:
+    class PortSecurityAndIPRequiredForSecurityGroups(neutron_exc.InvalidInput):
+        message = _("Port security must be enabled and port must have an IP"
+            " address in order to use security groups.")
+
 try:
     from neutron.openstack.common import importutils
 except ImportError:
@@ -114,6 +122,8 @@ def _raise_contrail_error(info, obj_name):
         raise HttpResponseError(info)
     elif exc_name == 'NotAuthorized':
         raise NotAuthorized(**info)
+    elif exc_name == 'PortSecurityAndIPRequiredForSecurityGroups':
+        raise PortSecurityAndIPRequiredForSecurityGroups()
     elif hasattr(neutron_exc, exc_name):
         raise getattr(neutron_exc, exc_name)(**info)
     elif hasattr(l3, exc_name):
