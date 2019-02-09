@@ -54,6 +54,11 @@ try:
     from oslo.config import cfg
 except ImportError:
     from oslo_config import cfg
+try:
+    from neutron.extensions import portsecurity as port_security_extn
+except ImportError:
+    from neutron_lib.exceptions import portsecurity as port_security_extn
+
 from neutron.db import portbindings_base
 from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
@@ -122,6 +127,8 @@ def _raise_contrail_error(info, obj_name):
         raise getattr(securitygroup, exc_name)(**info)
     elif hasattr(allowedaddresspairs, exc_name):
         raise getattr(allowedaddresspairs, exc_name)(**info)
+    elif hasattr(port_security_extn, exc_name):
+        raise getattr(port_security_extn, exc_name)(**info)
     elif neutron_lib_exc and hasattr(neutron_lib_exc, exc_name):
         raise getattr(neutron_lib_exc, exc_name)(**info)
     elif neutron_lib_l3_exc and hasattr(neutron_lib_l3_exc, exc_name):
