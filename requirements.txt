@@ -1,3 +1,14 @@
-six # MIT
-python-neutronclient
+setuptools
 contrail-api-client
+eventlet
+networking-bgpvpn
+neutron
+neutron-lib
+neutron_fwaas
+neutron_lbaas
+oslo.config
+oslo.log
+oslo.serialization
+oslo.utils
+requests
+six
