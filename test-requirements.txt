@@ -1,6 +1,6 @@
+contrail-api-server
+contrail-config-common
+flexmock
 mock
-testtools
-fixtures
-webtest
-neutron
 oslotest
+vnc_openstack

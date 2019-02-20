@@ -18,10 +18,14 @@ except ImportError:
     from neutron.common import exceptions as n_exc
 
 try:
-    from neutron._i18n import _
+    from neutron_lib._i18n import _
 except ImportError:
-    from neutron.i18n import _
+    from neutron._i18n import _
+
 
 class AuthStrategyNotSupported(n_exc.NeutronException):
-        message = _("Authentication strategy %(auth_strategy)s is not "
-                    "supported.")
+    message = _("Authentication strategy %(auth_strategy)s is not supported")
+
+
+class VncApiServersUnavailable(n_exc.ServiceUnavailable):
+    message = _("None of the VNC API servers (%(api_servers)s) are available")
