@@ -7,52 +7,52 @@ except ImportError:
 EXTENDED_ATTRIBUTES_2_0 = {
     'networks': {
         'fq_name': {'allow_post': False,
-                             'allow_put': False,
-                             'is_visible': True},
+                    'allow_put': False,
+                    'is_visible': True},
         'instance_count': {'allow_post': False,
-                                    'allow_put': False,
-                                    'is_visible': True},
+                           'allow_put': False,
+                           'is_visible': True},
         'policys': {'allow_post': True,
-                             'allow_put': True,
-                             'default': '',
-                             'is_visible': True},
+                    'allow_put': True,
+                    'default': '',
+                    'is_visible': True},
         'subnet_ipam': {'allow_post': False,
-                                 'allow_put': False,
-                                 'default': '',
-                                 'is_visible': True},
+                        'allow_put': False,
+                        'default': '',
+                        'is_visible': True},
     },
     'routers': {
         'fq_name': {'allow_post': False,
-                             'allow_put': False,
-                             'is_visible': True},
+                    'allow_put': False,
+                    'is_visible': True},
     },
     'security_groups': {
         'fq_name': {'allow_post': False,
-                             'allow_put': False,
-                             'is_visible': True},
+                    'allow_put': False,
+                    'is_visible': True},
     },
     'subnets': {
         'instance_count': {'allow_post': False,
-                                    'allow_put': False,
-                                    'is_visible': True},
+                           'allow_put': False,
+                           'is_visible': True},
         'ipam_fq_name': {'allow_post': True,
-                                  'allow_put': True,
-                                  'default': '',
-                                  'is_visible': True},
+                         'allow_put': True,
+                         'default': '',
+                         'is_visible': True},
         'dns_server_address': {'allow_post': False,
-                                        'allow_put': False,
-                                        'is_visible': True},
+                               'allow_put': False,
+                               'is_visible': True},
     },
     'ports': {
         'service_instance_ips': {'allow_post': False,
-                                  'allow_put': False,
-                                   'is_visible': True},
+                                 'allow_put': False,
+                                 'is_visible': True},
         'service_health_check_ips': {'allow_post': False,
-                                  'allow_put': False,
-                                   'is_visible': True},
+                                     'allow_put': False,
+                                     'is_visible': True},
         'secondary_ips': {'allow_post': False,
-                                   'allow_put': False,
-                                   'is_visible': True},
+                          'allow_put': False,
+                          'is_visible': True},
     },
 }
 
@@ -81,7 +81,7 @@ class Contrail(ExtensionDescriptor):
 
     @classmethod
     def get_resources(cls):
-        """ Returns Ext Resources """
+        """Return Ext Resources."""
         exts = []
         return exts
 
@@ -90,9 +90,7 @@ class Contrail(ExtensionDescriptor):
             return EXTENDED_ATTRIBUTES_2_0
         else:
             return {}
-# end class Contrail
 
 
 class ContrailPluginBase(object):
     pass
-# end class ContrailPluginBase
