@@ -12,14 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+from oslo_config import cfg
 import requests
 from six.moves.urllib.parse import urlparse
-
-from oslo_config import cfg
 from vnc_api.vnc_api import VncApi
 
 from neutron_plugin_contrail.common import constants
 from neutron_plugin_contrail.common import exceptions as c_exc
+
 
 vnc_opts = [
     cfg.StrOpt('api_server_ip',
@@ -32,9 +32,7 @@ vnc_opts = [
                default=constants.VNC_API_DEFAULT_BASE_URL,
                help='URL path to request VNC API'),
     cfg.DictOpt('contrail_extensions',
-                default={'contrail': None,
-                         'service-interface': None,
-                         'vf-binding': None},
+                default={},
                 help='Enable Contrail extensions (default: %(default)s)'),
     cfg.BoolOpt('use_ssl',
                 default=constants.VNC_API_DEFAULT_USE_SSL,
@@ -54,26 +52,13 @@ vnc_opts = [
                     'configuration section.'),
 ]
 
-vrouter_opts = [
-    cfg.StrOpt('vhostuser_sockets_dir',
-               default='/var/run/vrouter',
-               help='Path to dir where vhostuser socket are placed'),
-]
-
-vnc_extra_opts = [
-    cfg.BoolOpt('apply_subnet_host_routes',
-                default=False,
-                help="Apply Neutron subnet host routes to Contrail virtual "
-                     "network with a route table"),
-]
-
 
 class RoundRobinApiServers(object):
     def __init__(self):
         self.api_servers = cfg.CONF.APISERVER.api_server_ip.split()
         self.index = -1
 
-    def get(self,api_servers):
+    def get(self, api_servers):
         # use the next host in the list
         self.index += 1
         if self.index >= len(api_servers):
@@ -81,22 +66,19 @@ class RoundRobinApiServers(object):
             self.index = 0
         return api_servers[self.index]
 
-    def len(self):
+    def __len__(self):
+        """Return API servers list length."""
         return len(self.api_servers)
 
+
 def register_vnc_api_options():
-    """Register Contrail Neutron core plugin configuration flags"""
-    cfg.CONF.register_opts(vnc_opts, 'APISERVER')
-    cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
-
-
-def register_vnc_api_extra_options():
-    """Register extra Contrail Neutron core plugin configuration flags"""
-    cfg.CONF.register_opts(vnc_extra_opts, 'APISERVER')
+    """Register Contrail Neutron core plugin configuration flags."""
+    if 'APISERVER' not in cfg.CONF:
+        cfg.CONF.register_opts(vnc_opts, 'APISERVER')
 
 
 def vnc_api_is_authenticated(api_server_ip):
-    """ Determines if the VNC API needs credentials
+    """Determine if the VNC API needs credentials.
 
     :returns: True if credentials are needed, False otherwise
     """
@@ -105,7 +87,8 @@ def vnc_api_is_authenticated(api_server_ip):
         api_server_ip,
         cfg.CONF.APISERVER.api_server_port
     )
-    response = requests.get(url, verify=cfg.CONF.APISERVER.get('cafile', False))
+    response = requests.get(url,
+                            verify=cfg.CONF.APISERVER.get('cafile', False))
 
     if response.status_code == requests.codes.ok:
         return False
@@ -137,7 +120,7 @@ def get_keystone_auth_info():
 
 
 def get_vnc_api_instance(wait_for_connect=True):
-    """ Instantiates a VncApi object from configured parameters
+    """Instantiate a VncApi object from configured parameters.
 
     Read all necessary configuration options from neutron and contrail core
     plugin configuration files and instantiates a VncApi object with them.
