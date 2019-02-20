@@ -1,87 +1,39 @@
 env = DefaultEnvironment().Clone()
 
 sources = [
-    'neutron_plugin_contrail/__init__.py',
-    'neutron_plugin_contrail/extensions/__init__.py',
-    'neutron_plugin_contrail/extensions/contrail.py',
-    'neutron_plugin_contrail/extensions/ipam.py',
-    'neutron_plugin_contrail/extensions/policy.py',
-    'neutron_plugin_contrail/extensions/vpcroutetable.py',
-    'neutron_plugin_contrail/plugins/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/agent/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/agent/contrail_vif_driver.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_base.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_ipam.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_policy.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_v3.py',
-    'neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_vpc.py',
-    'neutron_plugin_contrail/plugins/opencontrail/neutron_middleware.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_db.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_healthmonitor.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_member.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/loadbalancer_pool.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/plugin.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/resource_manager.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/utils.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/virtual_ip.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/plugin.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/loadbalancer_db.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/loadbalancer.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/listener.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/loadbalancer_pool.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/loadbalancer_member.py',
-    'neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/loadbalancer_healthmonitor.py',
-    'neutron_plugin_contrail/plugins/opencontrail/quota/__init__.py',
-    'neutron_plugin_contrail/plugins/opencontrail/quota/driver.py',
-    'neutron_plugin_contrail/tests/__init__.py',
-    'neutron_plugin_contrail/tests/loadbalancer/__init__.py',
-    'neutron_plugin_contrail/tests/loadbalancer/test_driver.py',
-    'neutron_plugin_contrail/tests/loadbalancer/test_plugin.py',
-    'neutron_plugin_contrail/tests/unit/__init__.py',
-    'neutron_plugin_contrail/tests/unit/opencontrail/__init__.py',
-    'neutron_plugin_contrail/tests/unit/opencontrail/test_contrail_plugin.py',
+    '.coveragerc',
+    '.stestr.conf',
+    'MANIFEST.in',
+    'README.rst',
     'requirements.txt',
     'setup.py',
     'test-requirements.txt',
+    'tox.ini',
+    'neutron_plugin_contrail',
 ]
 
-packages = [
-    env.GetVncAPIPkg(),
-    '%s/config/common/dist/contrail-config-common-0.1dev.tar.gz' % env['TOP'],
-]
+source_rules = [env.Install(Dir('.'), "#openstack/neutron_plugin/" + f)
+                for f in sources]
 
-import os
-def BuildPyTestSetup(env, target, source):
-    file = open(target[0].abspath, 'w')
-    file.write("[easy_install]\nfind_links =")
-    for pkg in source:
-        dependency = env.File(pkg)
-        file.write(" %s" % os.path.dirname(dependency.abspath))
-    file.write("\n")
-    file.close()
-    return
+cd_cmd = 'cd ' + Dir('.').path + ' && '
+sdist_gen = env.Command('dist/neutron_plugin_contrail-0.1dev.tar.gz', 'setup.py',
+                        cd_cmd + 'python setup.py sdist')
 
-def GeneratePyTestSetup(env, targets, source):
-    """
-    Generate a setup.cfg file that contains a list of directories
-    where dependent packages can be found. The fact that package directory
-    list is being given as a source automatically adds them as dependencies.
-    """
-    target = env.File('setup.cfg')
-    return env.Command(target=target, source=source, action=BuildPyTestSetup);
+env.Depends(sdist_gen, source_rules)
+env.Default(sdist_gen)
 
-env.Append(BUILDERS = {'PythonTestSetup': GeneratePyTestSetup})
-test_sources = sources
-test_sources += env.PythonTestSetup(source=packages)
+if 'install' in BUILD_TARGETS:
+    install_cmd = env.Command(None, 'setup.py',
+                              cd_cmd + 'python setup.py install %s' %
+                              env['PYTHON_INSTALL_OPT'])
+    env.Depends(install_cmd, sdist_gen)
+    env.Alias('install', install_cmd)
 
-env.Alias('neutron_plugin_contrail:test',
-          env.Command(None,
-                      test_sources, 'cd ' + Dir('.').path + ' && python setup.py nosetests'))
-
+test_target = env.SetupPyTestSuite(
+    sdist_gen,
+    '/config/vnc_openstack/dist',
+    '/config/api-server/dist',
+    use_tox=True)
 # Local Variables:
 # mode: python
 # End:
