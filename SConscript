@@ -50,8 +50,8 @@ sources = [
 ]
 
 packages = [
-    '%s/api-lib/dist/vnc_api-0.1dev.tar.gz' % env['TOP'],
-    '%s/config/common/dist/cfgm_common-0.1dev.tar.gz' % env['TOP'],
+    env.GetVncAPIPkg(),
+    '%s/config/common/dist/contrail-config-common-0.1dev.tar.gz' % env['TOP'],
 ]
 
 import os
