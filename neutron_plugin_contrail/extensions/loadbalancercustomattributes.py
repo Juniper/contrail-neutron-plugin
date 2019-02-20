@@ -2,19 +2,21 @@ try:
     from neutron.api.extensions import ExtensionDescriptor
 except ImportError:
     from neutron_lib.api.extensions import ExtensionDescriptor
+try:
+    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
+except ImportError:
+    from neutron_lib.constants import ATTR_NOT_SPECIFIED
+
 
 def _validate_custom_attributes(data, valid_values=None):
     if not isinstance(data, list):
-        msg = _("Invalid data format for custom_attributes: '%s'") % data
+        msg = ("Invalid data format for custom_attributes: '%s'") % data
         return msg
+
 
 def convert_none_to_empty_list(value):
     return [] if value is None else value
 
-try:
-    from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
-except Exception:
-    from neutron_lib.constants import ATTR_NOT_SPECIFIED
 
 try:
     from neutron.api.v2 import attributes as attrs
@@ -48,7 +50,6 @@ class Loadbalancercustomattributes(ExtensionDescriptor):
     def get_name(cls):
         return "Loadbalancer as a Service"
 
-
     @classmethod
     def get_alias(cls):
         return "extra_lbaas_opts"
@@ -67,10 +68,8 @@ class Loadbalancercustomattributes(ExtensionDescriptor):
 
     @classmethod
     def get_extended_resources(self, version):
-        """Returns Ext Resources"""
+        """Return Ext Resources."""
         if version == "2.0":
             return EXTENDED_ATTRIBUTES_2_0
         else:
             return {}
-
-#end class Loadbalancercustomattributes
