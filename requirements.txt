@@ -1,3 +1,14 @@
-six # MIT
-python-neutronclient
+setuptools < 45.0.0; python_version=='2.7'
 contrail-api-client
+eventlet
+networking-bgpvpn < 12.0.0; python_version=='2.7'
+neutron
+neutron-lib
+neutron_fwaas
+neutron_lbaas
+oslo.config
+oslo.log
+oslo.serialization
+oslo.utils
+requests
+six
