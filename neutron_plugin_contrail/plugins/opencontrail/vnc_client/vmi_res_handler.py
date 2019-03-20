@@ -617,14 +617,6 @@ class VMInterfaceMixin(object):
         for stale_ip, stale_id in stale_ip_ids.items():
             ip_handler.delete_iip_obj(stale_id)
 
-        if hasattr(cfg.CONF, 'max_fixed_ips_per_port'):
-            if len(iips_total) > cfg.CONF.max_fixed_ips_per_port:
-                for iip_id in iips_total:
-                    ip_handler.delete_iip_obj(iip_id)
-                self._raise_contrail_exception(
-                    'BadRequest',
-                    msg="IIPS exceeds max limit")
-
     def get_vmi_tenant_id(self, vmi_obj):
         if vmi_obj.parent_type != "project":
             net_id = vmi_obj.get_virtual_network_refs()[0]['uuid']
