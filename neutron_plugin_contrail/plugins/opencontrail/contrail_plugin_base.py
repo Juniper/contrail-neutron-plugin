@@ -46,6 +46,11 @@ try:
 except ImportError:
     libexc = None
 
+try:
+    from neutron.extensions import portsecurity as port_security_extn
+except ImportError:
+    from neutron_lib.exceptions import portsecurity as port_security_extn
+
 # Constant for max length of network interface names
 # eg 'bridge' in the Network class or 'devname' in
 # the VIF class
@@ -112,6 +117,8 @@ def _raise_contrail_error(info, obj_name):
                 raise getattr(securitygroup, exc_name)(**info)
             if hasattr(allowedaddresspairs, exc_name):
                 raise getattr(allowedaddresspairs, exc_name)(**info)
+            elif hasattr(port_security_extn, exc_name):
+                raise getattr(port_security_extn, exc_name)(**info)
             if libexc and hasattr(libexc, exc_name):
                 raise getattr(libexc, exc_name)(**info)
         raise exc.NeutronException(**info)
