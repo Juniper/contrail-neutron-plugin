@@ -53,6 +53,7 @@ class QuotaDriver(object):
             'firewall_group': 'firewall_group',
             'firewall_policy': 'firewall_policy',
             'firewall_rule': 'firewall_rule',
+            'trunk': 'virtual_port_group',
             }
 
     @classmethod
