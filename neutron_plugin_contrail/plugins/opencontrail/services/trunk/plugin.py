@@ -13,13 +13,14 @@
 #    under the License.
 
 from neutron_lib.services import base as service_base
+from neutron_plugin_contrail.plugins.opencontrail import\
+      contrail_plugin as plugin
 
-
-class TrunkPlugin(service_base.ServicePluginBase):
+class TrunkPlugin(service_base.ServicePluginBase,
+                  plugin.NeutronPluginContrailCoreV2):
     """Implements Contrail Neutron Trunk Service plugin."""
 
-    supported_extension_aliases = [trunk_apidef.ALIAS,
-                                   trunk_details.ALIAS]
+    supported_extension_aliases = ['trunk']
 
     def __init__(self):
         super(TrunkPlugin, self).__init__()
@@ -32,16 +33,16 @@ class TrunkPlugin(service_base.ServicePluginBase):
         return 'Trunk port service plugin'
 
     def create_trunk(self, context, trunk):
-        return self._core_plugin._create_resource(
-            'trunk', context, {'trunk': trunk})
+        return self._create_resource(
+            'trunk', context, trunk)
 
     def get_trunk(self, context, id, fields=None):
         """Return information for the specified trunk."""
-        return self._core_plugin._get_resource(
+        return self._get_resource(
             'trunk', context, id, fields)
 
-    def get_trunks(self, context, trunk_id, fields=None):
-        return self._core_plugin._list_resource(
+    def get_trunks(self, context, filters=None, fields=None):
+        return self._list_resource(
             'trunk', context, filters, fields)
 
     def get_subports(self, context, trunk_id, fields=None):
@@ -50,14 +51,14 @@ class TrunkPlugin(service_base.ServicePluginBase):
         return {'sub_ports': trunk['sub_ports']}
 
     def update_trunk(self, context, id, trunk):
-        return self._core_plugin._update_resource(
+        return self._update_resource(
            'trunk',
            context,
            id,
            {'trunk': trunk})
 
     def delete_trunk(self, context, id):
-        self._core_plugin._delete_resource('trunk', context, id)
+        self._delete_resource('trunk', context, id)
 
     def add_subports(self, context, trunk_id, subports):
         self._add_or_remove_rule(context, 'ADD_SUBPORTS', trunk_id,
@@ -68,11 +69,11 @@ class TrunkPlugin(service_base.ServicePluginBase):
                                     subports)
 
     def _add_or_remove_subports(self, context, action, trunk_id, subports):
-        res_dict = self._core_plugin._encode_resource(resource_id=trunk_id,
+        res_dict = self._encode_resource(resource_id=trunk_id,
                                                       resource=subports)
-        status_code, res_info = self._core_plugin._request_backend(
+        status_code, res_info = self._request_backend(
             context, res_dict, 'trunk', action)
-        res_dicts = self._core_plugin._transform_response(
+        res_dicts = self._transform_response(
             status_code, info=res_info, obj_name='trunk')
         LOG.debug("Trunk %(action)s(): trunk_id: %(trunk_id)s "
                   "subports: %(subports)r",
