@@ -12,8 +12,14 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from neutron_lib.services import base as service_base
+from oslo_log import log as logging
 
+from neutron_lib.services import base as service_base
+from neutron_lib.api.definitions import trunk as trunk_apidef
+from neutron_lib.api.definitions import trunk_details
+from neutron_lib.plugins import directory
+
+LOG = logging.getLogger(__name__)
 
 class TrunkPlugin(service_base.ServicePluginBase):
     """Implements Contrail Neutron Trunk Service plugin."""
@@ -24,6 +30,10 @@ class TrunkPlugin(service_base.ServicePluginBase):
     def __init__(self):
         super(TrunkPlugin, self).__init__()
 
+    @property
+    def _core_plugin(self):
+        return directory.get_plugin()
+
     @classmethod
     def get_plugin_type(cls):
         return 'trunk'
@@ -33,14 +43,14 @@ class TrunkPlugin(service_base.ServicePluginBase):
 
     def create_trunk(self, context, trunk):
         return self._core_plugin._create_resource(
-            'trunk', context, {'trunk': trunk})
+            'trunk', context, trunk)
 
     def get_trunk(self, context, id, fields=None):
         """Return information for the specified trunk."""
         return self._core_plugin._get_resource(
             'trunk', context, id, fields)
 
-    def get_trunks(self, context, trunk_id, fields=None):
+    def get_trunks(self, context, filters=None, fields=None):
         return self._core_plugin._list_resource(
             'trunk', context, filters, fields)
 
