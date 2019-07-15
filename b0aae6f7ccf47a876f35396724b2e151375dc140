@@ -25,6 +25,30 @@
     },
     {
       "key": {
+        "uuid": "b4c9d5bd_834112ef",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/services/trunk/plugin.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 270
+      },
+      "writtenOn": "2019-07-15T15:49:13Z",
+      "side": 1,
+      "message": "Yeah it\u0027s both Sathish.",
+      "parentUuid": "0f6bc3ca_2874646f",
+      "range": {
+        "startLine": 24,
+        "startChar": 35,
+        "endLine": 24,
+        "endChar": 54
+      },
+      "revId": "b0aae6f7ccf47a876f35396724b2e151375dc140",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "0ce75bba_23857357",
         "filename": "neutron_plugin_contrail/plugins/opencontrail/services/trunk/plugin.py",
         "patchSetId": 2
@@ -45,6 +69,30 @@
       "revId": "b0aae6f7ccf47a876f35396724b2e151375dc140",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8508facc_937c6d76",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/services/trunk/plugin.py",
+        "patchSetId": 2
+      },
+      "lineNbr": 83,
+      "author": {
+        "id": 270
+      },
+      "writtenOn": "2019-07-15T15:49:13Z",
+      "side": 1,
+      "message": "Ack",
+      "parentUuid": "0ce75bba_23857357",
+      "range": {
+        "startLine": 83,
+        "startChar": 8,
+        "endLine": 83,
+        "endChar": 11
+      },
+      "revId": "b0aae6f7ccf47a876f35396724b2e151375dc140",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
