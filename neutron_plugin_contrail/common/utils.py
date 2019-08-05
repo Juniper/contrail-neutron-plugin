@@ -82,13 +82,17 @@ class RoundRobinApiServers(object):
         self.api_servers = cfg.CONF.APISERVER.api_server_ip.split()
         self.index = -1
 
-    def get(self):
+    def get(self, exclude=None):
         # use the next host in the list
         self.index += 1
         if self.index >= len(self.api_servers):
             # reuse the first host from the list
             self.index = 0
-        return self.api_servers[self.index]
+        api_server = self.api_servers[self.index]
+        if (exclude and:
+            api_server in exclude):
+            return self.get(exclude=exclude)
+        return api_server
 
     def len(self):
         return len(self.api_servers)
