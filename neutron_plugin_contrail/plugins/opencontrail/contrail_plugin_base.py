@@ -54,6 +54,10 @@ try:
 except ImportError:
     firewall_v2_exc = None
 try:
+    from neutron.services.trunk import exceptions as neutron_trunk_exc
+except ImportError:
+    neutron_trunk_exc = None
+try:
     from oslo.config import cfg
 except ImportError:
     from oslo_config import cfg
@@ -138,6 +142,8 @@ def _raise_contrail_error(info, obj_name):
         raise getattr(neutron_lib_l3_exc, exc_name)(**info)
     elif firewall_v2_exc and hasattr(firewall_v2_exc, exc_name):
         raise getattr(firewall_v2_exc, exc_name)(**info)
+    elif neutron_trunk_exc and hasattr(neutron_trunk_exc, exc_name):
+        raise getattr(neutron_trunk_exc, exc_name)(**info)
     else:
         try:
             raise NeutronException(**info)

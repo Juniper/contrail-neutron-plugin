@@ -69,11 +69,11 @@ class TrunkPlugin(service_base.ServicePluginBase):
         self._core_plugin._delete_resource('trunk', context, id)
 
     def add_subports(self, context, trunk_id, subports):
-        self._add_or_remove_rule(context, 'ADD_SUBPORTS', trunk_id,
+        self._add_or_remove_subports(context, 'ADD_SUBPORTS', trunk_id,
                                     subports)
 
     def remove_subports(self, context, trunk_id, subports):
-        self._add_or_remove_rule(context, 'REMOVE_SUBPORTS', trunk_id,
+        self._add_or_remove_subports(context, 'REMOVE_SUBPORTS', trunk_id,
                                     subports)
 
     def _add_or_remove_subports(self, context, action, trunk_id, subports):
