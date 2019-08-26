@@ -161,6 +161,7 @@ class LoadbalancerManager(ResourceManager):
 
         iip_obj = InstanceIp(name=lb_id)
         iip_obj.set_virtual_network(vnet)
+        iip_obj.set_subnet_uuid(subnet_id)
         iip_obj.set_virtual_machine_interface(vmi)
         if ip_address and ip_address != ATTR_NOT_SPECIFIED:
             iip_obj.set_instance_ip_address(ip_address)
