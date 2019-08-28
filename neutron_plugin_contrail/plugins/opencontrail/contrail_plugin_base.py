@@ -120,9 +120,11 @@ def _raise_contrail_error(info, obj_name):
             info['msg'] = str(info['msg'])
         if 'overs' in info:
             info['overs'] = [str(info['overs'][0])]
-    elif exc_name == 'BadRequest' and 'resource' not in info:
+
+    if exc_name == 'BadRequest' and 'resource' not in info:
         info['resource'] = obj_name
-    elif exc_name == 'VirtualRouterNotFound':
+
+    if exc_name == 'VirtualRouterNotFound':
         raise HttpResponseError(info)
     elif exc_name == 'NotAuthorized':
         raise NotAuthorized(**info)
