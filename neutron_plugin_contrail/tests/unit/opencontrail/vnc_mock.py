@@ -16,7 +16,7 @@
 import json
 import uuid as UUID
 
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 import netaddr
 from vnc_api import vnc_api
 

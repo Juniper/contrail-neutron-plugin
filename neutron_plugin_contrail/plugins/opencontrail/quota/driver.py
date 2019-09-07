@@ -4,7 +4,7 @@ import cgitb
 import sys
 import uuid
 
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 try:
     from neutron.openstack.common import log as logging
 except ImportError:
