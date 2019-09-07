@@ -15,7 +15,7 @@
 
 import uuid
 
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 from vnc_api import vnc_api
 
 from networking_bgpvpn.neutron.extensions import bgpvpn as bgpvpn_ext

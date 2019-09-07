@@ -2,7 +2,7 @@ try:
     from neutron.common.exceptions import SubnetNotFound
 except ImportError:
     from neutron_lib.exceptions import SubnetNotFound
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 
 
 def get_subnet_network_id(client, subnet_id):

@@ -32,7 +32,6 @@ try:
 except ImportError:
     from oslo_config import cfg
 from neutron.db import portbindings_base
-from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
 from neutron.extensions import external_net
 from neutron.extensions import l3
@@ -57,9 +56,8 @@ except ImportError:
 from simplejson import JSONDecodeError
 from eventlet.greenthread import getcurrent
 
-from contrail_plugin_base import HttpResponseError
-import contrail_plugin_base as plugin_base
-from cfgm_common import utils as cfgmutils
+import neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_base as plugin_base
+from vnc_api import vncutils
 
 _DEFAULT_KS_CERT_BUNDLE="/tmp/keystonecertbundle.pem"
 _DEFAULT_API_CERT_BUNDLE="/tmp/apiservercertbundle.pem"
@@ -94,7 +92,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                 certs = [kscafile]
                 if kscertfile and kskeyfile:
                     certs = [kscertfile, kskeyfile, kscafile]
-                self._kscertbundle = cfgmutils.getCertKeyCaBundle(
+                self._kscertbundle = vncutils.getCertKeyCaBundle(
                         _DEFAULT_KS_CERT_BUNDLE,certs)
                 self._use_ks_certs = True
 
@@ -158,7 +156,7 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
             certs = [apicafile]
             if apicertfile and apikeyfile:
                 certs = [apicertfile, apikeyfile, apicafile]
-            self._apicertbundle = cfgmutils.getCertKeyCaBundle(
+            self._apicertbundle = vncutils.getCertKeyCaBundle(
                     _DEFAULT_API_CERT_BUNDLE,certs)
             self._use_api_certs = True
 
@@ -243,8 +241,8 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                     msg = ("All VNC API server(s) (%s) are down" %
                         ', '.join(cfg.CONF.APISERVER.api_server_ip.split()))
                     LOG.critical(msg)
-	            raise e
-	        LOG.warning("Failed to relay request to VNC API URL %s" % url)
+                    raise e
+                LOG.warning("Failed to relay request to VNC API URL %s" % url)
 
     def _request_backend(self, context, data_dict, obj_name, action):
         context_dict = self._encode_context(context, action, obj_name)

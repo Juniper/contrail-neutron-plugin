@@ -19,3 +19,6 @@ develop-eggs
 
 # Other
 .*.swp
+.tox
+.stestr
+testr.subunit
