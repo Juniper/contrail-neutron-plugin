@@ -13,13 +13,13 @@
 #    under the License.
 
 import requests
-from urlparse import urlparse
+from six.moves.urllib.parse import urlparse
 
 from oslo_config import cfg
 from vnc_api.vnc_api import VncApi
 
-import constants
-import exceptions as c_exc
+from neutron_plugin_contrail.common import constants
+from neutron_plugin_contrail.common import exceptions as c_exc
 
 vnc_opts = [
     cfg.StrOpt('api_server_ip',
@@ -52,15 +52,6 @@ vnc_opts = [
                help='Full URL path to request Keystone tokens. This should '
                     'not be use and determined from keystone_authtoken '
                     'configuration section.'),
-]
-
-analytics_opts = [
-    cfg.StrOpt('analytics_api_ip',
-               default=constants.ANALYTICS_API_DEFAULT_HOST,
-               help='IP address to connect to Analytics API'),
-    cfg.IntOpt('analytics_api_port',
-               default=constants.ANALYTICS_API_DEFAULT_PORT,
-               help='Port to connect to Analytics API'),
 ]
 
 vrouter_opts = [
@@ -96,7 +87,6 @@ class RoundRobinApiServers(object):
 def register_vnc_api_options():
     """Register Contrail Neutron core plugin configuration flags"""
     cfg.CONF.register_opts(vnc_opts, 'APISERVER')
-    cfg.CONF.register_opts(analytics_opts, 'COLLECTOR')
     cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
 
 
