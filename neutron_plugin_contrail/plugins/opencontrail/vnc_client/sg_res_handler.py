@@ -17,8 +17,8 @@ import uuid
 from cfgm_common import exceptions as vnc_exc
 from vnc_api import vnc_api
 
-import contrail_res_handler as res_handler
-import sgrule_res_handler as sgrule_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler as res_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.sgrule_res_handler as sgrule_handler
 
 
 class SecurityGroupMixin(object):

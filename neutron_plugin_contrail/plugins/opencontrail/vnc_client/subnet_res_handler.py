@@ -19,10 +19,10 @@ import netaddr
 from vnc_api import vnc_api
 from cfgm_common import exceptions as vnc_exc
 
-import contrail_res_handler as res_handler
-from contrail_res_handler import ContrailResourceHandler
-import vn_res_handler as vn_handler
-from ..contrail_plugin_base import NEUTRON_CONTRAIL_PREFIX
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler as res_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler import ContrailResourceHandler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.vn_res_handler as vn_handler
+from neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_base import NEUTRON_CONTRAIL_PREFIX
 
 
 LOG = logging.getLogger(__name__)

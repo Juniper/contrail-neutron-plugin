@@ -6,10 +6,10 @@ from neutron_plugin_contrail.plugins.opencontrail.quota.driver import QuotaDrive
 
 class ContrailPluginQuotaDriverTest(unittest.TestCase):
     def setUp(self):
-        print "setup quota"
+        print("setup quota")
 
     def test_testenv(self):
-        print "testenv quota ok"
+        print("testenv quota ok")
 
     def test_get_tenant_quotas_arg(self):
         """Call neutron_plugin_contrail.plugins.opencontrail.quota.driver.QuotaDriver.[ _get_quotas, get_all_quotas ]"""

@@ -13,13 +13,13 @@
 #    under the License.
 
 import requests
-from urlparse import urlparse
+from six.moves.urllib.parse import urlparse
 
 from oslo_config import cfg
 from vnc_api.vnc_api import VncApi
 
-import constants
-import exceptions as c_exc
+from neutron_plugin_contrail.common import constants
+from neutron_plugin_contrail.common import exceptions as c_exc
 
 vnc_opts = [
     cfg.StrOpt('api_server_ip',
