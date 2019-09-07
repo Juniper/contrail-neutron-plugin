@@ -12,15 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 try:
     from neutron_lib import constants
 except ImportError:
     from neutron.plugins.common import constants
 from vnc_api import vnc_api
 
-import contrail_res_handler as res_handler
-import vmi_res_handler as vmi_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler as res_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.vmi_res_handler as vmi_handler
 
 
 class VNetworkMixin(object):
