@@ -1,3 +1,3 @@
+six # MIT
 python-neutronclient
 contrail-api-client
-contrail-config-common

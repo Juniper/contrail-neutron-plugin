@@ -51,7 +51,6 @@ sources = [
 
 packages = [
     env.GetVncAPIPkg(),
-    '%s/config/common/dist/contrail-config-common-0.1dev.tar.gz' % env['TOP'],
 ]
 
 import os
