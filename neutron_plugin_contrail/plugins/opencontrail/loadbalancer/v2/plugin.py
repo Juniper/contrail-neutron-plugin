@@ -2,7 +2,7 @@
 # Copyright (c) 2014 Juniper Networks, Inc. All rights reserved.
 #
 from neutron_lbaas.extensions import loadbalancerv2
-from loadbalancer_db import LoadBalancerPluginDbV2
+from neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_db import LoadBalancerPluginDbV2
 
 
 class LoadBalancerPluginV2(LoadBalancerPluginDbV2):
