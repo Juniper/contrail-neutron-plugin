@@ -14,8 +14,9 @@
 
 import uuid
 
-from cfgm_common import exceptions as vnc_exc
-from cfgm_common import SG_NO_RULE_NAME, SG_NO_RULE_FQ_NAME
+from vnc_api import exceptions as vnc_exc
+# just one import of cfgm_common for now and only for one constant
+from cfgm_common import SG_NO_RULE_FQ_NAME
 from neutron_plugin_contrail.plugins.opencontrail import contrail_plugin_base
 from vnc_api import vnc_api
 
@@ -242,7 +243,7 @@ class SGHandler(ResourceGetHandler, ResourceCreateHandler,
             description="Security group with no rules",
             user_visible=False)
         sg_obj = vnc_api.SecurityGroup(
-            name=SG_NO_RULE_NAME,
+            name=SG_NO_RULE_FQ_NAME[2],
             parent_obj=proj_obj,
             security_group_entries=sg_rules,
             id_perms=id_perms)

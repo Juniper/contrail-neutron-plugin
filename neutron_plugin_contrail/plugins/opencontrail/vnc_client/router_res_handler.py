@@ -12,15 +12,15 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cfgm_common import exceptions as vnc_exc
-import contrail_res_handler as res_handler
+from vnc_api import exceptions as vnc_exc
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler as res_handler
 import netaddr
 try:
     from neutron_lib import constants
 except ImportError:
     from neutron.plugins.common import constants
-import subnet_res_handler as subnet_handler
-import vmi_res_handler as vmi_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.subnet_res_handler as subnet_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.vmi_res_handler as vmi_handler
 from vnc_api import vnc_api
 
 
