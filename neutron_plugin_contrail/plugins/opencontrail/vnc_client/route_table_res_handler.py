@@ -12,10 +12,10 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 from vnc_api import vnc_api
 
-import contrail_res_handler as res_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler as res_handler
 
 
 class RouteTableMixin(object):

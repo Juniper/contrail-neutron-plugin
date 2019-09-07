@@ -3,7 +3,7 @@
 #
 
 from cfgm_common import analytics_client
-from cfgm_common import exceptions as vnc_exc
+from vnc_api import exceptions as vnc_exc
 try:
     from neutron.common.exceptions import BadRequest
 except ImportError:
@@ -14,11 +14,11 @@ from neutron_lbaas.extensions.loadbalancerv2 import LoadBalancerPluginBaseV2
 
 
 from neutron_plugin_contrail.common import utils
-import loadbalancer_healthmonitor
-import loadbalancer_member
-import loadbalancer_pool
-import loadbalancer
-import listener
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_healthmonitor
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_member
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_pool
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.listener
 
 
 class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):
