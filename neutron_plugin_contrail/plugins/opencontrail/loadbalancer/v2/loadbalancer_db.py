@@ -14,11 +14,11 @@ from neutron_lbaas.extensions.loadbalancerv2 import LoadBalancerPluginBaseV2
 
 
 from neutron_plugin_contrail.common import utils
-import loadbalancer_healthmonitor
-import loadbalancer_member
-import loadbalancer_pool
-import loadbalancer
-import listener
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_healthmonitor
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_member
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_pool
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer
+import neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.listener
 
 
 class LoadBalancerPluginDbV2(LoadBalancerPluginBaseV2):

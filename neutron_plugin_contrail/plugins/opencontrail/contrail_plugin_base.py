@@ -67,7 +67,6 @@ except ImportError:
     from neutron_lib.exceptions import portsecurity as port_security_extn
 
 from neutron.db import portbindings_base
-from neutron.db import quota_db  # noqa
 from neutron.extensions import allowedaddresspairs
 from neutron.extensions import external_net
 from neutron.extensions import l3

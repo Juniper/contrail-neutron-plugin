@@ -34,20 +34,20 @@ except ImportError:
 from eventlet import greenthread
 
 from neutron_plugin_contrail.common import utils
-import contrail_plugin_base as plugin_base
+import neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_base as plugin_base
 
-from vnc_client import fip_res_handler as fip_handler
-from vnc_client import ipam_res_handler as ipam_handler
-from vnc_client import policy_res_handler as policy_handler
-from vnc_client import route_table_res_handler as route_table_handler
-from vnc_client import router_res_handler as rtr_handler
-from vnc_client import sg_res_handler as sg_handler
-from vnc_client import sgrule_res_handler as sgrule_handler
-from vnc_client import subnet_res_handler as subnet_handler
-from vnc_client import svc_instance_res_handler as svc_instance_handler
-from vnc_client import virtual_router_res_handler as vrouter_handler
-from vnc_client import vmi_res_handler as vmi_handler
-from vnc_client import vn_res_handler as vn_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import fip_res_handler as fip_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import ipam_res_handler as ipam_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import policy_res_handler as policy_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import route_table_res_handler as route_table_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import router_res_handler as rtr_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import sg_res_handler as sg_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import sgrule_res_handler as sgrule_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import subnet_res_handler as subnet_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import svc_instance_res_handler as svc_instance_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import virtual_router_res_handler as vrouter_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import vmi_res_handler as vmi_handler
+from neutron_plugin_contrail.plugins.opencontrail.vnc_client import vn_res_handler as vn_handler
 
 
 LOG = logging.getLogger(__name__)

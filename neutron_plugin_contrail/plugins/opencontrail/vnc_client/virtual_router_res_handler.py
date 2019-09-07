@@ -16,8 +16,8 @@
 from cfgm_common import exceptions as vnc_exc
 from vnc_api import vnc_api
 
-import contrail_res_handler as res_handler
-import vn_res_handler as vn_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.contrail_res_handler as res_handler
+import neutron_plugin_contrail.plugins.opencontrail.vnc_client.vn_res_handler as vn_handler
 
 try:
     from neutron.openstack.common import log as logging
