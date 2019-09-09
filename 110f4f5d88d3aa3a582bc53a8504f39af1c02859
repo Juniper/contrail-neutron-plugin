@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "75a8abf3_adc3aa71",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_base.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2019-09-09T12:53:37Z",
+      "side": 1,
+      "message": "what sense is to move it from else block?",
+      "revId": "110f4f5d88d3aa3a582bc53a8504f39af1c02859",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
