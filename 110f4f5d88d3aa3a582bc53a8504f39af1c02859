@@ -16,6 +16,24 @@
       "revId": "110f4f5d88d3aa3a582bc53a8504f39af1c02859",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "8678d483_77fc9e6a",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/contrail_plugin_base.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 124,
+      "author": {
+        "id": 797
+      },
+      "writtenOn": "2019-09-09T16:15:21Z",
+      "side": 1,
+      "message": "For \u0027OverQuota\u0027 and \u0027BadRequest\u0027 only the info dict was modified, exception was never raised for them!",
+      "parentUuid": "75a8abf3_adc3aa71",
+      "revId": "110f4f5d88d3aa3a582bc53a8504f39af1c02859",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
     }
   ]
 }
