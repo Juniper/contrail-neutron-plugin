@@ -114,7 +114,12 @@ NEUTRON_CONTRAIL_PREFIX = 'NEUTRON'
 
 def _raise_contrail_error(info, obj_name):
     exc_name = info.get('exception', 'No exception name provided')
-    if str(exc_name) == 'OverQuota':
+
+    if exc_name == 'VirtualRouterNotFound':
+        raise HttpResponseError(info)
+    elif exc_name == 'NotAuthorized':
+        raise NotAuthorized(**info)
+    elif str(exc_name) == 'OverQuota':
         info['exception'] = str(info['exception'])
         if 'msg' in info:
             info['msg'] = str(info['msg'])
@@ -122,11 +127,8 @@ def _raise_contrail_error(info, obj_name):
             info['overs'] = [str(info['overs'][0])]
     elif exc_name == 'BadRequest' and 'resource' not in info:
         info['resource'] = obj_name
-    elif exc_name == 'VirtualRouterNotFound':
-        raise HttpResponseError(info)
-    elif exc_name == 'NotAuthorized':
-        raise NotAuthorized(**info)
-    elif hasattr(neutron_exc, exc_name):
+
+    if hasattr(neutron_exc, exc_name):
         raise getattr(neutron_exc, exc_name)(**info)
     elif hasattr(l3, exc_name):
         raise getattr(l3, exc_name)(**info)

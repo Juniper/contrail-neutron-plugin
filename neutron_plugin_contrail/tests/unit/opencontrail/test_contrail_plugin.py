@@ -16,6 +16,8 @@
 
 import datetime
 import uuid
+import mock
+import unittest
 
 try:
     from oslo_config import cfg
@@ -50,6 +52,7 @@ from neutron_plugin_contrail.plugins.opencontrail.vnc_client import (
 from neutron_plugin_contrail.tests.unit.opencontrail.vnc_mock import MockVnc
 from vnc_api import vnc_api
 from neutron_plugin_contrail.plugins.opencontrail import contrail_plugin_base as plugin_base
+from neutron_plugin_contrail.plugins.opencontrail.contrail_plugin import NeutronPluginContrailCoreV2
 
 CONTRAIL_PKG_PATH = (
     "neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_v3")
@@ -84,6 +87,12 @@ class KeyStoneInfo(object):
     admin_password = 'neutron'
     admin_token = 'neutron'
     admin_tenant_name = 'neutron'
+    insecure = True
+    certfile = "fake_cert.pem"
+    keyfile = "fake_key.pem"
+    cafile = "fake_ca.pem"
+    auth_uri = "/v3"
+    auth_version = "v3"
 
 
 class JVContrailPluginTestCase(test_plugin.NeutronDbPluginV2TestCase):
@@ -447,3 +456,29 @@ class TestContrailL3NatTestCase(JVContrailPluginTestCase,
     def test_create_non_router_port_device_id_of_other_teants_router_update(
             self):
         self.skipTest("Contrail doesn't support this test case")
+
+
+class ContrailPluginV2Test(unittest.TestCase):
+    def setUp(self):
+        cfg.CONF.keystone_authtoken = KeyStoneInfo()
+        self.plugin = NeutronPluginContrailCoreV2()
+
+    def test_exception_raised_on_resource_creation_failure(self):
+        """ Exception should be raised when API server returns OverQuota error """
+
+        resource_type = "network"
+        context = Context(tenant_id='e17301da-7a64-4210-c77e-9fb9738674a9')
+        res_data = {'network': {'name': 'fake_network',
+                                'admin_state_up': True,
+                                'tenant_id': context.tenant}}
+        status_code = 400
+        response_info = {u'msg': u'quota limit (3) exceeded for resource virtual_network',
+                         u'exception': u'OverQuota',
+                         u'overs': [u'virtual_network']}
+
+        over_quota_error = (status_code, response_info)
+
+        with mock.patch.object(NeutronPluginContrailCoreV2,
+                               '_request_backend',
+                               return_value=over_quota_error), self.assertRaises(Exception):
+            self.plugin._create_resource(resource_type, context, res_data)
