@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "d02d7234_01394645",
+        "filename": "MANIFEST.in",
+        "patchSetId": 3
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2019-09-16T04:57:10Z",
+      "side": 1,
+      "message": "it\u0027s required for correct generation of python package by scons",
+      "parentUuid": "22b7ca84_32368188",
+      "revId": "05d147193bc3408575b29420261539b6f1a5184d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "31b2d103_1a8df264",
         "filename": "neutron_plugin_contrail/common/utils.py",
         "patchSetId": 3
@@ -30,6 +48,24 @@
       "writtenOn": "2019-09-16T02:07:38Z",
       "side": 1,
       "message": "Is six module available by default in Python 3?",
+      "revId": "05d147193bc3408575b29420261539b6f1a5184d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "a0c8f8ed_a849b029",
+        "filename": "neutron_plugin_contrail/common/utils.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2019-09-16T04:57:10Z",
+      "side": 1,
+      "message": "it\u0027s just a library - I\u0027ll add it to requirements.txt",
+      "parentUuid": "31b2d103_1a8df264",
       "revId": "05d147193bc3408575b29420261539b6f1a5184d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
