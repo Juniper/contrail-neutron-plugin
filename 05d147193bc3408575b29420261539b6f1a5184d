@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "22b7ca84_32368188",
+        "filename": "MANIFEST.in",
+        "patchSetId": 3
+      },
+      "lineNbr": 3,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2019-09-16T02:07:38Z",
+      "side": 1,
+      "message": "Is test-requirements.txt is required?",
+      "revId": "05d147193bc3408575b29420261539b6f1a5184d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "31b2d103_1a8df264",
+        "filename": "neutron_plugin_contrail/common/utils.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 16,
+      "author": {
+        "id": 64
+      },
+      "writtenOn": "2019-09-16T02:07:38Z",
+      "side": 1,
+      "message": "Is six module available by default in Python 3?",
+      "revId": "05d147193bc3408575b29420261539b6f1a5184d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
