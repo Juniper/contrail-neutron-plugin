@@ -19,3 +19,9 @@ def get_subnet_cidr(client, subnet_id):
     except vnc_exc.NoIdError:
         raise SubnetNotFound(subnet_id=subnet_id)
     return kv_pair.split()[1]
+
+def get_vnet_obj(client, network_id):
+    try:
+        return client.virtual_network_read(id=network_id)
+    except NoIdError:
+        raise NetworkNotFound(net_id=network_id)
