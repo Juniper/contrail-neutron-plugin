@@ -16,6 +16,24 @@
       "revId": "2dc28682527e8d0e0c9a3aa2bad9bd6c9dfda62d",
       "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
       "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "7f0aa9d9_9a76e99e",
+        "filename": "networking_contrail/services/loadbalancer/v2/listener.py",
+        "patchSetId": 17
+      },
+      "lineNbr": 129,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-09-18T00:00:45Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "5541e395_d3b4e1c2",
+      "revId": "2dc28682527e8d0e0c9a3aa2bad9bd6c9dfda62d",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": false
     }
   ]
 }
