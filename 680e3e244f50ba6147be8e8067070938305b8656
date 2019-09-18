@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6707049f_7b4790b8",
+        "filename": "networking_contrail/common/constants.py",
+        "patchSetId": 18
+      },
+      "lineNbr": 24,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2019-09-18T06:26:57Z",
+      "side": 1,
+      "message": "this can be also removed (analytics opts)",
+      "revId": "680e3e244f50ba6147be8e8067070938305b8656",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
