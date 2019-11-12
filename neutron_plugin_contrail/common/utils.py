@@ -138,8 +138,12 @@ def get_keystone_auth_info():
         admin_tenant_name = cfg.CONF.keystone_authtoken.project_name
     except cfg.NoSuchOptError:
         admin_tenant_name = cfg.CONF.keystone_authtoken.admin_tenant_name
+    try:
+        domain_name = cfg.CONF.keystone_authtoken.project_domain_name
+    except cfg.NoSuchOptError:
+        domain_name = 'default'
 
-    return (admin_user, admin_password, admin_tenant_name)
+    return (admin_user, admin_password, admin_tenant_name, domain_name)
 
 
 def get_vnc_api_instance(wait_for_connect=True):
@@ -242,7 +246,8 @@ def get_vnc_api_instance(wait_for_connect=True):
         auth_keyfile = cfg.CONF.keystone_authtoken.keyfile
         (admin_user,
          admin_password,
-         admin_tenant_name) = get_keystone_auth_info()
+         admin_tenant_name,
+         domain_name) = get_keystone_auth_info()
 
     return VncApi(
         api_server_host=api_server_host,
@@ -264,5 +269,6 @@ def get_vnc_api_instance(wait_for_connect=True):
         username=admin_user,
         password=admin_password,
         tenant_name=admin_tenant_name,
+        domain_name=domain_name,
         wait_for_connect=wait_for_connect,
     )
