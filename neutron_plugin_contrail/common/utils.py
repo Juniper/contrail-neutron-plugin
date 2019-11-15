@@ -189,6 +189,7 @@ def get_vnc_api_instance(wait_for_connect=True):
     admin_user = None
     admin_password = None
     admin_tenant_name = None
+    domain_name = None
     if auth_strategy == constants.KEYSTONE_AUTH:
         try:
             ks_auth_url = cfg.CONF.keystone_authtoken.auth_url
