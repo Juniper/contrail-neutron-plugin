@@ -2,7 +2,7 @@ from abc import abstractmethod
 
 try:
     from neutron.api.v2.attributes import UUID_PATTERN
-except:
+except Exception:
     from neutron_lib.constants import UUID_PATTERN
 from neutron.api.v2 import base
 try:
