@@ -19,7 +19,7 @@ import os.path as path
 
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
-except:
+except Exception:
     from neutron_lib.constants import ATTR_NOT_SPECIFIED
 try:
     from neutron.common.exceptions import ServiceUnavailable
