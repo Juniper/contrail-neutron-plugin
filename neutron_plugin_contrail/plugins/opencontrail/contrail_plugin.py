@@ -17,7 +17,7 @@ import requests
 
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
-except:
+except Exception:
     from neutron_lib.constants import ATTR_NOT_SPECIFIED
 try:
     from neutron.common.exceptions import ServiceUnavailable
@@ -311,9 +311,12 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         contrail api server.
         """
 
+        keys_to_del = []
         for key, value in res_data[res_type].items():
             if value == ATTR_NOT_SPECIFIED:
-                del res_data[res_type][key]
+                keys_to_del.append(key)
+        for key in keys_to_del:
+            del res_data[res_type][key]
 
         res_dict = self._encode_resource(resource=res_data[res_type])
         status_code, res_info = self._request_backend(context, res_dict,

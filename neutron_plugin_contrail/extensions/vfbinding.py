@@ -15,11 +15,11 @@
 
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
-except:
+except Exception:
     from neutron_lib.constants import ATTR_NOT_SPECIFIED
 try:
     from neutron.api.v2.attributes import convert_kvp_list_to_dict
-except:
+except Exception:
     from neutron_lib.api.converters import convert_kvp_list_to_dict
 try:
     from neutron.api.extensions import ExtensionDescriptor
