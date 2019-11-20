@@ -3,11 +3,11 @@
 #
 try:
     from neutron.api.v2.attributes import ATTR_NOT_SPECIFIED
-except:
+except Exception:
     from neutron_lib.constants import ATTR_NOT_SPECIFIED
 try:
     from neutron.common.constants import DEVICE_OWNER_LOADBALANCER
-except:
+except Exception:
     from neutron_lib.constants import DEVICE_OWNER_LOADBALANCER
 try:
     from neutron.common.exceptions import NetworkNotFound

@@ -274,7 +274,7 @@ class LogicalRouterGetHandler(res_handler.ResourceGetHandler,
                 if not self._filters_is_present(filters, 'id', proj_rtr_id):
                     continue
 
-                proj_rtr_fq_name = unicode(proj_rtr['fq_name'])
+                proj_rtr_fq_name = str(proj_rtr['fq_name'])
                 if not self._filters_is_present(filters, 'fq_name',
                                                 proj_rtr_fq_name):
                     continue
