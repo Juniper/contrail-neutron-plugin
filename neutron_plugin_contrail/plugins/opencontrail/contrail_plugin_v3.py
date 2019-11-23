@@ -67,7 +67,8 @@ class NeutronPluginContrailCoreV3(plugin_base.NeutronPluginContrailCoreBase):
         self.api_servers = utils.RoundRobinApiServers()
 
     def _set_user_auth_token(self):
-        api_server = self.api_servers.get()
+        api_server_list = self.api_servers.api_servers[:]
+        api_server = self.api_servers.get(api_servers=api_server_list)
         if not utils.vnc_api_is_authenticated(api_server):
             return
 
