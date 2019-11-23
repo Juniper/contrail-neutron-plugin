@@ -222,8 +222,9 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         """Send received request to api server."""
 
         api_server_count = self.api_servers.len()
+        api_server_list = self.api_servers.api_servers[:]
         for idx in range(api_server_count):
-            api_server_ip = self.api_servers.get()
+            api_server_ip = self.api_servers.get(api_servers=api_server_list)
             url = "%s://%s:%s%s" % (self._apiserverconnect,
                                     api_server_ip,
                                     cfg.CONF.APISERVER.api_server_port,
@@ -237,12 +238,12 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
                     headers={'Content-type': 'application/json'},
                 )
             except Exception as e:
-                if idx + 1 == api_server_count:
-                    msg = ("All VNC API server(s) (%s) are down" %
+                 api_server_list.remove(api_server_ip)
+                 LOG.warning("Failed to relay request to VNC API URL %s" % url)
+        msg = ("All VNC API server(s) (%s) are down" %
                         ', '.join(cfg.CONF.APISERVER.api_server_ip.split()))
-                    LOG.critical(msg)
-                    raise e
-                LOG.warning("Failed to relay request to VNC API URL %s" % url)
+        LOG.critical(msg)
+        raise e
 
     def _request_backend(self, context, data_dict, obj_name, action):
         context_dict = self._encode_context(context, action, obj_name)
