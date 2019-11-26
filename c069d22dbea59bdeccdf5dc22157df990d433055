@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "5565e108_ec32314b",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/loadbalancer/utils.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 27,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-26T11:44:01Z",
+      "side": 1,
+      "message": "you need to import that exception class",
+      "range": {
+        "startLine": 27,
+        "startChar": 14,
+        "endLine": 27,
+        "endChar": 29
+      },
+      "revId": "c069d22dbea59bdeccdf5dc22157df990d433055",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "635bd894_5b542877",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/loadbalancer/v2/loadbalancer.py",
+        "patchSetId": 4
+      },
+      "lineNbr": 155,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-11-26T11:44:01Z",
+      "side": 1,
+      "message": "I think you should reverse the order of that switch case. You should first use subnet ID if specified like it was done upstream https://github.com/openstack/neutron-lbaas/blob/stable%2Fstein/neutron_lbaas/db/loadbalancer/loadbalancer_dbv2.py#L126-L137",
+      "range": {
+        "startLine": 150,
+        "startChar": 8,
+        "endLine": 155,
+        "endChar": 46
+      },
+      "revId": "c069d22dbea59bdeccdf5dc22157df990d433055",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
