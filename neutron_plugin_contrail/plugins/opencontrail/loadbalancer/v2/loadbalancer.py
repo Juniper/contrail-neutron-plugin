@@ -143,12 +143,18 @@ class LoadbalancerManager(ResourceManager):
         return "loadbalancers"
 
     def _create_virtual_interface(self, project, lb_id, subnet_id,
-                                  ip_address):
-        network_id = utils.get_subnet_network_id(self._api, subnet_id)
-        try:
-            vnet = self._api.virtual_network_read(id=network_id)
-        except NoIdError:
-            raise NetworkNotFound(net_id=network_id)
+                                  network_id, ip_address):
+
+        iip_obj = InstanceIp(name=lb_id)
+        if subnet_id and subnet_id != ATTR_NOT_SPECIFIED:
+            network_id = utils.get_subnet_network_id(self._api, subnet_id)
+            vnet =utils.get_vnet_obj(self._api, network_id)
+            iip_obj.set_subnet_uuid(subnet_id)
+        elif network_id and network_id != ATTR_NOT_SPECIFIED:
+            vnet = utils.get_vnet_obj(self._api, network_id)
+        else:
+            msg = 'vip-network-id or vip-subnet-id should be specified'
+            raise BadRequest(resource='loadbalancer', msg=msg)
 
         vmi = VirtualMachineInterface(lb_id, project)
         vmi.set_virtual_network(vnet)
@@ -159,17 +165,16 @@ class LoadbalancerManager(ResourceManager):
         vmi.add_security_group(sg_obj)
         self._api.virtual_machine_interface_create(vmi)
 
-        iip_obj = InstanceIp(name=lb_id)
         iip_obj.set_virtual_network(vnet)
-        iip_obj.set_subnet_uuid(subnet_id)
         iip_obj.set_virtual_machine_interface(vmi)
         if ip_address and ip_address != ATTR_NOT_SPECIFIED:
             iip_obj.set_instance_ip_address(ip_address)
         self._api.instance_ip_create(iip_obj)
         iip = self._api.instance_ip_read(id=iip_obj.uuid)
         vip_address = iip.get_instance_ip_address()
+        vip_subnet_id = iip.get_subnet_uuid()
 
-        return vmi, vip_address
+        return vmi, vip_address, vip_subnet_id
 
     def _delete_virtual_interface(self, vmi_list):
         if vmi_list is None:
@@ -220,12 +225,15 @@ class LoadbalancerManager(ResourceManager):
                           id_perms=id_perms, display_name=l['name'])
         lb.set_service_appliance_set(sas_obj)
 
-        vmi, vip_address = self._create_virtual_interface(project,
-            obj_uuid, l['vip_subnet_id'], l.get('vip_address'))
+        vmi, vip_address, vip_subnet_id = self._create_virtual_interface(
+            project, obj_uuid, l['vip_subnet_id'], l['vip_network_id'],
+            l['vip_address'])
+
         lb.set_virtual_machine_interface(vmi)
 
         l['provisioning_status'] = 'ACTIVE'
         l['operating_status'] = 'ONLINE'
+        l['vip_subnet_id'] = vip_subnet_id
         props = self.make_properties(l)
         props.set_vip_address(vip_address)
         lb.set_loadbalancer_properties(props)
@@ -256,7 +264,7 @@ class LoadbalancerManager(ResourceManager):
                 continue
             if getattr(props, field) != lb[field]:
                 msg = 'Attribute %s in loadbalancer %s is immutable' % (field, id)
-                raise exc.BadRequest(resource='loadbalancer', msg=msg)
+                raise BadRequest(resource='loadbalancer', msg=msg)
 
         # update
         change = self.update_properties_subr(props, lb)

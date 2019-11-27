@@ -6,7 +6,9 @@ from neutron_plugin_contrail.plugins.opencontrail.loadbalancer.v2.loadbalancer_d
 
 
 class LoadBalancerPluginV2(LoadBalancerPluginDbV2):
-    supported_extension_aliases = ["lbaasv2", "extra_lbaas_opts"]
+    supported_extension_aliases = ["lbaasv2",
+                                   "extra_lbaas_opts",
+                                   "lb_network_vip",]
 
     if hasattr(loadbalancerv2, 'LOADBALANCERV2_PREFIX'):
         path_prefix = loadbalancerv2.LOADBALANCERV2_PREFIX
