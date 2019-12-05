@@ -52,6 +52,12 @@ vnc_opts = [
                help='Full URL path to request Keystone tokens. This should '
                     'not be use and determined from keystone_authtoken '
                     'configuration section.'),
+    cfg.IntOpt('timeout',
+               default=constants.VNC_API_DEFAULT_TIMEOUT,
+               help='VNC API Server request timeout in seconds'),
+    cfg.IntOpt('connection_timeout',
+               default=constants.VNC_API_DEFAULT_CONN_TIMEOUT,
+               help='VNC API Server connection timeout in seconds'),
 ]
 
 vrouter_opts = [
@@ -105,7 +111,10 @@ def vnc_api_is_authenticated(api_server_ip):
         api_server_ip,
         cfg.CONF.APISERVER.api_server_port
     )
-    response = requests.get(url, verify=cfg.CONF.APISERVER.get('cafile', False))
+    response = requests.get(url,
+                            timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                     cfg.CONF.APISERVER.timeout),
+                            verify=cfg.CONF.APISERVER.get('cafile', False))
 
     if response.status_code == requests.codes.ok:
         return False
@@ -262,4 +271,6 @@ def get_vnc_api_instance(wait_for_connect=True):
         tenant_name=admin_tenant_name,
         domain_name=domain_name,
         wait_for_connect=wait_for_connect,
+        connection_timeout=cfg.CONF.APISERVER.connection_timeout,
+        timeout=cfg.CONF.APISERVER.timeout,
     )
