@@ -167,14 +167,20 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
         else:
             if self._ksinsecure:
                response = requests.post(self._keystone_url,
+                                        timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                                 cfg.CONF.APISERVER.timeout),
                                         data=self._authn_body,
                                         headers={'Content-type': 'application/json'},verify=False)
             elif not self._ksinsecure and self._use_ks_certs:
                response = requests.post(self._keystone_url,
+                                        timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                                 cfg.CONF.APISERVER.timeout),
                                         data=self._authn_body,
                                         headers={'Content-type': 'application/json'},verify=self._kscertbundle)
             else:
                response = requests.post(self._keystone_url,
+                                        timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                                 cfg.CONF.APISERVER.timeout),
                                         data=self._authn_body,
                                         headers={'Content-type': 'application/json'})
             if (response.status_code == requests.codes.ok):
@@ -186,11 +192,24 @@ class NeutronPluginContrailCoreV2(plugin_base.NeutronPluginContrailCoreBase):
     def _request_api_server(self, url, data=None, headers=None, retry=True):
         # Attempt to post to Api-Server
         if self._apiinsecure:
-             response = requests.post(url, data=data, headers=headers,verify=False)
+             response = requests.post(url,
+                                      timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                               cfg.CONF.APISERVER.timeout),
+                                      data=data,
+                                      headers=headers,verify=False)
         elif not self._apiinsecure and self._use_api_certs:
-             response = requests.post(url, data=data, headers=headers,verify=self._apicertbundle)
+             response = requests.post(url,
+                                      timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                               cfg.CONF.APISERVER.timeout),
+                                      data=data,
+                                      headers=headers,
+                                      verify=self._apicertbundle)
         else:
-             response = requests.post(url, data=data, headers=headers)
+             response = requests.post(url,
+                                      timeout=(cfg.CONF.APISERVER.connection_timeout,
+                                               cfg.CONF.APISERVER.timeout),
+                                      data=data,
+                                      headers=headers)
         if (response.status_code == requests.codes.unauthorized) and retry:
             # Get token from keystone and save it for next request
             authn_token = self.get_token()
