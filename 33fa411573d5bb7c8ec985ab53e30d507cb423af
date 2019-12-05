@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "17f3e918_ac6fa4aa",
+        "filename": "neutron_plugin_contrail/common/utils.py",
+        "patchSetId": 1
+      },
+      "lineNbr": 252,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2019-12-05T10:31:57Z",
+      "side": 1,
+      "message": "You should also used configured timeout here in the VNC API client instance. It is used by some Neutron extension service like LB or BGPVPN.",
+      "revId": "33fa411573d5bb7c8ec985ab53e30d507cb423af",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
