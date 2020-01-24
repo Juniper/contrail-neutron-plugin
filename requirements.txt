@@ -1,3 +1,4 @@
 six # MIT
 python-neutronclient
 contrail-api-client
+octavia-lib
