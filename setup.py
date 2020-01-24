@@ -30,5 +30,8 @@ setup(
         'firewall_drivers': [
             'contrail-fwaasv2 = neutron_plugin_contrail.plugins.opencontrail.neutron_fwaas.contrail:ContrailFirewallv2Driver',
         ],
+	'octavia.api.drivers': [
+	    'contrail = neutron_plugin_contrail.plugins.opencontrail.loadbalancer.octavia.plugin:LoadBalancerOctaviaPluginV2',
+	],
     },
 )
