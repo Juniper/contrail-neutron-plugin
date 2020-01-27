@@ -101,27 +101,27 @@ def register_vnc_api_extra_options():
     cfg.CONF.register_opts(vnc_extra_opts, 'APISERVER')
 
 
-def vnc_api_is_authenticated(api_server_ip):
+def vnc_api_is_authenticated(api_server_ips):
     """ Determines if the VNC API needs credentials
 
     :returns: True if credentials are needed, False otherwise
     """
-    url = "%s://%s:%s/aaa-mode" % (
-        'https' if cfg.CONF.APISERVER.use_ssl else 'http',
-        api_server_ip,
-        cfg.CONF.APISERVER.api_server_port
-    )
-    response = requests.get(url,
+    for api_server_ip in api_server_ips:
+        url = "%s://%s:%s/aaa-mode" % (
+            'https' if cfg.CONF.APISERVER.use_ssl else 'http',
+            api_server_ip,
+            cfg.CONF.APISERVER.api_server_port
+        )
+        response = requests.get(url,
                             timeout=(cfg.CONF.APISERVER.connection_timeout,
                                      cfg.CONF.APISERVER.timeout),
                             verify=cfg.CONF.APISERVER.get('cafile', False))
 
-    if response.status_code == requests.codes.ok:
-        return False
-    elif response.status_code == requests.codes.unauthorized:
-        return True
-    else:
-        response.raise_for_status()
+        if response.status_code == requests.codes.ok:
+            return False
+        elif response.status_code == requests.codes.unauthorized:
+            return True
+    response.raise_for_status()
 
 
 def get_keystone_auth_info():
@@ -167,7 +167,7 @@ def get_vnc_api_instance(wait_for_connect=True):
 
     # If VNC API needs authentication, use the same authentication strategy
     # than Neutron (default to Keystone). If not, don't provide credentials.
-    if vnc_api_is_authenticated(api_server_host[0]):
+    if vnc_api_is_authenticated(api_server_host):
         auth_strategy = cfg.CONF.auth_strategy
         if auth_strategy not in VncApi.AUTHN_SUPPORTED_STRATEGIES:
             raise c_exc.AuthStrategyNotSupported(auth_strategy=auth_strategy)
