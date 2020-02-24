@@ -21,6 +21,13 @@ from vnc_api.vnc_api import VncApi
 from neutron_plugin_contrail.common import constants
 from neutron_plugin_contrail.common import exceptions as c_exc
 
+try:
+    from neutron.openstack.common import log as logging
+except ImportError:
+    from oslo_log import log as logging
+
+LOG = logging.getLogger(__name__)
+
 vnc_opts = [
     cfg.StrOpt('api_server_ip',
                default=constants.VNC_API_DEFAULT_HOST,
@@ -112,10 +119,15 @@ def vnc_api_is_authenticated(api_server_ips):
             api_server_ip,
             cfg.CONF.APISERVER.api_server_port
         )
-        response = requests.get(url,
-                            timeout=(cfg.CONF.APISERVER.connection_timeout,
-                                     cfg.CONF.APISERVER.timeout),
-                            verify=cfg.CONF.APISERVER.get('cafile', False))
+
+        try:
+            response = requests.get(url,
+                timeout=(cfg.CONF.APISERVER.connection_timeout,
+                            cfg.CONF.APISERVER.timeout),
+                verify=cfg.CONF.APISERVER.get('cafile', False))
+        except requests.exceptions.RequestException as e:
+            LOG.warning("Failed connecting to API server: %s" % e)
+            continue
 
         if response.status_code == requests.codes.ok:
             return False
