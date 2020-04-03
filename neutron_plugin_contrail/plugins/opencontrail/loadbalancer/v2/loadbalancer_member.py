@@ -48,7 +48,7 @@ class LoadbalancerMemberManager(ResourceManager):
 
     def make_dict(self, member, fields=None):
         res = {'id': member.uuid,
-               'name': member.name,
+               'name': member.display_name,
                'pool_id': member.parent_uuid,
                'status': self._get_object_status(member)}
 
@@ -153,7 +153,7 @@ class LoadbalancerMemberManager(ResourceManager):
 
         member_db = LoadbalancerMember(
             obj_uuid, pool, loadbalancer_member_properties=props,
-            id_perms=id_perms)
+            id_perms=id_perms, display_name=m['name'])
         member_db.uuid = obj_uuid
 
         self._api.loadbalancer_member_create(member_db)

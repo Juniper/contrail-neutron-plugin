@@ -42,7 +42,7 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
 
     def make_dict(self, healthmonitor, fields=None):
         res = {'id': healthmonitor.uuid,
-               'name': healthmonitor.name,
+               'name': healthmonitor.display_name,
                'tenant_id': healthmonitor.parent_uuid.replace('-', ''),
                'status': self._get_object_status(healthmonitor)}
 
@@ -109,7 +109,7 @@ class LoadbalancerHealthmonitorManager(ResourceManager):
         id_perms = IdPermsType(enable=True)
         monitor_db = LoadbalancerHealthmonitor(
             uuid, project, loadbalancer_healthmonitor_properties=props,
-            id_perms=id_perms)
+            id_perms=id_perms, display_name=m['name'])
         monitor_db.uuid = uuid
 
         try:
