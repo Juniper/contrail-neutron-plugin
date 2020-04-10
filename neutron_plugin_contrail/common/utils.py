@@ -12,21 +12,21 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from oslo_config import cfg
-try:
-    from neutron.openstack.common import log as logging
-except ImportError:
-    from oslo_log import log as logging
 import requests
 from six.moves.urllib.parse import urlparse
+
+from oslo_config import cfg
 from vnc_api.vnc_api import VncApi
 
 from neutron_plugin_contrail.common import constants
 from neutron_plugin_contrail.common import exceptions as c_exc
 
+try:
+    from neutron.openstack.common import log as logging
+except ImportError:
+    from oslo_log import log as logging
 
 LOG = logging.getLogger(__name__)
-
 
 vnc_opts = [
     cfg.StrOpt('api_server_ip',
@@ -39,7 +39,9 @@ vnc_opts = [
                default=constants.VNC_API_DEFAULT_BASE_URL,
                help='URL path to request VNC API'),
     cfg.DictOpt('contrail_extensions',
-                default={},
+                default={'contrail': None,
+                         'service-interface': None,
+                         'vf-binding': None},
                 help='Enable Contrail extensions (default: %(default)s)'),
     cfg.BoolOpt('use_ssl',
                 default=constants.VNC_API_DEFAULT_USE_SSL,
@@ -65,13 +67,26 @@ vnc_opts = [
                help='VNC API Server connection timeout in seconds'),
 ]
 
+vrouter_opts = [
+    cfg.StrOpt('vhostuser_sockets_dir',
+               default='/var/run/vrouter',
+               help='Path to dir where vhostuser socket are placed'),
+]
+
+vnc_extra_opts = [
+    cfg.BoolOpt('apply_subnet_host_routes',
+                default=False,
+                help="Apply Neutron subnet host routes to Contrail virtual "
+                     "network with a route table"),
+]
+
 
 class RoundRobinApiServers(object):
     def __init__(self):
         self.api_servers = cfg.CONF.APISERVER.api_server_ip.split()
         self.index = -1
 
-    def get(self, api_servers):
+    def get(self,api_servers):
         # use the next host in the list
         self.index += 1
         if self.index >= len(api_servers):
@@ -79,19 +94,22 @@ class RoundRobinApiServers(object):
             self.index = 0
         return api_servers[self.index]
 
-    def __len__(self):
-        """Return API servers list length."""
+    def len(self):
         return len(self.api_servers)
 
-
 def register_vnc_api_options():
-    """Register Contrail Neutron core plugin configuration flags."""
-    if 'APISERVER' not in cfg.CONF:
-        cfg.CONF.register_opts(vnc_opts, 'APISERVER')
+    """Register Contrail Neutron core plugin configuration flags"""
+    cfg.CONF.register_opts(vnc_opts, 'APISERVER')
+    cfg.CONF.register_opts(vrouter_opts, 'VROUTER')
+
+
+def register_vnc_api_extra_options():
+    """Register extra Contrail Neutron core plugin configuration flags"""
+    cfg.CONF.register_opts(vnc_extra_opts, 'APISERVER')
 
 
 def vnc_api_is_authenticated(api_server_ips):
-    """Determine if the VNC API needs credentials.
+    """ Determines if the VNC API needs credentials
 
     :returns: True if credentials are needed, False otherwise
     """
@@ -103,10 +121,9 @@ def vnc_api_is_authenticated(api_server_ips):
         )
 
         try:
-            response = requests.get(
-                url,
+            response = requests.get(url,
                 timeout=(cfg.CONF.APISERVER.connection_timeout,
-                         cfg.CONF.APISERVER.timeout),
+                            cfg.CONF.APISERVER.timeout),
                 verify=cfg.CONF.APISERVER.get('cafile', False))
         except requests.exceptions.RequestException as e:
             LOG.warning("Failed connecting to API server: %s" % e)
@@ -141,7 +158,7 @@ def get_keystone_auth_info():
 
 
 def get_vnc_api_instance(wait_for_connect=True):
-    """Instantiate a VncApi object from configured parameters.
+    """ Instantiates a VncApi object from configured parameters
 
     Read all necessary configuration options from neutron and contrail core
     plugin configuration files and instantiates a VncApi object with them.
