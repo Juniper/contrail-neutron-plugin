@@ -26,6 +26,7 @@ setup(
         'neutron.service_plugins': [
             'contrail-timestamp = neutron_plugin_contrail.plugins.opencontrail.services.timestamp.timestamp_plugin:TimeStampPlugin',
             'contrail-trunk = neutron_plugin_contrail.plugins.opencontrail.services.trunk.plugin:TrunkPlugin',
+            'contrail-tags = neutron_plugin_contrail.plugins.opencontrail.services.tag.tag_plugin:TagPlugin',
         ],
         'firewall_drivers': [
             'contrail-fwaasv2 = neutron_plugin_contrail.plugins.opencontrail.neutron_fwaas.contrail:ContrailFirewallv2Driver',
