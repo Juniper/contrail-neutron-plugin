@@ -71,6 +71,30 @@
     },
     {
       "key": {
+        "uuid": "7e18372d_6322e625",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/services/tag/tag_plugin.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 36,
+      "author": {
+        "id": 382
+      },
+      "writtenOn": "2020-04-20T15:33:24Z",
+      "side": 1,
+      "message": "do you really think that this register is not required?\nI\u0027ve taken this code from upstream class https://github.com/openstack/neutron/blob/master/neutron/services/tag/tag_plugin.py#L40",
+      "parentUuid": "c79be123_00c718ca",
+      "range": {
+        "startLine": 32,
+        "startChar": 0,
+        "endLine": 36,
+        "endChar": 19
+      },
+      "revId": "140082fc128f871679278afb2e163338f2f0f74a",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
         "uuid": "ac9df865_ed2a161a",
         "filename": "neutron_plugin_contrail/plugins/opencontrail/services/tag/tag_plugin.py",
         "patchSetId": 3
