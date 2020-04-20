@@ -1,0 +1,50 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "84e97162_f1f7af3b",
+        "filename": "neutron_plugin_contrail/plugins/opencontrail/services/tag/tag_plugin.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 26,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-04-20T14:04:42Z",
+      "side": 1,
+      "message": "Remove the \u0027s\u0027 at the end of the tag word:\n\n class TagsPlugin(tagging.TagPluginBase):",
+      "range": {
+        "startLine": 26,
+        "startChar": 0,
+        "endLine": 26,
+        "endChar": 40
+      },
+      "revId": "140082fc128f871679278afb2e163338f2f0f74a",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    },
+    {
+      "key": {
+        "uuid": "0e719819_d5ad041c",
+        "filename": "setup.py",
+        "patchSetId": 3
+      },
+      "lineNbr": 29,
+      "author": {
+        "id": 10
+      },
+      "writtenOn": "2020-04-20T14:04:42Z",
+      "side": 1,
+      "message": "Remove the `s` at the end of the word tag",
+      "range": {
+        "startLine": 29,
+        "startChar": 13,
+        "endLine": 29,
+        "endChar": 26
+      },
+      "revId": "140082fc128f871679278afb2e163338f2f0f74a",
+      "serverId": "c72cd27d-1743-4a55-84a4-cd13b8400c52",
+      "unresolved": true
+    }
+  ]
+}
