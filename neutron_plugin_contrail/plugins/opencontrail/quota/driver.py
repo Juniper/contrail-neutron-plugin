@@ -4,6 +4,7 @@ import cgitb
 import sys
 import uuid
 
+from cfgm_common.utils import _DEFAULT_ZK_COUNTER_PATH_PREFIX
 from vnc_api import exceptions as vnc_exc
 try:
     from neutron.openstack.common import log as logging
@@ -89,7 +90,7 @@ class QuotaDriver(object):
                        quota.
         """
         # Ensure no value is less than zero
-        unders = [key for key, val in values.items() if val < 0]
+        unders = [key for key, val in values.items() if val['quota'] < 0]
         if unders:
             raise InvalidQuotaValue(unders=sorted(unders))
 
@@ -100,7 +101,7 @@ class QuotaDriver(object):
         # Check the quotas and construct a list of the resources that
         # would be put over limit by the desired values
         overs = [key for key, val in values.items()
-                 if quotas[key] >= 0 and quotas[key] < val]
+                 if 0 <= quotas[key]['quota'] < val]
         if overs:
             raise OverQuota(overs=sorted(overs))
 
@@ -114,6 +115,14 @@ class QuotaDriver(object):
             default_quota = None
         return cls._get_tenant_quotas(context, resources, tenant_id,
                                       default_quota)
+
+    @classmethod
+    def _quota_vnc_to_neutron(cls, available=0, used=0, quota=0):
+        return {'available': available, 'used': used, 'quota': quota}
+
+    @classmethod
+    def _get_used_quota(cls, resource, tenant_id):
+        return 0  # TODO(pawel.zadrozny): Find a way to count used resources
 
     @classmethod
     def _get_tenant_quotas(cls, context, resources, tenant_id,
@@ -148,7 +157,12 @@ class QuotaDriver(object):
                     quota_res = default_quota.get_defaults()
             if quota_res is None:
                 quota_res = resources[resource].default
-            quotas[resource] = quota_res
+
+            used = cls._get_used_quota(resource, tenant_id)
+            available = quota_res - used if quota_res >= 0 else -1
+            quotas[resource] = cls._quota_vnc_to_neutron(available,
+                                                         used,
+                                                         quota_res)
 
         if not get_default and not has_non_default:
             return {}
@@ -248,5 +262,5 @@ class QuotaDriver(object):
                 quota_res = getattr(default_quota, qn2c[resource], None)
                 if quota_res is None:
                     quota_res = default_quota.get_defaults()
-            quotas[resource] = quota_res
+            quotas[resource] = cls._quota_vnc_to_neutron(0, 0, quota_res)
         return quotas
