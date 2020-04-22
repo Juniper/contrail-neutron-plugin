@@ -116,6 +116,10 @@ class QuotaDriver(object):
                                       default_quota)
 
     @classmethod
+    def _quota_vnc_to_neutron(cls, available=0, used=0, quota=0):
+        return {'available': available, 'used': used, 'quota': quota}
+
+    @classmethod
     def _get_tenant_quotas(cls, context, resources, tenant_id,
                            default_quota, get_default=True):
         """Get quotas of a tenant.
@@ -148,10 +152,15 @@ class QuotaDriver(object):
                     quota_res = default_quota.get_defaults()
             if quota_res is None:
                 quota_res = resources[resource].default
-            quotas[resource] = quota_res
+
+            used = 0  # TODO: implement count used resources
+            available = quota_res - used
+            quotas[resource] = cls._quota_vnc_to_neutron(available,
+                                                         used,
+                                                         quota_res)
 
         if not get_default and not has_non_default:
-            return {}
+            return cls._quota_vnc_to_neutron()
         return quotas
 
     @classmethod
