@@ -29,6 +29,8 @@ LOG = logging.getLogger(__name__)
 
 vnc_conn = None
 
+DEFAULT_NEUTRON_QUOTA = -1
+
 
 class QuotaDriver(object):
     """Configuration driver.
@@ -83,7 +85,7 @@ class QuotaDriver(object):
         nothing.
 
         :param context: The request context, for access checks.
-        :param tennant_id: The tenant_id to check quota.
+        :param tenant_id: The tenant_id to check quota.
         :param resources: A dictionary of the registered resources.
         :param values: A dictionary of the values to check against the
                        quota.
@@ -100,81 +102,111 @@ class QuotaDriver(object):
         # Check the quotas and construct a list of the resources that
         # would be put over limit by the desired values
         overs = [key for key, val in values.items()
-                 if quotas[key] >= 0 and quotas[key] < val]
+                 if 0 <= quotas[key] < val]
         if overs:
             raise OverQuota(overs=sorted(overs))
 
     @classmethod
     def get_tenant_quotas(cls, context, resources, tenant_id):
-        try:
-            default_project = cls._get_vnc_conn().project_read(
-                fq_name=['default-domain', 'default-project'])
-            default_quota = default_project.get_quota()
-        except vnc_exc.NoIdError:
-            default_quota = None
-        return cls._get_tenant_quotas(context, resources, tenant_id,
-                                      default_quota)
+        """Given a list of resources, retrieve the quotas for the given
+        tenant. If no limits are found for the specified tenant, the operation
+        returns the default limits.
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resource keys.
+        :param tenant_id: The ID of the tenant to return quotas for.
+        :return: dict from resource name to dict of name and limit
+        """
+        # get default quotas
+        quotas = cls.get_default_quotas(context, resources)
+        tenant_quotas = cls._get_tenant_quotas(context, resources, tenant_id)
+        for resource, resource_quota in tenant_quotas.items():
+            # override default quota with project specific quota
+            quotas[resource] = resource_quota
+        return quotas
+    # end get_tenant_quotas
 
     @classmethod
-    def _get_tenant_quotas(cls, context, resources, tenant_id,
-                           default_quota, get_default=True):
-        """Get quotas of a tenant.
-
-        :param get_default: if False, does not return quotas if they
-        only contain default values.
+    def get_detailed_tenant_quotas(cls, context, resources, tenant_id):
+        """Given a list of resources and a sepecific tenant, retrieve
+        the detailed quotas (limit, used, reserved).
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resource keys.
+        :return dict: mapping resource name in dict to its corresponding limit
+            used and reserved. Reserved currently returns default value of 0
         """
-        try:
-            proj_id = str(uuid.UUID(tenant_id))
-            proj_obj = cls._get_vnc_conn().project_read(id=proj_id)
-            quota = proj_obj.get_quota()
-        except vnc_exc.NoIdError:
-            return {}
-        except Exception as e:
-            cgitb.Hook(format="text").handle(sys.exc_info())
-            raise e
+        quotas = cls.get_tenant_quotas(context, resources, tenant_id)
+        detailed_quotas = {}
+        for resource, quota in quotas.items():
+            detailed_quotas[resource] = {
+                'limit': quota,
+                'used': cls._get_used_quota(resource, tenant_id),
+                'reserved': 0,  # zero is a default value in Neutron driver
+            }
+        return detailed_quotas
+    # end get_detailed_tenant_quotas
 
-        qn2c = cls.quota_neutron_to_contrail_type
-        quotas = {}
-        has_non_default = False
-        for resource in resources:
-            quota_res = None
-            if quota and resource in qn2c:
-                quota_res = getattr(quota, qn2c[resource], None)
-                if quota_res is not None:
-                    has_non_default = True
-            if quota_res is None and default_quota and resource in qn2c:
-                quota_res = getattr(default_quota, qn2c[resource], None)
-                if quota_res is None:
-                    quota_res = default_quota.get_defaults()
-            if quota_res is None:
-                quota_res = resources[resource].default
-            quotas[resource] = quota_res
-
-        if not get_default and not has_non_default:
-            return {}
-        return quotas
+    @classmethod
+    def _get_used_quota(cls, resource, tenant_id):
+        """Get used quota of given resource for tenant.
+        :param resource: String with resource name.
+        :param tenant_id: String with project ID
+        """
+        return 0  # TODO(pawel.zadrozny): Find a way to count used resources
+    # end _get_used_quota
 
     @classmethod
     def get_all_quotas(cls, context, resources):
-        try:
-            default_project = cls._get_vnc_conn().project_read(
-                fq_name=['default-domain', 'default-project'])
-            default_quota = default_project.get_quota()
-        except vnc_exc.NoIdError:
-            default_quota = None
-
+        """Given a list of resources, retrieve the quotas for the all tenants.
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resource keys.
+        :return: quotas list of dict of tenant_id:, resourcekey1:
+        resourcekey2: ...
+        """
+        default_quota = cls.get_default_quotas(context, resources)
         project_list = cls._get_vnc_conn().projects_list()['projects']
         ret_list = []
         for project in project_list:
-            if default_quota and (project['uuid'] == default_project.uuid):
+            if default_quota and cls._is_default_project(project):
                 continue
             quotas = cls._get_tenant_quotas(context, resources,
-                                            project['uuid'], default_quota,
-                                            get_default=False)
-            if quotas != {}:
+                                            project['uuid'])
+            if quotas:
                 quotas['tenant_id'] = project['uuid'].replace('-', '')
                 ret_list.append(quotas)
         return ret_list
+    # end get_all_quotas
+
+    @classmethod
+    def _get_tenant_quotas(cls, context, resources, tenant_id):
+        """Get quotas of a tenant.
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resource keys.
+        :param tenant_id: The ID of the tenant to return quotas for.
+        """
+        project_id = str(uuid.UUID(tenant_id))
+        try:
+            project = cls._get_vnc_conn().project_read(id=project_id)
+        except vnc_exc.NoIdError:
+            return {}
+        except Exception as exc:
+            cgitb.Hook(format="text").handle(sys.exc_info())
+            raise exc
+
+        project_quotas = project.get_quota()
+        qn2c = cls.quota_neutron_to_contrail_type
+
+        quotas = {}
+        for resource in resources:
+            if project_quotas and resource in qn2c:
+                resource_quota = getattr(project_quotas, qn2c[resource], None)
+                if resource_quota is not None:
+                    quotas[resource] = resource_quota
+        return quotas
+    # end _get_tenant_quotas
+
+    @classmethod
+    def _is_default_project(cls, project):
+        return project['fq_name'] == ['default-domain', 'default-project']
 
     @classmethod
     def delete_tenant_quota(cls, context, tenant_id):
@@ -232,21 +264,32 @@ class QuotaDriver(object):
         """Tnis is a noop as this driver does not support reservations."""
 
     @classmethod
-    def get_default_quotas(cls, context, resources, tenant_id):
+    def get_default_quotas(cls, context, resources, tenant_id=None):
+        """Given a list of resources, retrieve the default quotas set for
+        a tenant.
+        :param context: The request context, for access checks.
+        :param resources: A dictionary of the registered resource keys.
+        :param tenant_id: The ID of the tenant to return default quotas for.
+        :return: dict from resource name to dict of name and limit
+        """
         try:
-            default_project = cls._get_vnc_conn().project_read(
+            project = cls._get_vnc_conn().project_read(
                 fq_name=['default-domain', 'default-project'])
-            default_quota = default_project.get_quota()
+            project_quotas = project.get_quota()
         except vnc_exc.NoIdError:
-            default_quota = None
+            project_quotas = None
 
         qn2c = cls.quota_neutron_to_contrail_type
         quotas = {}
         for resource in resources:
-            quota_res = None
-            if default_quota and resource in qn2c:
-                quota_res = getattr(default_quota, qn2c[resource], None)
-                if quota_res is None:
-                    quota_res = default_quota.get_defaults()
-            quotas[resource] = quota_res
+            if project_quotas and resource in qn2c:
+                quota = getattr(project_quotas, qn2c[resource], None)
+                if quota is None:
+                    quota = project_quotas.get_defaults()
+            else:
+                # If there is no Contrail Quota for that resource use
+                # Neutron's default quota value
+                quota = DEFAULT_NEUTRON_QUOTA
+            quotas[resource] = quota
         return quotas
+    # end get_default_quotas
