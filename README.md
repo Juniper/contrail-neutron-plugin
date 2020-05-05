@@ -1,4 +1,1 @@
-contrail-nova-plugin
-====================
-
-OpenStack Neutron plugin for OpenContrail
+Content was moved to https://github.com/tungstenfabric/tf-neutron-plugin
